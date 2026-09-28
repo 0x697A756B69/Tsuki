@@ -7,7 +7,6 @@ const loadEvents = require("./Loaders/loadEvents");
 bot.commands = new Discord.Collection();
 bot.function = {
   createId: require("./Fonctions/createId"),
-  calculXp: require("./Fonctions/calculXp"),
 };
 
 bot.login(process.env.TOKEN);
