@@ -8,10 +8,8 @@ module.exports = async (bot) => {
       let command = require(`../Commandes/${file}`);
       if (!command) return message.reply("Cette commande n'existe pas !");
       if (!command.name || typeof command.name !== "string")
-        throw new TypeError(
-          `La commandes ${file.slice(0, file.length - 3)} n'a pas de nom !`
-        );
+        throw new TypeError(`Command ${file} has no name`);
       bot.commands.set(command.name, command);
-      console.log(`Commandes ${file} chargés avec succes`);
+      console.log(`Loaded command ${command.name}`);
     });
 };

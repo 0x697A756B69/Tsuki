@@ -10,7 +10,7 @@ module.exports = async (bot, message) => {
     async (err, req) => {
       if (req.length < 1) {
         db.query(
-          `INSERT INTO xp (guild, user, xp, level) VALUES (${message.guildId}, '${message.author.id}', '0', '0')`
+          `INSERT INTO xp (guild, user, xp, level) VALUES (${message.guildId}, '${message.author.id}', '0', '0')`,
         );
       } else {
         let level = parseInt(req[0].level);
@@ -20,16 +20,16 @@ module.exports = async (bot, message) => {
           db.query(
             `UPDATE xp SET xp = '${xp - (level + 1) * 1000}' WHERE guild = '${
               message.guildId
-            }' AND user = '${message.author.id}'`
+            }' AND user = '${message.author.id}'`,
           );
           db.query(
             `UPDATE xp SET level = '${level + 1}' WHERE guild = '${
               message.guildId
-            }' AND user = '${message.author.id}'`
+            }' AND user = '${message.author.id}'`,
           );
 
           await message.channel.send(
-            `${message.author} est passé niveau ${level + 1}, félicitations !`
+            `${message.author} est passé niveau ${level + 1}, félicitations !`,
           );
         } else {
           let xptogive = Math.floor(Math.random() * 25) + 1;
@@ -37,10 +37,10 @@ module.exports = async (bot, message) => {
           db.query(
             `UPDATE xp SET xp = '${xp + xptogive}' WHERE guild = '${
               message.guildId
-            }' AND user = '${message.author.id}'`
+            }' AND user = '${message.author.id}'`,
           );
         }
       }
-    }
+    },
   );
 };

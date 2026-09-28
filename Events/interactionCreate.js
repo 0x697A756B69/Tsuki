@@ -11,7 +11,10 @@ module.exports = async (bot, interaction) => {
       await interaction.respond(
         entry === ""
           ? bot.commands.map((cmd) => ({ name: cmd.name, value: cmd.name }))
-          : choices.map((choice) => ({ name: choice.name, value: choice.name }))
+          : choices.map((choice) => ({
+              name: choice.name,
+              value: choice.name,
+            })),
       );
     }
   }

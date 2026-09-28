@@ -6,6 +6,6 @@ module.exports = async (bot) => {
     .filter((f) => f.endsWith(".js"))) {
     let event = require(`../Events/${file}`);
     bot.on(file.split(".js").join(""), event.bind(null, bot));
-    console.log(`Evenement ${file} fait avec succès !`);
+    console.log(`Loaded event ${name}`);
   }
 };
