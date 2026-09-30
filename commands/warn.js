@@ -1,4 +1,5 @@
 const Discord = require("discord.js");
+const { canModerate } = require("../utils/hierarchy");
 
 module.exports = {
   name: "warn",
@@ -24,65 +25,44 @@ module.exports = {
   ],
 
   async run(bot, message, args, db) {
-    let user = args.getUser("membre");
-    if (!user)
-      return message.reply({
-        content: "Pas de membre !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    let member = message.guild.members.cache.get(user.id);
+    const user = args.getUser("membre");
+    const member = args.getMember("membre");
+    const reason = args.getString("raison") ?? "❌";
+    const ephemeral = Discord.MessageFlags.Ephemeral;
+
     if (!member)
       return message.reply({
-        content: "Pas de membre",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Ce membre n'est pas sur le serveur.",
+        flags: ephemeral,
       });
-
-    let reason = args.getString("raison");
-    if (!reason) reason = "❌";
-
     if (message.user.id === user.id)
       return message.reply({
         content: "Tu ne peux pas t'avertir !",
-        flags: Discord.MessageFlags.Ephemeral,
+        flags: ephemeral,
       });
-    if ((await message.guild.fetchOwner()).id === user.id)
-      return message.reply({
-        content: "Tu ne peux pas avertir le propriétaire du serveur !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    if (
-      message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
-    )
+
+    if (!canModerate(message.member, member))
       return message.reply({
         content: "Tu ne peux pas avertir ce membre !",
-        flags: Discord.MessageFlags.Ephemeral,
+        flags: ephemeral,
       });
-    if (
-      (await message.guild.members.fetchMe()).roles.highest.comparePositionTo(
-        member.roles.highest,
-      ) <= 0
-    )
-      return message.reply({ content: "Je ne peux pas avertir ce membre !" });
 
-    try {
-      await user.send(
-        `${message.user.tag} vous a warns sur le serveur ${message.guild.name} pour la raison : \`${reason}\``,
-      );
-    } catch (err) {}
+    const id = await bot.utils.createId("WARN");
+    db.prepare(
+      "INSERT INTO warns (id, guild, user, author, reason, date) VALUES (?, ?, ?, ?, ?, ?)",
+    ).run(id, message.guildId, user.id, message.user.id, reason, Date.now());
+
+    await user
+      .send(
+        `Tu as reçu un avertissement sur ${message.guild.name}.\n> **Raison :** \`${reason}\``,
+      )
+      .catch(() => {});
 
     await message.reply(
-      `Vous avez warn ${user.tag} pour la raison : \`${reason}\``,
-    );
-
-    let ID = await bot.utils.createId("WARN");
-
-    db.query(
-      `INSERT INTO warns (guild, user, author, warn, reason, date) VALUES ('${
-        message.guild.id
-      }', '${user.id}', '${message.user.id}', '${ID}', '${reason.replace(
-        /'/g,
-        "\\'",
-      )}', '${Date.now()}') `,
+      `⚠️ ${user} a reçu un avertissement.\n` +
+        `> **Modérateur :** ${message.user}\n` +
+        `> **Raison :** \`${reason}\`\n` +
+        `> **ID :** \`${id}\``,
     );
   },
 };

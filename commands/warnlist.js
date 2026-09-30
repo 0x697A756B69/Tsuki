@@ -14,49 +14,38 @@ module.exports = {
       required: true,
     },
   ],
+
   async run(bot, message, args, db) {
-    let user = args.getUser("membre");
-    if (!user)
+    const user = args.getUser("membre");
+    const warns = db
+      .prepare(
+        "SELECT * FROM warns WHERE guild = ? AND user = ? ORDER BY date DESC",
+      )
+      .all(message.guildId, user.id);
+
+    if (warns.length === 0)
       return message.reply({
-        content: "Pas de membre !",
+        content: `${user} n'a aucun avertissement.`,
         flags: Discord.MessageFlags.Ephemeral,
       });
-    let member = message.guild.members.cache.get(user.id);
-    if (!member)
-      return message.reply({
-        content: "Pas de membre !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
 
-    db.query(
-      `SELECT * FROM warns WHERE guild = '${message.guildId}' AND user = '${user.id}'`,
-      async (err, req) => {
-        if (req.length < 1) return message.reply("Ce membre n'a pas de warn !");
-        await req.sort((a, b) => parseInt(b.date) - parseInt(a.date));
+    const embed = new Discord.EmbedBuilder()
+      .setColor(0xfff100)
+      .setTitle(`Avertissements de ${user.tag}`)
+      .setThumbnail(user.displayAvatarURL())
+      .setFooter({ text: `${warns.length} avertissement(s)` })
+      .setTimestamp()
+      .addFields(
+        warns.slice(0, 25).map((warn, i) => ({
+          name: `Warn n°${i + 1}`,
+          value:
+            `> **Auteur :** <@${warn.author}>\n` +
+            `> **ID :** \`${warn.id}\`\n` +
+            `> **Raison :** \`${warn.reason}\`\n` +
+            `> **Date :** <t:${Math.floor(warn.date / 1000)}:F>`,
+        })),
+      );
 
-        let Embed = new Discord.EmbedBuilder()
-          .setColor(0xfff100)
-          .setTitle(`Warns de ${user.tag}`)
-          .setThumbnail(user.displayAvatarURL({ dynamic: true }))
-          .setTimestamp()
-          .setFooter({ text: "Warns" });
-
-        for (let i = 0; i < req.length; i++) {
-          Embed.addFields([
-            {
-              name: `Warn n°${i + 1}`,
-              value: `> **Auteur** : ${
-                (await bot.users.fetch(req[i].author)).tag
-              }\n> **ID** : \`${req[i].warn}\`\n> **Raison** :\`${
-                req[i].reason
-              }\`\n> **Date** : <t:${Math.floor(
-                parseInt(req[i].date) / 1000,
-              )}:F>`,
-            },
-          ]);
-        }
-        await message.reply({ embeds: [Embed] });
-      },
-    );
+    await message.reply({ embeds: [embed] });
   },
 };
