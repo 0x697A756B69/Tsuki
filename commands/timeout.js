@@ -41,17 +41,17 @@ module.exports = {
     if (!time)
       return message.reply({
         content: "Pas de temps !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (isNaN(ms(time)))
       return message.reply({
         content: "Pas le bon format !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (ms(time) > 2419200000)
       return message.reply({
         content: "Je ne peux pas exclure temporairement plus que 28 jours !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
 
     let reason = args.getString("raison");
@@ -60,25 +60,25 @@ module.exports = {
     if (message.user.id === user.id)
       return message.reply({
         content: "je ne peux pas t'exclure temporairement !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if ((await message.guild.fetchOwner()).id === user.id)
       return message.reply({
         content:
           "Tu ne peux pas exclure temporairement le propriétaire du serveur !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (!member.moderatable)
       return message.reply({
         content: "Je ne peux pas exclure temporairement ce membre ! ",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (
       message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
     )
       return message.reply({
         content: "Tu ne peut pas exclu(e) temporairement cette personne !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
 
     try {
@@ -86,18 +86,18 @@ module.exports = {
         `Vous avez été exclu(e) temporairement de ${message.guild.name}.\n` +
           `> **Modérateur :** ${message.user.tag}\n` +
           `> **Fin de l'exclusion:** <t:${Math.round(
-            (Date.now() + ms(time)) / 1000
+            (Date.now() + ms(time)) / 1000,
           )}:R>\n` +
-          `> **Raison :** \`${reason}\``
+          `> **Raison :** \`${reason}\``,
       );
     } catch (err) {}
 
     message.reply(
       `<:timeout:1035248378495381504> ${user} a été exclu(e) temporairement.\n` +
         `> **Fin de l'exclusion:** <t:${Math.round(
-          (Date.now() + ms(time)) / 1000
+          (Date.now() + ms(time)) / 1000,
         )}:R>\n` +
-        `> **Raison** : \`${reason}\``
+        `> **Raison** : \`${reason}\``,
     );
 
     await member.timeout(ms(time), reason);

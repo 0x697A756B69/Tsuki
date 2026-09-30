@@ -18,12 +18,17 @@ module.exports = {
 
   async run(bot, message, args) {
     const member = args.getMember("membre");
+    if (!member)
+      return message.reply({
+        content: "Membre introuvable.",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
 
     const { user, presence, roles } = member;
 
-    const formatter = new Intl.ListFormat("en", {
+    const formatter = new Intl.ListFormat("fr", {
       style: "narrow",
-      type: "conjonction",
+      type: "conjunction",
     });
 
     await user.fetch();
@@ -45,10 +50,9 @@ module.exports = {
     ];
 
     const clientType = [
-      { name: "ordinateur", text: "Ordinateur", emoji: "💻" },
+      { name: "desktop", text: "Ordinateur", emoji: "💻" },
       { name: "mobile", text: "Téléphone", emoji: "🤳🏻" },
-      { name: "web", text: "Website", emoji: "🌍" },
-      { name: "hors ligne", text: "Hors ligne", emoji: "💤" },
+      { name: "web", text: "Site web", emoji: "🌍" },
     ];
 
     const badges = {
@@ -84,26 +88,17 @@ module.exports = {
       .sort((a, b) => b.position - a.position)
       .slice(0, roles.cache.size - 1);
 
-    const clientStatus =
-      presence?.clientStatus instanceof Object
-        ? Object.keys(presence.clientStatus)
-        : "offline";
+    const clientStatus = Object.keys(presence?.clientStatus ?? {});
     const userFlags = user.flags.toArray();
-
-    const deviceFilter = clientType.filter((device) =>
-      clientStatus.includes(device.name)
+    const devices = clientType.filter((device) =>
+      clientStatus.includes(device.name),
     );
-    const devices = !Array.isArray(deviceFilter)
-      ? new Array(deviceFilter)
-      : deviceFilter;
 
     let Embed = new Discord.EmbedBuilder()
       .setColor(user.hexAccentColor || "Random")
       .setAuthor({
         name: user.tag,
-        iconURL: `https://i.imgur.com/${
-          statusType[presence?.status || "invisible"]
-        }`,
+        iconURL: statusType[presence?.status ?? "invisible"],
       })
       .setThumbnail(user.avatarURL({ size: 1024 }))
       .setImage(user.bannerURL({ size: 1024 }))
@@ -114,7 +109,7 @@ module.exports = {
           value:
             presence?.activities
               .map(
-                (activity) => `${activityType[activity.type]} ${activity.name}`
+                (activity) => `${activityType[activity.type]} ${activity.name}`,
               )
               .join("\n") || "None",
         },
@@ -150,9 +145,10 @@ module.exports = {
         },
         {
           name: `Plateformes`,
-          value: devices
-            .map((device) => `${device.emoji} ${device.text}`)
-            .join("\n"),
+          value:
+            devices
+              .map((device) => `${device.emoji} ${device.text}`)
+              .join("\n") || "💤 Hors ligne",
           inline: true,
         },
         {
@@ -169,7 +165,7 @@ module.exports = {
           }`,
           inline: true,
         },
-        { name: "Banner", value: user.bannerURL() ? "** **" : "🎏 None" }
+        { name: "Banner", value: user.bannerURL() ? "** **" : "🎏 None" },
       );
     await message.reply({ embeds: [Embed] });
   },

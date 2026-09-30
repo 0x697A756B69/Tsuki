@@ -29,7 +29,7 @@ module.exports = {
       if (!user)
         return message.reply({
           content: "Pas de membre à bannir !",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
       let member = message.guild.members.cache.get(user.id);
 
@@ -41,12 +41,12 @@ module.exports = {
       if ((await message.guild.fetchOwner()).id === user.id)
         return message.reply({
           content: "Tu ne peux pas bannir le propriétaire du serveur.",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
       if (member && !member.bannable)
         return message.reply({
           content: "Je ne peux pas bannir ce membre.",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
       if (
         member &&
@@ -55,33 +55,33 @@ module.exports = {
       )
         return message.reply({
           content: "Tu ne peux pas bannir ce membre.",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
       if ((await message.guild.bans.fetch()).get(user.id))
         return message.reply({
           content: "Cet utilisateur est déjà banni(e).",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
 
       try {
         await user.send(
           `<:ban:1035246059695390800> Tu as été banni(e) de ${message.guild.name}.\n` +
             `> *Modérateur :** ${message.user.tag}\n` +
-            `> **Raison :** \`${reason}\``
+            `> **Raison :** \`${reason}\``,
         );
       } catch (err) {}
 
       await message.reply(
         `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
           `> **Modérateur :** ${message.user}\n` +
-          `> **Raison :** \`${reason}\``
+          `> **Raison :** \`${reason}\``,
       );
 
       await message.guild.bans.create(user.id, { reason: reason });
     } catch (err) {
       return message.reply({
         content: "Pas de membre à bannir !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     }
   },

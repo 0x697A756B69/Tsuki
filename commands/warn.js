@@ -26,27 +26,36 @@ module.exports = {
   async run(bot, message, args, db) {
     let user = args.getUser("membre");
     if (!user)
-      return message.Reply({ content: "Pas de membre !", ephmeral: true });
+      return message.reply({
+        content: "Pas de membre !",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
     let member = message.guild.members.cache.get(user.id);
     if (!member)
-      return message.reply({ content: "Pas de membre", ephmeral: true });
+      return message.reply({
+        content: "Pas de membre",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
 
     let reason = args.getString("raison");
     if (!reason) reason = "❌";
 
     if (message.user.id === user.id)
-      return message.reply({ content: "Tu ne peux pas t'avertir !", ephmeral });
+      return message.reply({
+        content: "Tu ne peux pas t'avertir !",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
     if ((await message.guild.fetchOwner()).id === user.id)
       return message.reply({
         content: "Tu ne peux pas avertir le propriétaire du serveur !",
-        ephmeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (
       message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
     )
       return message.reply({
         content: "Tu ne peux pas avertir ce membre !",
-        ephmeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (
       (await message.guild.members.fetchMe()).roles.highest.comparePositionTo(

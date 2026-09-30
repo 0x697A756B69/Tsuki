@@ -21,7 +21,10 @@ module.exports = {
     if (args.getString("commande")) {
       command = bot.commands.get(args.getString("commande"));
       if (!command)
-        return message.reply({ content: "Pas de commande !", ephemeral: true });
+        return message.reply({
+          content: "Pas de commande !",
+          flags: Discord.MessageFlags.Ephemeral,
+        });
     }
 
     if (!command) {
@@ -36,7 +39,7 @@ module.exports = {
         .setTitle(`Commandes du bot`)
         .setThumbnail(bot.user.displayAvatarURL({ dynamic: true }))
         .setDescription(
-          `Commandes disponibles : \`${bot.commands.size}\`\nCatégories disponibles : \`${categories.length}\``
+          `Commandes disponibles : \`${bot.commands.size}\`\nCatégories disponibles : \`${categories.length}\``,
         )
         .setTimestamp()
         .setFooter({ text: "Commandes du robot" });
@@ -64,11 +67,11 @@ module.exports = {
             typeof command.permission !== "bigint"
               ? command.permission
               : new Discord.PermissionsBitField(command.permission).toArray(
-                  false
+                  false,
                 )
           }\`\nCommande en DM : \`${
             command.dm ? "Oui" : "Non"
-          }\`\nCatégorie : \`${command.category}\``
+          }\`\nCatégorie : \`${command.category}\``,
         )
         .setTimestamp()
         .setFooter({ text: "Commandes du bot" });

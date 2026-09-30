@@ -17,10 +17,16 @@ module.exports = {
   async run(bot, message, args, db) {
     let user = args.getUser("membre");
     if (!user)
-      return message.reply({ content: "Pas de membre !", ephmeral: true });
+      return message.reply({
+        content: "Pas de membre !",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
     let member = message.guild.members.cache.get(user.id);
     if (!member)
-      return message.reply({ content: "Pas de membre !", ephmeral: true });
+      return message.reply({
+        content: "Pas de membre !",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
 
     db.query(
       `SELECT * FROM warns WHERE guild = '${message.guildId}' AND user = '${user.id}'`,
@@ -44,13 +50,13 @@ module.exports = {
               }\n> **ID** : \`${req[i].warn}\`\n> **Raison** :\`${
                 req[i].reason
               }\`\n> **Date** : <t:${Math.floor(
-                parseInt(req[i].date) / 1000
+                parseInt(req[i].date) / 1000,
               )}:F>`,
             },
           ]);
         }
         await message.reply({ embeds: [Embed] });
-      }
+      },
     );
   },
 };

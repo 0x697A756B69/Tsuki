@@ -29,7 +29,7 @@ module.exports = {
       if (!user)
         return message.reply({
           content: "Pas d'utilisateur !",
-          ephemeral: true,
+          flags: Discord.MessageFlags.Ephemeral,
         });
 
       let reason = args.getString("raison");
@@ -38,26 +38,29 @@ module.exports = {
       if (!(await message.guild.bans.fetch()).get(user.id))
         return message.reply({
           content: "Cet utilisateur n'est pas banni!",
-          ephmeral,
+          flags: Discord.MessageFlags.Ephemeral,
         });
 
       try {
         await user.send(
           `Vous avez été banni(e).\n` +
             `> **Modérateur :** ${message.user.tag}\n` +
-            `> **Raison :** \`${reason}\``
+            `> **Raison :** \`${reason}\``,
         );
       } catch (err) {}
 
       await message.reply(
         `<:ban:1035246059695390800> ${user} a été débanni(e)\n` +
           `> **Modérateur :**${message.user}\n` +
-          `> **Raison :** \`${reason}\``
+          `> **Raison :** \`${reason}\``,
       );
 
       await message.guild.members.unban(user, reason);
     } catch (err) {
-      return message.reply({ content: "Pas d'utilisateur!", ephmeral });
+      return message.reply({
+        content: "Pas d'utilisateur!",
+        flags: Discord.MessageFlags.Ephemeral,
+      });
     }
   },
 };

@@ -28,13 +28,13 @@ module.exports = {
     if (!user)
       return message.reply({
         content: "Pas de membre à exclure !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     let member = message.guild.members.cache.get(user.id);
     if (!member)
       return message.reply({
         content: "Pas de membre à exclure !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
 
     let reason = args.getString("raison");
@@ -43,17 +43,17 @@ module.exports = {
     if (message.user.id == user.id)
       return message.reply({
         content: "Tu ne peux pas t'exclure du serveur !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if ((await message.guild.fetchOwner()).id === user.id)
       return message.reply({
         content: "Tu ne peux pas exclure le propriétaire du serveur !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (member && !member.kickable)
       return message.reply({
         content: "Je ne peux pas exclure ce membre !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
     if (
       member &&
@@ -61,21 +61,21 @@ module.exports = {
     )
       return message.reply({
         content: "Tu ne peux pas exclure ce membre !",
-        ephemeral: true,
+        flags: Discord.MessageFlags.Ephemeral,
       });
 
     try {
       await user.send(
         `Vous avez été exclu(e) de ${message.guild.name}.\n` +
           `> **Modérateur :** ${message.user.tag}\n` +
-          `> **Raison :** \`${reason}\``
+          `> **Raison :** \`${reason}\``,
       );
     } catch (err) {}
 
     await message.reply(
       `<:expulser:1035322289308307526> ${user} a été exclu(e).\n` +
         `> **Modérateur :** ${message.user}\n` +
-        `> **Raison :** \`${reason}\``
+        `> **Raison :** \`${reason}\``,
     );
 
     await member.kick(reason);
