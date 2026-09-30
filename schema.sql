@@ -1,0 +1,18 @@
+CREATE TABLE IF NOT EXISTS xp (
+  guild TEXT NOT NULL,
+  user TEXT NOT NULL,
+  xp INTEGER NOT NULL DEFAULT 0,
+  level INTEGER NOT NULL DEFAULT 0,
+  PRIMARY KEY (guild, user)
+);
+
+CREATE TABLE IF NOT EXISTS warns (
+  id TEXT PRIMARY KEY,
+  guild TEXT NOT NULL,
+  user TEXT NOT NULL,
+  author TEXT NOT NULL,
+  reason TEXT,
+  date INTEGER NOT NULL
+);
+
+CREATE INDEX IF NOT EXISTS warns_by_member ON warns (guild, user);
