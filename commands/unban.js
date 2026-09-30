@@ -24,43 +24,21 @@ module.exports = {
   ],
 
   async run(bot, message, args) {
-    try {
-      let user = args.getUser("utilisateur");
-      if (!user)
-        return message.reply({
-          content: "Pas d'utilisateur !",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
+    const user = args.getUser("utilisateur");
+    const reason = args.getString("raison") ?? "❌";
 
-      let reason = args.getString("raison");
-      if (!reason) reason = "❌";
-
-      if (!(await message.guild.bans.fetch()).get(user.id))
-        return message.reply({
-          content: "Cet utilisateur n'est pas banni!",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-
-      try {
-        await user.send(
-          `Vous avez été banni(e).\n` +
-            `> **Modérateur :** ${message.user.tag}\n` +
-            `> **Raison :** \`${reason}\``,
-        );
-      } catch (err) {}
-
-      await message.reply(
-        `<:ban:1035246059695390800> ${user} a été débanni(e)\n` +
-          `> **Modérateur :**${message.user}\n` +
-          `> **Raison :** \`${reason}\``,
-      );
-
-      await message.guild.members.unban(user, reason);
-    } catch (err) {
+    if (!(await message.guild.bans.fetch(user.id).catch(() => null)))
       return message.reply({
-        content: "Pas d'utilisateur!",
+        content: "Cet utilisateur n'est pas banni !",
         flags: Discord.MessageFlags.Ephemeral,
       });
-    }
+
+    await message.guild.members.unban(user, reason);
+
+    await message.reply(
+      `<:ban:1035246059695390800> ${user} a été débanni(e).\n` +
+        `> **Modérateur :** ${message.user}\n` +
+        `> **Raison :** \`${reason}\``,
+    );
   },
 };

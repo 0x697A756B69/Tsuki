@@ -24,65 +24,54 @@ module.exports = {
   ],
 
   async run(bot, message, args) {
-    try {
-      let user = await bot.users.fetch(args._hoistedOptions[0].value);
-      if (!user)
-        return message.reply({
-          content: "Pas de membre à bannir !",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-      let member = message.guild.members.cache.get(user.id);
+    const user = args.getUser("membre");
+    const member = args.getMember("membre");
+    const reason = args.getString("raison") ?? "❌";
+    const ephemeral = Discord.MessageFlags.Ephemeral;
 
-      let reason = args.getString("raison");
-      if (!reason) reason = "❌";
-
-      if (message.user.id === user.id)
-        return message.reply("Essaie pas de te bannir!");
-      if ((await message.guild.fetchOwner()).id === user.id)
-        return message.reply({
-          content: "Tu ne peux pas bannir le propriétaire du serveur.",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-      if (member && !member.bannable)
-        return message.reply({
-          content: "Je ne peux pas bannir ce membre.",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-      if (
-        member &&
-        message.member.roles.highest.comparePositionTo(member.roles.highest) <=
-          0
-      )
-        return message.reply({
-          content: "Tu ne peux pas bannir ce membre.",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-      if ((await message.guild.bans.fetch()).get(user.id))
-        return message.reply({
-          content: "Cet utilisateur est déjà banni(e).",
-          flags: Discord.MessageFlags.Ephemeral,
-        });
-
-      try {
-        await user.send(
-          `<:ban:1035246059695390800> Tu as été banni(e) de ${message.guild.name}.\n` +
-            `> *Modérateur :** ${message.user.tag}\n` +
-            `> **Raison :** \`${reason}\``,
-        );
-      } catch (err) {}
-
-      await message.reply(
-        `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
-          `> **Modérateur :** ${message.user}\n` +
-          `> **Raison :** \`${reason}\``,
-      );
-
-      await message.guild.bans.create(user.id, { reason: reason });
-    } catch (err) {
+    if (message.user.id === user.id)
       return message.reply({
-        content: "Pas de membre à bannir !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Essaie pas de te bannir !",
+        flags: ephemeral,
       });
-    }
+    if (message.guild.ownerId === user.id)
+      return message.reply({
+        content: "Tu ne peux pas bannir le propriétaire du serveur.",
+        flags: ephemeral,
+      });
+    if (member && !member.bannable)
+      return message.reply({
+        content: "Je ne peux pas bannir ce membre.",
+        flags: ephemeral,
+      });
+    if (
+      member &&
+      message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
+    )
+      return message.reply({
+        content: "Tu ne peux pas bannir ce membre.",
+        flags: ephemeral,
+      });
+    if (await message.guild.bans.fetch(user.id).catch(() => null))
+      return message.reply({
+        content: "Cet utilisateur est déjà banni(e).",
+        flags: ephemeral,
+      });
+
+    await user
+      .send(
+        `<:ban:1035246059695390800> Tu as été banni(e) de ${message.guild.name}.\n` +
+          `> **Modérateur :** ${message.user.tag}\n` +
+          `> **Raison :** \`${reason}\``,
+      )
+      .catch(() => {});
+
+    await message.guild.bans.create(user.id, { reason });
+
+    await message.reply(
+      `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
+        `> **Modérateur :** ${message.user}\n` +
+        `> **Raison :** \`${reason}\``,
+    );
   },
 };

@@ -92,14 +92,14 @@ module.exports = {
       );
     } catch (err) {}
 
-    message.reply(
+    await member.timeout(ms(time), reason);
+
+    await message.reply(
       `<:timeout:1035248378495381504> ${user} a été exclu(e) temporairement.\n` +
         `> **Fin de l'exclusion:** <t:${Math.round(
           (Date.now() + ms(time)) / 1000,
         )}:R>\n` +
         `> **Raison** : \`${reason}\``,
     );
-
-    await member.timeout(ms(time), reason);
   },
 };

@@ -43,13 +43,15 @@ module.exports = {
       await user.send(
         `Vous n'êtes plus exclu(e) temporairement de ${message.guild.name}\n` +
           `> **Modérateur :** ${message.user}\n` +
-          `> **Raison :** \`${reason}\``
+          `> **Raison :** \`${reason}\``,
       );
     } catch (err) {}
+
+    await member.timeout(null, reason);
+
     await message.reply(
       `<:timeout:1035248378495381504> ${user} n'est plus exclu(e) temporairement.\n` +
-        `> **Raison :** \`${reason}\``
+        `> **Raison :** \`${reason}\``,
     );
-    await member.timeout(null, reason);
   },
 };

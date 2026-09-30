@@ -72,12 +72,12 @@ module.exports = {
       );
     } catch (err) {}
 
+    await member.kick(reason);
+
     await message.reply(
       `<:expulser:1035322289308307526> ${user} a été exclu(e).\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\``,
     );
-
-    await member.kick(reason);
   },
 };
