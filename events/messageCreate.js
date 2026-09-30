@@ -1,46 +1,33 @@
-const Discord = require("discord.js");
+const COOLDOWN = 60_000;
+const cooldowns = new Map();
 
 module.exports = async (bot, message) => {
-  let db = bot.db;
-  if (message.author.bot || message.channel.type === Discord.ChannelType.DM)
-    return;
+  if (message.author.bot || !message.inGuild()) return;
 
-  db.query(
-    `SELECT * FROM xp WHERE guild = '${message.guildId}' AND user = '${message.author.id}'`,
-    async (err, req) => {
-      if (req.length < 1) {
-        db.query(
-          `INSERT INTO xp (guild, user, xp, level) VALUES (${message.guildId}, '${message.author.id}', '0', '0')`,
-        );
-      } else {
-        let level = parseInt(req[0].level);
-        let xp = parseInt(req[0].xp);
+  const key = `${message.guildId}:${message.author.id}`;
+  const now = Date.now();
+  if (now - (cooldowns.get(key) ?? 0) < COOLDOWN) return;
+  cooldowns.set(key, now);
 
-        if ((level + 1) * 1000 <= xp) {
-          db.query(
-            `UPDATE xp SET xp = '${xp - (level + 1) * 1000}' WHERE guild = '${
-              message.guildId
-            }' AND user = '${message.author.id}'`,
-          );
-          db.query(
-            `UPDATE xp SET level = '${level + 1}' WHERE guild = '${
-              message.guildId
-            }' AND user = '${message.author.id}'`,
-          );
+  const gain = Math.floor(Math.random() * 25) + 1;
+  const { xp, level } = bot.db
+    .prepare(
+      `INSERT INTO xp (guild, user, xp) VALUES (?, ?, ?)
+       ON CONFLICT (guild, user) DO UPDATE SET xp = xp + excluded.xp
+       RETURNING xp, level`,
+    )
+    .get(message.guildId, message.author.id, gain);
 
-          await message.channel.send(
-            `${message.author} est passé niveau ${level + 1}, félicitations !`,
-          );
-        } else {
-          let xptogive = Math.floor(Math.random() * 25) + 1;
+  const needed = (level + 1) * 1000;
+  if (xp < needed) return;
 
-          db.query(
-            `UPDATE xp SET xp = '${xp + xptogive}' WHERE guild = '${
-              message.guildId
-            }' AND user = '${message.author.id}'`,
-          );
-        }
-      }
-    },
+  bot.db
+    .prepare(
+      "UPDATE xp SET xp = xp - ?, level = level + 1 WHERE guild = ? AND user = ?",
+    )
+    .run(needed, message.guildId, message.author.id);
+
+  await message.channel.send(
+    `${message.author} est passé niveau ${level + 1}, félicitations !`,
   );
 };
