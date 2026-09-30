@@ -1,6 +1,6 @@
 const { Client, Collection, GatewayIntentBits } = require("discord.js");
-const loadCommands = require("./Loaders/loadCommands");
-const loadEvents = require("./Loaders/loadEvents");
+const loadCommands = require("./loaders/loadCommands");
+const loadEvents = require("./loaders/loadEvents");
 
 if (!process.env.TOKEN) {
   console.error("Missing TOKEN in .env file");
@@ -17,7 +17,7 @@ const bot = new Client({
 });
 
 bot.commands = new Collection();
-bot.function = { createId: require("./Fonctions/createId") };
+bot.utils = { createId: require("./utils/createId") };
 
 process.on("unhandledRejection", (err) =>
   console.error("[unhandledRejection]", err),
