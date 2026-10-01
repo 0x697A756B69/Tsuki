@@ -1,4 +1,5 @@
 const Discord = require("discord.js");
+const { canModerate } = require("../utils/hierarchy");
 
 module.exports = {
   name: "ban",
@@ -17,7 +18,7 @@ module.exports = {
     {
       type: "string",
       name: "raison",
-      description: "La raison du bannisement.",
+      description: "La raison du bannissement.",
       required: false,
       autocomplete: false,
     },
@@ -31,30 +32,22 @@ module.exports = {
 
     if (message.user.id === user.id)
       return message.reply({
-        content: "Essaie pas de te bannir !",
+        content: "Tu ne peux pas te bannir !",
         flags: ephemeral,
       });
-    if (message.guild.ownerId === user.id)
+    if (member && !canModerate(message.member, member))
       return message.reply({
-        content: "Tu ne peux pas bannir le propriétaire du serveur.",
+        content: "Tu ne peux pas bannir ce membre !",
         flags: ephemeral,
       });
     if (member && !member.bannable)
       return message.reply({
-        content: "Je ne peux pas bannir ce membre.",
-        flags: ephemeral,
-      });
-    if (
-      member &&
-      message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
-    )
-      return message.reply({
-        content: "Tu ne peux pas bannir ce membre.",
+        content: "Je ne peux pas bannir ce membre !",
         flags: ephemeral,
       });
     if (await message.guild.bans.fetch(user.id).catch(() => null))
       return message.reply({
-        content: "Cet utilisateur est déjà banni(e).",
+        content: "Cet utilisateur est déjà banni(e) !",
         flags: ephemeral,
       });
 

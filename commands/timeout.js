@@ -1,9 +1,12 @@
 const Discord = require("discord.js");
 const ms = require("ms");
+const { canModerate } = require("../utils/hierarchy");
+
+const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 
 module.exports = {
   name: "timeout",
-  description: "Timeout un membre avec une raison et une durée optionnelles.",
+  description: "Exclure temporairement un membre avec une raison optionnelle.",
   permission: Discord.PermissionFlagsBits.ModerateMembers,
   category: "Modération",
   dm: false,
@@ -11,95 +14,82 @@ module.exports = {
     {
       type: "user",
       name: "membre",
-      description: "Le membre à timeout.",
+      description: "Le membre à exclure temporairement.",
       required: true,
       autocomplete: false,
     },
     {
       type: "string",
       name: "temps",
-      description: "Durée du timeout. (Exemple 1d pour 1 jour)",
+      description: "Durée de l'exclusion (exemple : 10m, 2h, 1d).",
       required: true,
       autocomplete: false,
     },
     {
       type: "string",
       name: "raison",
-      description: "La raison du timeout.",
+      description: "La raison de l'exclusion.",
       required: false,
       autocomplete: false,
     },
   ],
 
   async run(bot, message, args) {
-    let user = args.getUser("membre");
-    if (!user) return message.reply("Pas de membre !");
-    let member = message.guild.members.cache.get(user.id);
-    if (!member) return message.reply("Pas de membre !");
+    const user = args.getUser("membre");
+    const member = args.getMember("membre");
+    const duration = ms(args.getString("temps"));
+    const reason = args.getString("raison") ?? "❌";
+    const ephemeral = Discord.MessageFlags.Ephemeral;
 
-    let time = args.getString("temps");
-    if (!time)
+    if (!member)
       return message.reply({
-        content: "Pas de temps !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Ce membre n'est pas sur le serveur !",
+        flags: ephemeral,
       });
-    if (isNaN(ms(time)))
+    if (!duration || duration <= 0)
       return message.reply({
-        content: "Pas le bon format !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Durée invalide ! Exemple : `10m`, `2h`, `1d`.",
+        flags: ephemeral,
       });
-    if (ms(time) > 2419200000)
+    if (duration > MAX_DURATION)
       return message.reply({
-        content: "Je ne peux pas exclure temporairement plus que 28 jours !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "La durée maximale est de 28 jours !",
+        flags: ephemeral,
       });
-
-    let reason = args.getString("raison");
-    if (!reason) reason = "❌";
-
     if (message.user.id === user.id)
       return message.reply({
-        content: "je ne peux pas t'exclure temporairement !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Tu ne peux pas t'exclure temporairement !",
+        flags: ephemeral,
       });
-    if ((await message.guild.fetchOwner()).id === user.id)
+    if (!canModerate(message.member, member))
       return message.reply({
-        content:
-          "Tu ne peux pas exclure temporairement le propriétaire du serveur !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Tu ne peux pas exclure temporairement ce membre !",
+        flags: ephemeral,
       });
     if (!member.moderatable)
       return message.reply({
-        content: "Je ne peux pas exclure temporairement ce membre ! ",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    if (
-      message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
-    )
-      return message.reply({
-        content: "Tu ne peut pas exclu(e) temporairement cette personne !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Je ne peux pas exclure temporairement ce membre !",
+        flags: ephemeral,
       });
 
-    try {
-      await user.send(
-        `Vous avez été exclu(e) temporairement de ${message.guild.name}.\n` +
+    const end = `<t:${Math.round((Date.now() + duration) / 1000)}:R>`;
+
+    await user
+      .send(
+        `Tu as été exclu(e) temporairement de ${message.guild.name}.\n` +
           `> **Modérateur :** ${message.user.tag}\n` +
-          `> **Fin de l'exclusion:** <t:${Math.round(
-            (Date.now() + ms(time)) / 1000,
-          )}:R>\n` +
+          `> **Fin de l'exclusion :** ${end}\n` +
           `> **Raison :** \`${reason}\``,
-      );
-    } catch (err) {}
+      )
+      .catch(() => {});
 
-    await member.timeout(ms(time), reason);
+    await member.timeout(duration, reason);
 
     await message.reply(
       `<:timeout:1035248378495381504> ${user} a été exclu(e) temporairement.\n` +
-        `> **Fin de l'exclusion:** <t:${Math.round(
-          (Date.now() + ms(time)) / 1000,
-        )}:R>\n` +
-        `> **Raison** : \`${reason}\``,
+        `> **Modérateur :** ${message.user}\n` +
+        `> **Fin de l'exclusion :** ${end}\n` +
+        `> **Raison :** \`${reason}\``,
     );
   },
 };

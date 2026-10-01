@@ -1,4 +1,5 @@
 const Discord = require("discord.js");
+const { canModerate } = require("../utils/hierarchy");
 
 module.exports = {
   name: "kick",
@@ -24,53 +25,39 @@ module.exports = {
   ],
 
   async run(bot, message, args) {
-    let user = args.getUser("membre");
-    if (!user)
-      return message.reply({
-        content: "Pas de membre à exclure !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    let member = message.guild.members.cache.get(user.id);
+    const user = args.getUser("membre");
+    const member = args.getMember("membre");
+    const reason = args.getString("raison") ?? "❌";
+    const ephemeral = Discord.MessageFlags.Ephemeral;
+
     if (!member)
       return message.reply({
-        content: "Pas de membre à exclure !",
-        flags: Discord.MessageFlags.Ephemeral,
+        content: "Ce membre n'est pas sur le serveur !",
+        flags: ephemeral,
       });
-
-    let reason = args.getString("raison");
-    if (!reason) reason = "❌";
-
-    if (message.user.id == user.id)
+    if (message.user.id === user.id)
       return message.reply({
         content: "Tu ne peux pas t'exclure du serveur !",
-        flags: Discord.MessageFlags.Ephemeral,
+        flags: ephemeral,
       });
-    if ((await message.guild.fetchOwner()).id === user.id)
-      return message.reply({
-        content: "Tu ne peux pas exclure le propriétaire du serveur !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    if (member && !member.kickable)
-      return message.reply({
-        content: "Je ne peux pas exclure ce membre !",
-        flags: Discord.MessageFlags.Ephemeral,
-      });
-    if (
-      member &&
-      message.member.roles.highest.comparePositionTo(member.roles.highest) <= 0
-    )
+    if (!canModerate(message.member, member))
       return message.reply({
         content: "Tu ne peux pas exclure ce membre !",
-        flags: Discord.MessageFlags.Ephemeral,
+        flags: ephemeral,
+      });
+    if (!member.kickable)
+      return message.reply({
+        content: "Je ne peux pas exclure ce membre !",
+        flags: ephemeral,
       });
 
-    try {
-      await user.send(
-        `Vous avez été exclu(e) de ${message.guild.name}.\n` +
+    await user
+      .send(
+        `Tu as été exclu(e) de ${message.guild.name}.\n` +
           `> **Modérateur :** ${message.user.tag}\n` +
           `> **Raison :** \`${reason}\``,
-      );
-    } catch (err) {}
+      )
+      .catch(() => {});
 
     await member.kick(reason);
 
