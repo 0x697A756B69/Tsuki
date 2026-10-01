@@ -51,12 +51,12 @@ module.exports = {
 
     const deleted = await channel.bulkDelete(amount, true);
 
-    await message.reply({
-      content:
-        deleted.size < amount
-          ? `${deleted.size} message(s) supprimé(s) dans ${channel}. Les messages de plus de 14 jours ne peuvent pas être supprimés.`
-          : `${deleted.size} message(s) supprimé(s) dans ${channel}.`,
-      flags: ephemeral,
-    });
+    await message.reply(
+      deleted.size < amount
+        ? `${deleted.size} message(s) supprimé(s) dans ${channel}. Les messages de plus de 14 jours ne peuvent pas être supprimés.`
+        : `${deleted.size} message(s) supprimé(s) dans ${channel}.`,
+    );
+
+    setTimeout(() => message.deleteReply().catch(() => {}), 5000);
   },
 };

@@ -5,7 +5,8 @@
   "description": "Bot Discord de modération et d'expérience.",
   "main": "main.js",
   "scripts": {
-    "start": "node --env-file-if-exists=.env main.js"
+    "start": "node --env-file-if-exists=.env main.js",
+    "deploy-commands": "node --env-file-if-exists=.env scripts/deploy-commands.js"
   },
   "engines": {
     "node": ">=22.13"
