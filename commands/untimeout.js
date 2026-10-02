@@ -1,7 +1,9 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "untimeout",
   description: "Lever l'exclusion temporaire d'un membre.",
   permission: Discord.PermissionFlagsBits.ModerateMembers,
@@ -67,4 +69,4 @@ module.exports = {
         `> **Raison :** \`${reason}\``,
     );
   },
-};
+});

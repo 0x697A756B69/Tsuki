@@ -1,7 +1,9 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "ban",
   description: "Bannir un utilisateur avec une raison.",
   permission: Discord.PermissionFlagsBits.BanMembers,
@@ -67,4 +69,4 @@ module.exports = {
         `> **Raison :** \`${reason}\``,
     );
   },
-};
+});

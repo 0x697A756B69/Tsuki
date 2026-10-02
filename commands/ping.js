@@ -1,4 +1,6 @@
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "ping",
   description: "Envoyer une requête ping.",
   permission: "Aucune",
@@ -8,4 +10,4 @@ module.exports = {
   async run(bot, message) {
     await message.reply(`🏓Pong! \`${bot.ws.ping}\``);
   },
-};
+});

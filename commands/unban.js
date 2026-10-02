@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "unban",
   description: "Débanner un utilisateur avec une raison optionnelle.",
   permission: Discord.PermissionFlagsBits.BanMembers,
@@ -41,4 +43,4 @@ module.exports = {
         `> **Raison :** \`${reason}\``,
     );
   },
-};
+});

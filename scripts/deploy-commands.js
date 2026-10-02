@@ -3,9 +3,9 @@ const loadCommands = require("../loaders/loadCommands");
 const buildSlashCommands = require("../loaders/buildSlashCommands");
 
 async function main() {
-  const { TOKEN, GUILD_ID } = process.env;
-  if (!TOKEN || !GUILD_ID)
-    throw new Error("Missing TOKEN or GUILD_ID in .env file");
+  const { TOKEN, CLIENT_ID, GUILD_ID } = process.env;
+  if (!TOKEN || !CLIENT_ID || !GUILD_ID)
+    throw new Error("Missing TOKEN, CLIENT_ID or GUILD_ID in .env file");
 
   const bot = { commands: new Collection() };
   loadCommands(bot);
@@ -14,12 +14,11 @@ async function main() {
   const guildCommands = bot.commands.filter((command) => !command.dm);
 
   const rest = new REST().setToken(TOKEN);
-  const app = await rest.get(Routes.currentApplication());
 
-  await rest.put(Routes.applicationCommands(app.id), {
+  await rest.put(Routes.applicationCommands(CLIENT_ID), {
     body: buildSlashCommands(globalCommands),
   });
-  await rest.put(Routes.applicationGuildCommands(app.id, GUILD_ID), {
+  await rest.put(Routes.applicationGuildCommands(CLIENT_ID, GUILD_ID), {
     body: buildSlashCommands(guildCommands),
   });
 

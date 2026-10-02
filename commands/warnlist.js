@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "warnlist",
   description: "Affiche les warns d'un membre",
   permission: Discord.PermissionFlagsBits.ManageMessages,
@@ -42,10 +44,10 @@ module.exports = {
             `> **Auteur :** <@${warn.author}>\n` +
             `> **ID :** \`${warn.id}\`\n` +
             `> **Raison :** \`${warn.reason}\`\n` +
-            `> **Date :** <t:${Math.floor(warn.date / 1000)}:F>`,
+            `> **Date :** <t:${Math.floor(Number(warn.date) / 1000)}:F>`,
         })),
       );
 
     await message.reply({ embeds: [embed] });
   },
-};
+});

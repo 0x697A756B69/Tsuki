@@ -1,7 +1,9 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "warn",
   description: "avertir un membre avec une raison optionnelle.",
   permission: Discord.PermissionFlagsBits.ManageMessages,
@@ -65,4 +67,4 @@ module.exports = {
         `> **ID :** \`${id}\``,
     );
   },
-};
+});

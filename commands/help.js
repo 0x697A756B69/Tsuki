@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "help",
   description: "Voir l'aide.",
   permission: "Aucune",
@@ -37,7 +39,7 @@ module.exports = {
       let Embed = new Discord.EmbedBuilder()
         .setColor(0xffffff)
         .setTitle(`Commandes du bot`)
-        .setThumbnail(bot.user.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(bot.user.displayAvatarURL())
         .setDescription(
           `Commandes disponibles : \`${bot.commands.size}\`\nCatégories disponibles : \`${categories.length}\``,
         )
@@ -59,16 +61,14 @@ module.exports = {
       let Embed = new Discord.EmbedBuilder()
         .setColor(0xffffff)
         .setTitle(`Commandes ${command.name}`)
-        .setThumbnail(bot.user.displayAvatarURL({ dynamic: true }))
+        .setThumbnail(bot.user.displayAvatarURL())
         .setDescription(
-          `Nom : \`${command.name}\`\nDescrpition : \`${
+          `Nom : \`${command.name}\`\nDescription : \`${
             command.description
           }\`\nPermission requise : \`${
             typeof command.permission !== "bigint"
               ? command.permission
-              : new Discord.PermissionsBitField(command.permission).toArray(
-                  false,
-                )
+              : new Discord.PermissionsBitField(command.permission).toArray()
           }\`\nCommande en DM : \`${
             command.dm ? "Oui" : "Non"
           }\`\nCatégorie : \`${command.category}\``,
@@ -79,4 +79,4 @@ module.exports = {
       await message.reply({ embeds: [Embed] });
     }
   },
-};
+});

@@ -1,7 +1,9 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "kick",
   description: "Exclure un membre avec une raison optionnelle.",
   permission: Discord.PermissionFlagsBits.KickMembers,
@@ -67,4 +69,4 @@ module.exports = {
         `> **Raison :** \`${reason}\``,
     );
   },
-};
+});

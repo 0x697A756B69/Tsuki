@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "clear",
   description: "Supprimer des messages dans un salon.",
   permission: Discord.PermissionFlagsBits.ManageMessages,
@@ -59,4 +61,4 @@ module.exports = {
 
     setTimeout(() => message.deleteReply().catch(() => {}), 5000);
   },
-};
+});

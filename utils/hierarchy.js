@@ -1,16 +1,16 @@
 const { PermissionFlagsBits } = require("discord.js");
 
 const WEIGHTS = [
-  [PermissionFlagsBits.Administrator, 16],
-  [PermissionFlagsBits.BanMembers, 8],
-  [PermissionFlagsBits.KickMembers, 4],
-  [PermissionFlagsBits.ModerateMembers, 2],
-  [PermissionFlagsBits.ManageMessages, 1],
+  { flag: PermissionFlagsBits.Administrator, weight: 16 },
+  { flag: PermissionFlagsBits.BanMembers, weight: 8 },
+  { flag: PermissionFlagsBits.KickMembers, weight: 4 },
+  { flag: PermissionFlagsBits.ModerateMembers, weight: 2 },
+  { flag: PermissionFlagsBits.ManageMessages, weight: 1 },
 ];
 
 function power(member) {
   return WEIGHTS.reduce(
-    (total, [flag, weight]) =>
+    (total, { flag, weight }) =>
       member.permissions.has(flag) ? total + weight : total,
     0,
   );

@@ -1,6 +1,8 @@
 const Discord = require("discord.js");
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "user-info",
   description: "Avoir les informaitons du membre.",
   permission: "Aucune",
@@ -115,12 +117,12 @@ module.exports = {
         },
         {
           name: "Date d'arrivée",
-          value: `🤝🏻 <t:${parseInt(member.joinedTimestamp / 1000)}:R>`,
+          value: `🤝🏻 <t:${Math.floor(member.joinedTimestamp / 1000)}:R>`,
           inline: true,
         },
         {
           name: "Création du compte",
-          value: `📆 <t:${parseInt(user.createdTimestamp / 1000)}:R>`,
+          value: `📆 <t:${Math.floor(user.createdTimestamp / 1000)}:R>`,
           inline: true,
         },
         {
@@ -160,7 +162,7 @@ module.exports = {
           name: "Boost de serveur",
           value: `🏋🏻‍♀️ ${
             roles.premiumSubscriberRole
-              ? `Since <t:${parseInt(member.premiumSinceTimestamp / 1000)}:R>`
+              ? `Since <t:${Math.floor(member.premiumSinceTimestamp / 1000)}:R>`
               : "No"
           }`,
           inline: true,
@@ -169,4 +171,4 @@ module.exports = {
       );
     await message.reply({ embeds: [Embed] });
   },
-};
+});

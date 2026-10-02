@@ -4,7 +4,9 @@ const { canModerate } = require("../utils/hierarchy");
 
 const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 
-module.exports = {
+const defineCommand = require("../utils/defineCommand");
+
+module.exports = defineCommand({
   name: "timeout",
   description: "Exclure temporairement un membre avec une raison optionnelle.",
   permission: Discord.PermissionFlagsBits.ModerateMembers,
@@ -92,4 +94,4 @@ module.exports = {
         `> **Raison :** \`${reason}\``,
     );
   },
-};
+});
