@@ -9,7 +9,8 @@
     "deploy-commands": "node --env-file-if-exists=.env scripts/deploy-commands.js",
     "lint": "eslint .",
     "check-commands": "node scripts/check-commands.js",
-    "typecheck": "tsc"
+    "typecheck": "tsc",
+    "test": "node --test"
   },
   "engines": {
     "node": ">=22.13"
