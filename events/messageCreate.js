@@ -1,17 +1,29 @@
+const { randomInt } = require("node:crypto");
+const { getSettings } = require("../utils/settings");
 const { addXp } = require("../utils/xp");
+const { createMessageXpTracker } = require("../utils/messageXp");
 
-const COOLDOWN = 60_000;
-const cooldowns = new Map();
+const tracker = createMessageXpTracker();
 
 module.exports = async (bot, message) => {
   if (message.author.bot || !message.inGuild()) return;
 
-  const key = `${message.guildId}:${message.author.id}`;
-  const now = Date.now();
-  if (now - (cooldowns.get(key) ?? 0) < COOLDOWN) return;
-  cooldowns.set(key, now);
+  const settings = getSettings(bot.db, message.guildId);
+  const result = tracker.evaluate(
+    {
+      guildId: message.guildId,
+      channelId: message.channelId,
+      authorId: message.author.id,
+      content: message.content,
+      repliesTo: message.mentions.repliedUser?.id ?? null,
+    },
+    settings.cooldown,
+  );
+  if (!result.eligible) return;
 
-  const gain = Math.floor(Math.random() * 25) + 1;
+  const gain = Math.round(
+    randomInt(settings.xpMin, settings.xpMax + 1) * result.multiplier,
+  );
   const { previousLevel, level } = addXp(
     bot.db,
     message.guildId,
