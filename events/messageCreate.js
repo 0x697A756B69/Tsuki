@@ -2,6 +2,7 @@ const { randomInt } = require("node:crypto");
 const { getSettings } = require("../utils/settings");
 const { addXp } = require("../utils/xp");
 const { createMessageXpTracker } = require("../utils/messageXp");
+const { announceLevelUp } = require("../utils/announce)");
 
 const tracker = createMessageXpTracker();
 
@@ -32,7 +33,10 @@ module.exports = async (bot, message) => {
   );
 
   if (level > previousLevel)
-    await message.channel.send(
-      `${message.author} est passé niveau ${level}, félicitations !`,
-    );
+    await announceLevelUp({
+      settings,
+      member: message.member,
+      level,
+      channel: message.channel,
+    });
 };
