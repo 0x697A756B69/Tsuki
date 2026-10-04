@@ -1,0 +1,152 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { ComponentType } = require("discord.js");
+const {
+  renderMainView,
+  renderAnnounceView,
+  renderMessageModal,
+  renderGainsModal,
+} = require("../utils/xpPanel");
+
+const defaults = {
+  announceMode: "current",
+  announceChannel: null,
+  announceMessage: "GG {membre}, tu passes niveau {niveau} !",
+  xpMin: 10,
+  xpMax: 20,
+  cooldown: 60,
+  updatedBy: null,
+  updatedAt: null,
+};
+
+const guild = {
+  name: "Tsuki",
+  iconURL: () => "https://cdn.discordapp.com/icon.png",
+};
+
+function flatten(component) {
+  const children = [
+    ...(component.components ?? []),
+    ...(component.accessory ? [component.accessory] : []),
+    ...(component.component ? [component.component] : []),
+  ];
+  return [component, ...children.flatMap(flatten)];
+}
+
+function render(view) {
+  const json =
+    "toJSON" in view
+      ? view.toJSON()
+      : view.components.map((c) => c.toJSON())[0];
+  const all = flatten(json);
+  return {
+    all,
+    text: all.map((c) => c.content ?? "").join("\n"),
+    of: (type) => all.filter((c) => c.type === type),
+  };
+}
+
+function main(settings = defaults, options = {}) {
+  return render(
+    renderMainView({
+      settings,
+      guild,
+      viewer: "<@1>",
+      rankedMembers: 12,
+      ...options,
+    }),
+  );
+}
+
+test("main view shows every setting with a Modifier button", () => {
+  const view = main();
+
+  assert.match(view.text, /Serveur Tsuki · 12 membres classés/);
+  assert.match(view.text, /Salon du message/);
+  assert.match(view.text, /10 à 20 XP par message · toutes les 60 s/);
+  assert.deepEqual(
+    view.of(ComponentType.Button).map((b) => b.custom_id),
+    ["xp-config:announce", "xp-config:message", "xp-config:gains"],
+  );
+});
+
+test("main view previews the real announcement", () => {
+  assert.match(main().text, /> GG <@1>, tu passes niveau 5 !/);
+});
+
+test("main view shows the progression estimate", () => {
+  assert.match(
+    main().text,
+    /Environ 15 XP par minute active · niveau 10 en 5 h/,
+  );
+});
+
+test("main view shows who changed the settings last", () => {
+  assert.match(main().text, /Réglages par défaut, jamais modifiés/);
+
+  const changed = { ...defaults, updatedBy: "9", updatedAt: 1700000000000 };
+  assert.match(
+    main(changed).text,
+    /Dernière modification par <@9> <t:1700000000:R>/,
+  );
+});
+
+test("main view shows the dedicated channel", () => {
+  const settings = {
+    ...defaults,
+    announceMode: "channel",
+    announceChannel: "42",
+  };
+  assert.match(main(settings).text, /Salon dédié · <#42>/);
+});
+
+test("main view works without a server icon", () => {
+  const view = render(
+    renderMainView({
+      settings: defaults,
+      guild: { name: "Tsuki", iconURL: () => null },
+      viewer: "<@1>",
+      rankedMembers: 0,
+    }),
+  );
+  assert.equal(view.of(ComponentType.Thumbnail).length, 0);
+});
+
+test("announce view selects the current mode", () => {
+  const select = render(renderAnnounceView({ settings: defaults })).of(
+    ComponentType.StringSelect,
+  )[0];
+  const selected = select.options.filter((o) => o.default).map((o) => o.value);
+  assert.deepEqual(selected, ["current"]);
+});
+
+test("announce view only asks for a channel in dedicated mode", () => {
+  const hasChannelSelect = (settings) =>
+    render(renderAnnounceView({ settings })).of(ComponentType.ChannelSelect)
+      .length > 0;
+
+  assert.equal(hasChannelSelect(defaults), false);
+  assert.equal(
+    hasChannelSelect({ ...defaults, announceMode: "channel" }),
+    true,
+  );
+});
+
+test("modals are prefilled with the current settings", () => {
+  const message = render(renderMessageModal({ settings: defaults })).of(
+    ComponentType.TextInput,
+  );
+  assert.equal(message[0].value, defaults.announceMessage);
+
+  const gains = render(renderGainsModal({ settings: defaults })).of(
+    ComponentType.TextInput,
+  );
+  assert.deepEqual(
+    gains.map((i) => [i.custom_id, i.value]),
+    [
+      ["min", "10"],
+      ["max", "20"],
+      ["cooldown", "60"],
+    ],
+  );
+});
