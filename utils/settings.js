@@ -16,6 +16,8 @@ function toSettings(row) {
     xpMin: Number(row.xp_min),
     xpMax: Number(row.xp_max),
     cooldown: Number(row.cooldown),
+    updatedBy: row.updated_by === null ? null : String(row.updated_by),
+    updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };
 }
 
@@ -29,17 +31,16 @@ function getSettings(db, guildId) {
   return toSettings(row);
 }
 
-function updateSettings(db, guildId, changes) {
+function updateSettings(db, guildId, changes, authorId, date = Date.now()) {
   const entries = Object.entries(changes);
   for (const [key] of entries)
     if (!(key in COLUMNS)) throw new TypeError(`Unknown setting: ${key}`);
 
   getSettings(db, guildId);
   const assignments = entries.map(([key]) => `${COLUMNS[key]} = ?`).join(", ");
-  db.prepare(`UPDATE guild_settings SET ${assignments} WHERE guild = ?`).run(
-    ...entries.map(([, value]) => value),
-    guildId,
-  );
+  db.prepare(
+    `UPDATE guild_settings SET ${assignments}, updated_by = ?, updated_at = ? WHERE guild = ?`,
+  ).run(...entries.map(([, value]) => value), authorId, date, guildId);
   return getSettings(db, guildId);
 }
 
