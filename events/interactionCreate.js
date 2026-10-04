@@ -36,7 +36,7 @@ module.exports = async (bot, interaction) => {
     );
   }
 
-  if (interaction.isMessageComponent()) {
+  if (interaction.isMessageComponent() || interaction.isModalSubmit()) {
     const { id, params } = parseCustomId(interaction.customId);
     const component = bot.components.get(id);
     if (!component) return reply(interaction, "Ce bouton n'est plus actif.");

@@ -1,11 +1,17 @@
-import type { Client, MessageComponentInteraction } from "discord.js";
+import type {
+  Client,
+  MessageComponentInteraction,
+  ModalSubmitInteraction,
+} from "discord.js";
 import type { DatabaseSync } from "node:sqlite";
 
 export interface Component {
   id: string;
   run(
     bot: Client<true>,
-    interaction: MessageComponentInteraction<"cached">,
+    interaction:
+      | MessageComponentInteraction<"cached">
+      | ModalSubmitInteraction<"cached">,
     params: string[],
     db: DatabaseSync,
   ): Promise<unknown>;

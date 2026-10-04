@@ -19,7 +19,7 @@ function createBot() {
   return bot;
 }
 
-function click(customId) {
+function fakeInteraction(customId, { modal }) {
   const replies = [];
   return {
     customId,
@@ -28,10 +28,19 @@ function click(customId) {
     replies,
     isAutocomplete: () => false,
     isChatInputCommand: () => false,
-    isMessageComponent: () => true,
+    isMessageComponent: () => !modal,
+    isModalSubmit: () => modal,
     reply: async (payload) => replies.push(payload),
     followUp: async (payload) => replies.push(payload),
   };
+}
+
+function click(customId) {
+  return fakeInteraction(customId, { modal: false });
+}
+
+function submit(customId) {
+  return fakeInteraction(customId, { modal: true });
 }
 
 test("buildCustomId and parseCustomId go together", () => {
@@ -64,4 +73,10 @@ test("answers when a component no longer exists", async () => {
   const interaction = click("removed:1");
   await interactionCreate(createBot(), interaction);
   assert.equal(interaction.replies[0].content, "Ce bouton n'est plus actif.");
+});
+
+test("routes a modal submission to its component", async () => {
+  const interaction = submit("echo:x");
+  await interactionCreate(createBot(), interaction);
+  assert.deepEqual(interaction.replies, ["x"]);
 });
