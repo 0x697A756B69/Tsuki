@@ -2,7 +2,7 @@ const { randomInt } = require("node:crypto");
 const { getSettings } = require("../utils/settings");
 const { addXp } = require("../utils/xp");
 const { createMessageXpTracker } = require("../utils/messageXp");
-const { announceLevelUp } = require("../utils/announce)");
+const { announceLevelUp } = require("../utils/announce");
 
 const tracker = createMessageXpTracker();
 
