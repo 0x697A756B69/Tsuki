@@ -5,7 +5,6 @@ const {
   ChannelType,
   ContainerBuilder,
   LabelBuilder,
-  MessageFlags,
   ModalBuilder,
   SectionBuilder,
   SeparatorBuilder,
@@ -102,7 +101,6 @@ function header(guild, rankedMembers) {
 
 function panel(container) {
   return {
-    flags: MessageFlags.IsComponentsV2,
     components: [container],
     allowedMentions: { parse: [] },
   };

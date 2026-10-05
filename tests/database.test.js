@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
-const { toDay, addXp } = require("../utils/xp");
+const { toDay, addXp, countRanked } = require("../utils/xp");
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -67,4 +67,14 @@ test("addXp records XP per day", () => {
 test("toDay uses the Paris time zone", () => {
   assert.equal(toDay(new Date("2026-10-03T22:30:00Z")), "2026-10-04");
   assert.equal(toDay(new Date("2026-12-31T22:59:00Z")), "2026-12-31");
+});
+
+test("countRanked counts members with XP in the guild", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 10);
+  addXp(db, "g", "b", 10);
+  addXp(db, "other", "c", 10);
+
+  assert.equal(countRanked(db, "g"), 2);
+  assert.equal(countRanked(db, "empty"), 0);
 });

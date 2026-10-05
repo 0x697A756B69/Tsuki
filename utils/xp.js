@@ -33,4 +33,13 @@ function addXp(db, guildId, userId, amount, date = new Date()) {
   };
 }
 
-module.exports = { toDay, addXp };
+function countRanked(db, guildId) {
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS count FROM members WHERE guild = ? AND total_xp > 0",
+    )
+    .get(guildId);
+  return Number(row.count);
+}
+
+module.exports = { toDay, addXp, countRanked };

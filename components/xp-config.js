@@ -1,0 +1,83 @@
+const { MessageFlags, PermissionFlagsBits } = require("discord.js");
+const defineComponent = require("../utils/defineComponent");
+const { getSettings, updateSettings } = require("../utils/settings");
+const {
+  renderAnnounceView,
+  renderMessageModal,
+  renderGainsModal,
+} = require("../utils/xpPanel");
+const { GAIN_FIELDS, mainView, parseGains } = require("../utils/xpConfig");
+
+function refuse(interaction, content) {
+  return interaction.reply({ content, flags: MessageFlags.Ephemeral });
+}
+
+module.exports = defineComponent({
+  id: "xp-config",
+
+  async run(bot, interaction, [action], db) {
+    if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild))
+      return refuse(
+        interaction,
+        "Il faut la permission « Gérer le serveur » pour modifier ces réglages.",
+      );
+
+    const { guildId } = interaction;
+    const author = interaction.user.id;
+    const settings = getSettings(db, guildId);
+
+    if (interaction.isButton()) {
+      if (action === "announce")
+        return interaction.update(renderAnnounceView({ settings }));
+      if (action === "back")
+        return interaction.update(mainView(interaction, db));
+      if (action === "message")
+        return interaction.showModal(renderMessageModal({ settings }));
+      if (action === "gains")
+        return interaction.showModal(renderGainsModal({ settings }));
+    }
+
+    if (interaction.isStringSelectMenu() && action === "mode") {
+      const updated = updateSettings(
+        db,
+        guildId,
+        { announceMode: interaction.values[0] },
+        author,
+      );
+      return interaction.update(renderAnnounceView({ settings: updated }));
+    }
+
+    if (interaction.isChannelSelectMenu() && action === "channel") {
+      const updated = updateSettings(
+        db,
+        guildId,
+        { announceMode: "channel", announceChannel: interaction.values[0] },
+        author,
+      );
+      return interaction.update(renderAnnounceView({ settings: updated }));
+    }
+
+    if (interaction.isModalSubmit() && interaction.isFromMessage()) {
+      if (action === "save-message") {
+        const message = interaction.fields.getTextInputValue("message").trim();
+        if (!message)
+          return refuse(interaction, "Le message ne peut pas être vide.");
+        updateSettings(db, guildId, { announceMessage: message }, author);
+        return interaction.update(mainView(interaction, db));
+      }
+
+      if (action === "save-gains") {
+        const values = Object.fromEntries(
+          GAIN_FIELDS.map(({ field }) => [
+            field,
+            interaction.fields.getTextInputValue(field),
+          ]),
+        );
+        const { gains, error } = parseGains(values);
+        if (error) return refuse(interaction, error);
+        updateSettings(db, guildId, gains, author);
+        return interaction.update(mainView(interaction, db));
+      }
+    }
+  },
+});
