@@ -2,7 +2,13 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
-const { toDay, addXp, countRanked } = require("../utils/xp");
+const {
+  toDay,
+  getTotalXp,
+  addXp,
+  resetXp,
+  countRanked,
+} = require("../utils/xp");
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -39,8 +45,18 @@ test("migrate only applies new migrations", () => {
 test("addXp accumulates XP and reports level ups", () => {
   const db = createDatabase();
 
-  assert.deepEqual(addXp(db, "g", "a", 60), { previousLevel: 0, level: 0 });
-  assert.deepEqual(addXp(db, "g", "a", 60), { previousLevel: 0, level: 1 });
+  assert.deepEqual(addXp(db, "g", "a", 60), {
+    previousLevel: 0,
+    level: 0,
+    previousTotal: 0,
+    total: 60,
+  });
+  assert.deepEqual(addXp(db, "g", "a", 60), {
+    previousLevel: 0,
+    level: 1,
+    previousTotal: 60,
+    total: 120,
+  });
 
   const { total_xp } = db.prepare("SELECT total_xp FROM members").get();
   assert.equal(total_xp, 120);
@@ -77,4 +93,64 @@ test("countRanked counts members with XP in the guild", () => {
 
   assert.equal(countRanked(db, "g"), 2);
   assert.equal(countRanked(db, "empty"), 0);
+});
+
+test("addXp with a negative amount removes XP and reports the level", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 500);
+
+  assert.deepEqual(addXp(db, "g", "a", -300), {
+    previousLevel: 3,
+    level: 1,
+    previousTotal: 500,
+    total: 200,
+  });
+  assert.equal(getTotalXp(db, "g", "a"), 200);
+});
+
+test("addXp never takes a member below zero", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 50);
+
+  const result = addXp(db, "g", "a", -500);
+  assert.equal(result.total, 0);
+  assert.equal(getTotalXp(db, "g", "a"), 0);
+  assert.equal(addXp(db, "g", "unknown", -10).total, 0);
+});
+
+test("addXp never makes the daily XP negative", () => {
+  const db = createDatabase();
+  const day = new Date("2026-10-01T12:00:00Z");
+  addXp(db, "g", "a", 50, new Date("2026-09-30T12:00:00Z"));
+  addXp(db, "g", "a", -30, day);
+  addXp(db, "g", "a", 10, day);
+  addXp(db, "g", "a", -100, day);
+
+  const rows = db.prepare("SELECT day, xp FROM xp_daily ORDER BY day").all();
+  assert.ok(rows.every((row) => Number(row.xp) >= 0));
+});
+
+test("getTotalXp is 0 for an unknown member", () => {
+  assert.equal(getTotalXp(createDatabase(), "g", "nobody"), 0);
+});
+
+test("resetXp wipes one member and returns the previous total", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 120);
+  addXp(db, "g", "b", 40);
+  addXp(db, "other", "a", 70);
+
+  assert.equal(resetXp(db, "g", "a"), 120);
+  assert.equal(getTotalXp(db, "g", "a"), 0);
+  assert.equal(getTotalXp(db, "g", "b"), 40);
+  assert.equal(getTotalXp(db, "other", "a"), 70);
+  assert.equal(
+    db
+      .prepare(
+        "SELECT COUNT(*) AS n FROM xp_daily WHERE guild = ? AND user = ?",
+      )
+      .get("g", "a").n,
+    0,
+  );
+  assert.equal(resetXp(db, "g", "a"), 0);
 });
