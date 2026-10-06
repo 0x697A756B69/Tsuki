@@ -78,3 +78,11 @@ test("the database rejects invalid values", () => {
   assert.equal(getSettings(db, "g").xpMin, 10);
   assert.equal(getSettings(db, "g").updatedBy, null);
 });
+
+test("updateSettings without changes only records the author", () => {
+  const db = createDatabase();
+  const settings = updateSettings(db, "g", {}, "admin", 1700000000000);
+
+  assert.equal(settings.updatedBy, "admin");
+  assert.equal(settings.cooldown, 60);
+});

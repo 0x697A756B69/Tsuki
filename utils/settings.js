@@ -37,10 +37,17 @@ function updateSettings(db, guildId, changes, authorId, date = Date.now()) {
     if (!(key in COLUMNS)) throw new TypeError(`Unknown setting: ${key}`);
 
   getSettings(db, guildId);
-  const assignments = entries.map(([key]) => `${COLUMNS[key]} = ?`).join(", ");
-  db.prepare(
-    `UPDATE guild_settings SET ${assignments}, updated_by = ?, updated_at = ? WHERE guild = ?`,
-  ).run(...entries.map(([, value]) => value), authorId, date, guildId);
+  const assignments = [
+    ...entries.map(([key]) => `${COLUMNS[key]} = ?`),
+    "updated_by = ?",
+    "updated_at = ?",
+  ].join(", ");
+  db.prepare(`UPDATE guild_settings SET ${assignments} WHERE guild = ?`).run(
+    ...entries.map(([, value]) => value),
+    authorId,
+    date,
+    guildId,
+  );
   return getSettings(db, guildId);
 }
 

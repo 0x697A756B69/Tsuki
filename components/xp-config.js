@@ -1,8 +1,12 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { getSettings, updateSettings } = require("../utils/settings");
+const { getModifiers, setModifier } = require("../utils/modifiers");
 const {
+  MULTIPLIER_PRESETS,
   renderAnnounceView,
+  renderBonusView,
+  renderBonusTargetView,
   renderMessageModal,
   renderGainsModal,
 } = require("../utils/xpPanel");
@@ -12,10 +16,15 @@ function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
 }
 
+function bonusTarget(db, guildId, type, target) {
+  const multiplier = getModifiers(db, guildId)[type].get(target) ?? 1;
+  return renderBonusTargetView({ type, target, multiplier });
+}
+
 module.exports = defineComponent({
   id: "xp-config",
 
-  async run(bot, interaction, [action], db) {
+  async run(bot, interaction, [action, ...params], db) {
     if (!interaction.memberPermissions.has(PermissionFlagsBits.ManageGuild))
       return refuse(
         interaction,
@@ -35,6 +44,10 @@ module.exports = defineComponent({
         return interaction.showModal(renderMessageModal({ settings }));
       if (action === "gains")
         return interaction.showModal(renderGainsModal({ settings }));
+      if (action === "bonus")
+        return interaction.update(
+          renderBonusView({ modifiers: getModifiers(db, guildId) }),
+        );
     }
 
     if (interaction.isStringSelectMenu() && action === "mode") {
@@ -55,6 +68,29 @@ module.exports = defineComponent({
         author,
       );
       return interaction.update(renderAnnounceView({ settings: updated }));
+    }
+
+    if (interaction.isRoleSelectMenu() && action === "bonus-role")
+      return interaction.update(
+        bonusTarget(db, guildId, "role", interaction.values[0]),
+      );
+
+    if (interaction.isChannelSelectMenu() && action === "bonus-channel")
+      return interaction.update(
+        bonusTarget(db, guildId, "channel", interaction.values[0]),
+      );
+
+    if (interaction.isStringSelectMenu() && action === "bonus-set") {
+      const [type, target] = params;
+      const multiplier = Number(interaction.values[0]);
+      if (!MULTIPLIER_PRESETS.some((preset) => preset.value === multiplier))
+        return refuse(interaction, "Cette valeur de bonus n'existe pas.");
+
+      setModifier(db, guildId, type, target, multiplier);
+      updateSettings(db, guildId, {}, author);
+      return interaction.update(
+        renderBonusView({ modifiers: getModifiers(db, guildId) }),
+      );
     }
 
     if (interaction.isModalSubmit() && interaction.isFromMessage()) {

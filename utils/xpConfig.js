@@ -1,5 +1,6 @@
 const { renderMainView } = require("./xpPanel");
 const { getSettings } = require("./settings");
+const { getModifiers } = require("./modifiers");
 const { countRanked } = require("./xp");
 
 const GAIN_FIELDS = [
@@ -11,6 +12,7 @@ const GAIN_FIELDS = [
 function mainView(interaction, db) {
   return renderMainView({
     settings: getSettings(db, interaction.guildId),
+    modifiers: getModifiers(db, interaction.guildId),
     guild: interaction.guild,
     viewer: interaction.member,
     rankedMembers: countRanked(db, interaction.guildId),

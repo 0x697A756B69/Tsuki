@@ -6,6 +6,8 @@ const {
   renderAnnounceView,
   renderMessageModal,
   renderGainsModal,
+  renderBonusView,
+  renderBonusTargetView,
 } = require("../utils/xpPanel");
 
 const defaults = {
@@ -18,6 +20,8 @@ const defaults = {
   updatedBy: null,
   updatedAt: null,
 };
+
+const noModifiers = { role: new Map(), channel: new Map() };
 
 const guild = {
   name: "Tsuki",
@@ -50,6 +54,7 @@ function main(settings = defaults, options = {}) {
   return render(
     renderMainView({
       settings,
+      modifiers: noModifiers,
       guild,
       viewer: "<@1>",
       rankedMembers: 12,
@@ -66,7 +71,12 @@ test("main view shows every setting with a Modifier button", () => {
   assert.match(view.text, /10 à 20 XP par message · toutes les 60 s/);
   assert.deepEqual(
     view.of(ComponentType.Button).map((b) => b.custom_id),
-    ["xp-config:announce", "xp-config:message", "xp-config:gains"],
+    [
+      "xp-config:announce",
+      "xp-config:message",
+      "xp-config:gains",
+      "xp-config:bonus",
+    ],
   );
 });
 
@@ -104,6 +114,7 @@ test("main view works without a server icon", () => {
   const view = render(
     renderMainView({
       settings: defaults,
+      modifiers: noModifiers,
       guild: { name: "Tsuki", iconURL: () => null },
       viewer: "<@1>",
       rankedMembers: 0,
@@ -148,5 +159,50 @@ test("modals are prefilled with the current settings", () => {
       ["max", "20"],
       ["cooldown", "60"],
     ],
+  );
+});
+
+const someModifiers = {
+  role: new Map([
+    ["booster", 1.5],
+    ["muted", 0],
+  ]),
+  channel: new Map([["debates", 1.25]]),
+};
+
+test("main view summarises the bonuses", () => {
+  assert.match(main().text, /Aucun bonus/);
+  assert.match(
+    main(defaults, { modifiers: someModifiers }).text,
+    /2 rôles, 1 salon · dont 1 exclusion/,
+  );
+});
+
+test("bonus view lists every bonus", () => {
+  const view = render(renderBonusView({ modifiers: someModifiers }));
+
+  assert.match(view.text, /<@&booster> · ×1,5/);
+  assert.match(view.text, /<@&muted> · exclu/);
+  assert.match(view.text, /<#debates> · ×1,25/);
+  assert.equal(view.of(ComponentType.RoleSelect).length, 1);
+  assert.equal(view.of(ComponentType.ChannelSelect).length, 1);
+});
+
+test("bonus view says when there is no bonus", () => {
+  const view = render(renderBonusView({ modifiers: noModifiers }));
+  assert.match(view.text, /Aucun bonus pour le moment/);
+});
+
+test("bonus target view preselects the current value", () => {
+  const view = render(
+    renderBonusTargetView({ type: "role", target: "booster", multiplier: 1.5 }),
+  );
+  const select = view.of(ComponentType.StringSelect)[0];
+
+  assert.match(view.text, /Bonus pour <@&booster>\nActuellement ×1,5/);
+  assert.equal(select.custom_id, "xp-config:bonus-set:role:booster");
+  assert.deepEqual(
+    select.options.filter((o) => o.default).map((o) => o.value),
+    ["1.5"],
   );
 });

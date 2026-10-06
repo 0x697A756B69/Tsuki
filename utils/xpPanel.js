@@ -5,6 +5,7 @@ const {
   ChannelType,
   ContainerBuilder,
   LabelBuilder,
+  RoleSelectMenuBuilder,
   ModalBuilder,
   SectionBuilder,
   SeparatorBuilder,
@@ -20,6 +21,17 @@ const { xpPerMinute, minutesToLevel, formatDuration } = require("./estimate");
 const ACCENT_COLOR = 0x7f77dd;
 const PREVIEW_LEVEL = 5;
 const ESTIMATE_LEVEL = 10;
+
+const MULTIPLIER_PRESETS = [
+  { value: 0, label: "Exclure (×0)", description: "Aucune XP" },
+  { value: 0.5, label: "×0,5", description: "Moitié moins d'XP" },
+  { value: 1, label: "Aucun bonus (×1)", description: "Retire le bonus" },
+  { value: 1.25, label: "×1,25" },
+  { value: 1.5, label: "×1,5" },
+  { value: 2, label: "×2", description: "Double XP" },
+];
+
+const MAX_LISTED = 15;
 
 const ANNOUNCE_MODES = [
   {
@@ -55,6 +67,13 @@ function editButton(action) {
     .setStyle(ButtonStyle.Secondary);
 }
 
+function backButton(action) {
+  return new ButtonBuilder()
+    .setCustomId(id(action))
+    .setLabel("Retour")
+    .setStyle(ButtonStyle.Secondary);
+}
+
 function setting(title, details, action) {
   return new SectionBuilder()
     .addTextDisplayComponents(text(`**${title}**\n${details}`))
@@ -86,6 +105,25 @@ function describeHistory(settings) {
   return `-# Dernière modification par <@${settings.updatedBy}> <t:${when}:R>`;
 }
 
+function formatMultiplier(multiplier) {
+  return multiplier === 0 ? "exclu" : `×${multiplier.toLocaleString("fr-FR")}`;
+}
+
+function plural(count, word) {
+  return `${count} ${word}${count > 1 ? "s" : ""}`;
+}
+
+function describeBonuses(modifiers) {
+  const all = [...modifiers.role.values(), ...modifiers.channel.values()];
+  if (all.length === 0) return "Aucun bonus";
+
+  const summary = `${plural(modifiers.role.size, "rôle")}, ${plural(modifiers.channel.size, "salon")}`;
+  const excluded = all.filter((multiplier) => multiplier === 0).length;
+  return excluded > 0
+    ? `${summary} · dont ${plural(excluded, "exclusion")}`
+    : summary;
+}
+
 function header(guild, rankedMembers) {
   const title = text(
     `## Niveaux — réglages\nServeur ${guild.name} · ${rankedMembers} membres classés`,
@@ -106,7 +144,7 @@ function panel(container) {
   };
 }
 
-function renderMainView({ settings, guild, viewer, rankedMembers }) {
+function renderMainView({ settings, modifiers, guild, viewer, rankedMembers }) {
   const container = new ContainerBuilder().setAccentColor(ACCENT_COLOR);
   const top = header(guild, rankedMembers);
   if (top.section) container.addSectionComponents(top.section);
@@ -123,6 +161,7 @@ function renderMainView({ settings, guild, viewer, rankedMembers }) {
       setting("Annonces", describeAnnounces(settings), "announce"),
       setting("Message", `> ${preview}`, "message"),
       setting("Gains", describeGains(settings), "gains"),
+      setting("Bonus", describeBonuses(modifiers), "bonus"),
     )
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(text(describeHistory(settings)));
@@ -162,14 +201,92 @@ function renderAnnounceView({ settings }) {
       .addActionRowComponents((row) => row.addComponents(channel));
   }
 
-  const back = new ButtonBuilder()
-    .setCustomId(id("back"))
-    .setLabel("Retour")
-    .setStyle(ButtonStyle.Secondary);
+  container
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+
+  return panel(container);
+}
+
+function listModifiers(entries, mention) {
+  const lines = entries
+    .slice(0, MAX_LISTED)
+    .map(
+      ([target, multiplier]) =>
+        `${mention(target)} · ${formatMultiplier(multiplier)}`,
+    );
+  if (entries.length > MAX_LISTED)
+    lines.push(`-# et ${entries.length - MAX_LISTED} autres`);
+  return lines.join("\n");
+}
+
+function renderBonusView({ modifiers }) {
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text("## Bonus et exclusions\nMultiplient l'XP gagnée. ×0 = aucune XP."),
+    );
+
+  const roles = [...modifiers.role];
+  const channels = [...modifiers.channel];
+  if (roles.length > 0)
+    container.addTextDisplayComponents(
+      text(`**Rôles**\n${listModifiers(roles, (target) => `<@&${target}>`)}`),
+    );
+  if (channels.length > 0)
+    container.addTextDisplayComponents(
+      text(
+        `**Salons**\n${listModifiers(channels, (target) => `<#${target}>`)}`,
+      ),
+    );
+  if (roles.length + channels.length === 0)
+    container.addTextDisplayComponents(text("-# Aucun bonus pour le moment."));
+
+  const role = new RoleSelectMenuBuilder()
+    .setCustomId(id("bonus-role"))
+    .setPlaceholder("Ajouter ou modifier un rôle");
+  const channel = new ChannelSelectMenuBuilder()
+    .setCustomId(id("bonus-channel"))
+    .setPlaceholder("Ajouter ou modifier un salon")
+    .addChannelTypes(
+      ChannelType.GuildText,
+      ChannelType.GuildAnnouncement,
+      ChannelType.GuildVoice,
+      ChannelType.GuildForum,
+    );
 
   container
     .addSeparatorComponents(new SeparatorBuilder())
-    .addActionRowComponents((row) => row.addComponents(back));
+    .addActionRowComponents((row) => row.addComponents(role))
+    .addActionRowComponents((row) => row.addComponents(channel))
+    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+
+  return panel(container);
+}
+
+function renderBonusTargetView({ type, target, multiplier }) {
+  const mention = type === "role" ? `<@&${target}>` : `<#${target}>`;
+  const current =
+    multiplier === 1
+      ? "Aucun bonus"
+      : `Actuellement ${formatMultiplier(multiplier)}`;
+
+  const presets = new StringSelectMenuBuilder()
+    .setCustomId(id("bonus-set", type, target))
+    .addOptions(
+      MULTIPLIER_PRESETS.map((preset) => ({
+        ...preset,
+        value: String(preset.value),
+        default: preset.value === multiplier,
+      })),
+    );
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(text(`## Bonus pour ${mention}\n${current}`))
+    .addActionRowComponents((row) => row.addComponents(presets))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("bonus")));
 
   return panel(container);
 }
@@ -220,8 +337,11 @@ function renderGainsModal({ settings }) {
 
 module.exports = {
   ANNOUNCE_MODES,
+  MULTIPLIER_PRESETS,
   renderMainView,
   renderAnnounceView,
+  renderBonusView,
+  renderBonusTargetView,
   renderMessageModal,
   renderGainsModal,
 };
