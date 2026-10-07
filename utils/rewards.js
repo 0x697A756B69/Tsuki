@@ -29,8 +29,35 @@ function removeReward(db, guildId, role) {
   );
 }
 
+function rewardRoleFor(rewards, level) {
+  let best = null;
+  for (const reward of rewards)
+    if (reward.level <= level && (best === null || reward.level > best.level))
+      best = reward;
+  return best?.role ?? null;
+}
+
+async function syncRewardRoles(member, rewards, level) {
+  const existing = rewards.filter((reward) =>
+    member.guild.roles.cache.has(reward.role),
+  );
+  const wanted = rewardRoleFor(existing, level);
+
+  const stale = existing
+    .map((reward) => reward.role)
+    .filter((role) => role !== wanted && member.roles.cache.has(role));
+  const missing = wanted !== null && !member.roles.cache.has(wanted);
+
+  if (missing) await member.roles.add(wanted);
+  if (stale.length > 0) await member.roles.remove(stale);
+
+  return { added: missing ? wanted : null, removed: stale };
+}
+
 module.exports = {
   getRewards,
   setReward,
   removeReward,
+  rewardRoleFor,
+  syncRewardRoles,
 };
