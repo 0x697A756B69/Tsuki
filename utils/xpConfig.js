@@ -51,6 +51,23 @@ function parseVoiceGain(value) {
   return { gain: Number(trimmed) };
 }
 
+function parseCardAccent(value) {
+  const match = /^#?([0-9a-f]{6}|[0-9a-f]{3})$/i.exec(value.trim());
+  if (!match)
+    return {
+      error: "La couleur doit être un code hexadécimal, par exemple #ff8800.",
+    };
+  const hex = match[1].toLowerCase();
+  const full =
+    hex.length === 3
+      ? hex
+          .split("")
+          .map((digit) => digit + digit)
+          .join("")
+      : hex;
+  return { accent: `#${full}` };
+}
+
 function parseRewardLevel(value) {
   const trimmed = value.trim();
   if (
@@ -82,6 +99,7 @@ module.exports = {
   mainView,
   parseGains,
   parseVoiceGain,
+  parseCardAccent,
   parseRewardLevel,
   rewardRoleError,
 };

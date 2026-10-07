@@ -3,6 +3,7 @@ const assert = require("node:assert/strict");
 const {
   parseGains,
   parseVoiceGain,
+  parseCardAccent,
   parseRewardLevel,
   rewardRoleError,
 } = require("../utils/xpConfig");
@@ -76,4 +77,24 @@ test("parseVoiceGain reads a whole number between 0 and 1000", () => {
 test("parseVoiceGain rejects anything else", () => {
   for (const value of ["", "-1", "1001", "2.5", "abc", "1e2"])
     assert.match(parseVoiceGain(value).error, /entre 0 et 1000/);
+});
+
+test("parseCardAccent normalises a hex colour", () => {
+  assert.deepEqual(parseCardAccent(" #FF8800 "), { accent: "#ff8800" });
+  assert.deepEqual(parseCardAccent("ff8800"), { accent: "#ff8800" });
+  assert.deepEqual(parseCardAccent("#F80"), { accent: "#ff8800" });
+  assert.deepEqual(parseCardAccent("abc"), { accent: "#aabbcc" });
+});
+
+test("parseCardAccent rejects anything else", () => {
+  for (const value of [
+    "",
+    "#",
+    "red",
+    "#ff88",
+    "#gg8800",
+    "##ff8800",
+    "#ff88001",
+  ])
+    assert.match(parseCardAccent(value).error, /code hexadécimal/);
 });

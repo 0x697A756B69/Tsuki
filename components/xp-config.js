@@ -12,6 +12,7 @@ const {
   MULTIPLIER_PRESETS,
   renderAnnounceView,
   renderVoiceView,
+  renderCardView,
   renderBonusView,
   renderBonusTargetView,
   renderRewardsView,
@@ -22,6 +23,7 @@ const {
   renderMessageModal,
   renderGainsModal,
   renderVoiceModal,
+  renderCardModal,
   renderRewardModal,
 } = require("../utils/xpPanel");
 const {
@@ -29,6 +31,7 @@ const {
   mainView,
   parseGains,
   parseVoiceGain,
+  parseCardAccent,
   parseRewardLevel,
   rewardRoleError,
 } = require("../utils/xpConfig");
@@ -80,6 +83,19 @@ module.exports = defineComponent({
       }
       if (action === "voice-gain")
         return interaction.showModal(renderVoiceModal({ settings }));
+      if (action === "card")
+        return interaction.update(renderCardView({ settings }));
+      if (action === "card-accent")
+        return interaction.showModal(renderCardModal({ settings }));
+      if (action === "card-reset") {
+        const updated = updateSettings(
+          db,
+          guildId,
+          { cardAccent: null },
+          author,
+        );
+        return interaction.update(renderCardView({ settings: updated }));
+      }
       if (action === "bonus")
         return interaction.update(
           renderBonusView({ modifiers: getModifiers(db, guildId) }),
@@ -223,6 +239,20 @@ module.exports = defineComponent({
           author,
         );
         return interaction.update(renderVoiceView({ settings: updated }));
+      }
+
+      if (action === "save-card-accent") {
+        const parsed = parseCardAccent(
+          interaction.fields.getTextInputValue("accent"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        const updated = updateSettings(
+          db,
+          guildId,
+          { cardAccent: parsed.accent },
+          author,
+        );
+        return interaction.update(renderCardView({ settings: updated }));
       }
 
       if (action === "save-gains") {

@@ -8,6 +8,8 @@ const {
   renderGainsModal,
   renderVoiceView,
   renderVoiceModal,
+  renderCardView,
+  renderCardModal,
   renderBonusView,
   renderBonusTargetView,
   renderRewardsView,
@@ -27,6 +29,7 @@ const defaults = {
   cooldown: 60,
   voiceEnabled: true,
   voiceXp: 10,
+  cardAccent: null,
   updatedBy: null,
   updatedAt: null,
 };
@@ -89,6 +92,7 @@ test("main view shows every setting with a Modifier button", () => {
       "xp-config:voice",
       "xp-config:bonus",
       "xp-config:rewards",
+      "xp-config:card",
     ],
   );
 });
@@ -378,5 +382,49 @@ test("voice modal is prefilled with the current gain", () => {
   assert.deepEqual(
     view.of(ComponentType.TextInput).map((i) => [i.custom_id, i.value]),
     [["gain", "25"]],
+  );
+});
+
+test("main view summarises the card colour", () => {
+  assert.match(main().text, /Couleur par défaut/);
+  assert.match(
+    main({ ...defaults, cardAccent: "#ff8800" }).text,
+    /Couleur d'accent #ff8800/,
+  );
+});
+
+test("card view offers to change the colour, reset is disabled by default", () => {
+  const view = render(renderCardView({ settings: defaults }));
+
+  assert.match(view.text, /Couleur par défaut/);
+  assert.deepEqual(
+    view
+      .of(ComponentType.Button)
+      .map((b) => [b.custom_id, b.label, Boolean(b.disabled)]),
+    [
+      ["xp-config:card-accent", "Changer la couleur", false],
+      ["xp-config:card-reset", "Couleur par défaut", true],
+      ["xp-config:back", "Retour", false],
+    ],
+  );
+});
+
+test("card view lets the colour be reset once set", () => {
+  const view = render(
+    renderCardView({ settings: { ...defaults, cardAccent: "#ff8800" } }),
+  );
+
+  assert.match(view.text, /Couleur d'accent #ff8800/);
+  assert.equal(view.of(ComponentType.Button)[1].disabled ?? false, false);
+});
+
+test("card modal is prefilled with the current colour", () => {
+  const view = render(
+    renderCardModal({ settings: { ...defaults, cardAccent: "#ff8800" } }),
+  );
+
+  assert.deepEqual(
+    view.of(ComponentType.TextInput).map((i) => [i.custom_id, i.value]),
+    [["accent", "#ff8800"]],
   );
 });

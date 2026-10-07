@@ -105,6 +105,12 @@ function describeVoice(settings) {
     : "Désactivé";
 }
 
+function describeCard(settings) {
+  return settings.cardAccent
+    ? `Couleur d'accent ${settings.cardAccent}`
+    : "Couleur par défaut";
+}
+
 function describeHistory(settings) {
   if (settings.updatedBy === null)
     return "-# Réglages par défaut, jamais modifiés";
@@ -188,6 +194,7 @@ function renderMainView({
       setting("Vocal", describeVoice(settings), "voice"),
       setting("Bonus", describeBonuses(modifiers), "bonus"),
       setting("Récompenses", describeRewards(rewards), "rewards"),
+      setting("Carte", describeCard(settings), "card"),
     )
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(text(describeHistory(settings)));
@@ -252,6 +259,33 @@ function renderVoiceView({ settings }) {
       ),
     )
     .addActionRowComponents((row) => row.addComponents(toggle, gain))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+
+  return panel(container);
+}
+
+function renderCardView({ settings }) {
+  const change = new ButtonBuilder()
+    .setCustomId(id("card-accent"))
+    .setLabel("Changer la couleur")
+    .setStyle(ButtonStyle.Secondary);
+  const reset = new ButtonBuilder()
+    .setCustomId(id("card-reset"))
+    .setLabel("Couleur par défaut")
+    .setStyle(ButtonStyle.Secondary)
+    .setDisabled(!settings.cardAccent);
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## Carte de rang
+${describeCard(settings)}
+-# La couleur de la barre d'XP affichée par /rank.`,
+      ),
+    )
+    .addActionRowComponents((row) => row.addComponents(change, reset))
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents((row) => row.addComponents(backButton("back")));
 
@@ -516,6 +550,20 @@ function renderVoiceModal({ settings }) {
     );
 }
 
+function renderCardModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-card-accent"))
+    .setTitle("Couleur de la carte")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Couleur hexadécimale")
+        .setDescription("Par exemple #ff8800.")
+        .setTextInputComponent(
+          input("accent", settings.cardAccent ?? "#7d8aa8").setMaxLength(7),
+        ),
+    );
+}
+
 function renderRewardModal({ role, level }) {
   const field = new TextInputBuilder()
     .setCustomId("level")
@@ -543,6 +591,7 @@ module.exports = {
   renderBonusView,
   renderBonusTargetView,
   renderVoiceView,
+  renderCardView,
   renderRewardsView,
   renderRewardView,
   renderResyncConfirm,
@@ -551,5 +600,6 @@ module.exports = {
   renderMessageModal,
   renderGainsModal,
   renderVoiceModal,
+  renderCardModal,
   renderRewardModal,
 };
