@@ -18,6 +18,7 @@
   "author": "IZUKI",
   "license": "ISC",
   "dependencies": {
+    "@napi-rs/canvas": "^1.0.10",
     "discord.js": "^14.27.0",
     "ms": "^2.1.3"
   },
