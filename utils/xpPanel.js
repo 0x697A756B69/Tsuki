@@ -16,6 +16,7 @@ const {
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
 const { formatAnnouncement } = require("./announce");
+const { rewardRoleFor } = require("./rewards");
 const { xpPerMinute, minutesToLevel, formatDuration } = require("./estimate");
 
 const ACCENT_COLOR = 0x7f77dd;
@@ -169,6 +170,7 @@ function renderMainView({
   const preview = formatAnnouncement(settings.announceMessage, {
     member: viewer,
     level: PREVIEW_LEVEL,
+    role: rewardRoleFor(rewards, PREVIEW_LEVEL) ?? rewards[0]?.role ?? null,
   });
 
   container
@@ -384,7 +386,7 @@ function renderMessageModal({ settings }) {
       new LabelBuilder()
         .setLabel("Message")
         .setDescription(
-          "{membre} et {niveau} seront remplacés automatiquement.",
+          "{membre}, {niveau} et {role} (le rôle gagné) seront remplacés automatiquement.",
         )
         .setTextInputComponent(
           input(

@@ -12,6 +12,7 @@ const granted = [];
 
 function createBot() {
   granted.length = 0;
+  announced.length = 0;
   const db = new DatabaseSync(":memory:");
   migrate(db);
   updateSettings(
@@ -23,6 +24,8 @@ function createBot() {
   return { db };
 }
 
+const announced = [];
+
 function message(
   author,
   { channelId = `${author}-channel`, parentId = null, roles = [] } = {},
@@ -32,7 +35,11 @@ function message(
     inGuild: () => true,
     guildId: "g",
     channelId,
-    channel: { isThread: () => parentId !== null, parentId },
+    channel: {
+      isThread: () => parentId !== null,
+      parentId,
+      send: async (payload) => announced.push(payload.content),
+    },
     content: "salut tout le monde",
     mentions: { repliedUser: null },
     member: {
@@ -107,4 +114,35 @@ test("a message without a level up does not touch the roles", async () => {
   await messageCreate(bot, message("beginner"));
 
   assert.deepEqual(granted, []);
+});
+
+test("the level up announcement mentions the role gained", async () => {
+  const bot = createBot();
+  updateSettings(
+    bot.db,
+    "g",
+    { announceMode: "current", announceMessage: "{niveau} {role}" },
+    "admin",
+  );
+  setReward(bot.db, "g", 1, "regular");
+  addXp(bot.db, "g", "rewarded", 90);
+
+  await messageCreate(bot, message("rewarded"));
+
+  assert.deepEqual(announced, ["1 <@&regular>"]);
+});
+
+test("the level up announcement has no role when none was gained", async () => {
+  const bot = createBot();
+  updateSettings(
+    bot.db,
+    "g",
+    { announceMode: "current", announceMessage: "{niveau} {role}" },
+    "admin",
+  );
+  addXp(bot.db, "g", "unrewarded", 90);
+
+  await messageCreate(bot, message("unrewarded"));
+
+  assert.deepEqual(announced, ["1"]);
 });

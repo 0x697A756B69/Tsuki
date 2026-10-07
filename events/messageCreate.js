@@ -45,7 +45,12 @@ module.exports = async (bot, message) => {
 
   if (level === previousLevel) return;
 
-  await updateRewardRoles(bot.db, message.guildId, message.member, level);
+  const { added } = await updateRewardRoles(
+    bot.db,
+    message.guildId,
+    message.member,
+    level,
+  );
 
   if (level > previousLevel)
     await announceLevelUp({
@@ -53,5 +58,6 @@ module.exports = async (bot, message) => {
       member: message.member,
       level,
       channel: message.channel,
+      role: added,
     });
 };

@@ -271,3 +271,17 @@ test("reward modal asks for the level and is prefilled when known", () => {
   assert.equal(field(null).value, undefined);
   assert.equal(field(7).value, "7");
 });
+
+test("main view previews the role of the preview level", () => {
+  const settings = { ...defaults, announceMessage: "GG {membre} {role}" };
+
+  assert.match(
+    main(settings, { rewards: someRewards }).text,
+    /> GG <@1> <@&regular>/,
+  );
+  assert.match(
+    main(settings, { rewards: [{ level: 20, role: "veteran" }] }).text,
+    /> GG <@1> <@&veteran>/,
+  );
+  assert.match(main(settings).text, /> GG <@1>$/m);
+});
