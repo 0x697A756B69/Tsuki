@@ -11,6 +11,9 @@ const {
   renderRewardsView,
   renderRewardView,
   renderRewardModal,
+  renderResyncConfirm,
+  renderResyncProgress,
+  renderResyncReport,
 } = require("../utils/xpPanel");
 
 const defaults = {
@@ -284,4 +287,52 @@ test("main view previews the role of the preview level", () => {
     /> GG <@1> <@&veteran>/,
   );
   assert.match(main(settings).text, /> GG <@1>$/m);
+});
+
+test("rewards view offers the resync only when there are rewards", () => {
+  const resync = (rewards) =>
+    render(renderRewardsView({ rewards }))
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === "xp-config:resync");
+
+  assert.equal(resync(someRewards).disabled, false);
+  assert.equal(resync([]).disabled, true);
+});
+
+test("resync confirmation can be confirmed or cancelled", () => {
+  const view = render(renderResyncConfirm());
+
+  assert.match(view.text, /Resynchroniser les rôles/);
+  assert.deepEqual(
+    view.of(ComponentType.Button).map((b) => b.custom_id),
+    ["xp-config:resync-confirm", "xp-config:rewards"],
+  );
+});
+
+test("resync progress has no buttons", () => {
+  const view = render(renderResyncProgress());
+
+  assert.match(view.text, /en cours/);
+  assert.equal(view.of(ComponentType.Button).length, 0);
+});
+
+test("resync report counts the members checked and fixed", () => {
+  const view = (report) => render(renderResyncReport(report));
+
+  assert.match(
+    view({ checked: 128, fixed: 14, failed: 0 }).text,
+    /128 membres vérifiés, 14 corrigés/,
+  );
+  assert.match(
+    view({ checked: 1, fixed: 1, failed: 0 }).text,
+    /1 membre vérifié, 1 corrigé/,
+  );
+  assert.doesNotMatch(view({ checked: 5, fixed: 0, failed: 0 }).text, /échec/);
+});
+
+test("resync report mentions the members it could not update", () => {
+  const view = render(renderResyncReport({ checked: 5, fixed: 2, failed: 2 }));
+
+  assert.match(view.text, /2 échecs/);
+  assert.match(view.text, /au-dessus des rôles récompenses/);
 });

@@ -1,4 +1,5 @@
 const transaction = require("./transaction");
+const { getLevelProgress } = require("./levels");
 
 function getRewards(db, guildId) {
   return db
@@ -64,6 +65,30 @@ async function updateRewardRoles(db, guildId, member, level) {
   }
 }
 
+async function resyncRewardRoles(db, guildId, members) {
+  const rewards = getRewards(db, guildId);
+  const totals = new Map(
+    db
+      .prepare("SELECT user, total_xp FROM members WHERE guild = ?")
+      .all(guildId)
+      .map((row) => [String(row.user), Number(row.total_xp)]),
+  );
+
+  const report = { checked: 0, fixed: 0, failed: 0 };
+  for (const member of members.values()) {
+    if (member.user.bot) continue;
+    report.checked++;
+    const { level } = getLevelProgress(totals.get(member.id) ?? 0);
+    try {
+      const { added, removed } = await syncRewardRoles(member, rewards, level);
+      if (added !== null || removed.length > 0) report.fixed++;
+    } catch {
+      report.failed++;
+    }
+  }
+  return report;
+}
+
 module.exports = {
   getRewards,
   setReward,
@@ -71,4 +96,5 @@ module.exports = {
   rewardRoleFor,
   syncRewardRoles,
   updateRewardRoles,
+  resyncRewardRoles,
 };

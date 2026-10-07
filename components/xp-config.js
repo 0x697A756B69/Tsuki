@@ -2,7 +2,12 @@ const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { getSettings, updateSettings } = require("../utils/settings");
 const { getModifiers, setModifier } = require("../utils/modifiers");
-const { getRewards, setReward, removeReward } = require("../utils/rewards");
+const {
+  getRewards,
+  setReward,
+  removeReward,
+  resyncRewardRoles,
+} = require("../utils/rewards");
 const {
   MULTIPLIER_PRESETS,
   renderAnnounceView,
@@ -10,6 +15,9 @@ const {
   renderBonusTargetView,
   renderRewardsView,
   renderRewardView,
+  renderResyncConfirm,
+  renderResyncProgress,
+  renderResyncReport,
   renderMessageModal,
   renderGainsModal,
   renderRewardModal,
@@ -21,6 +29,8 @@ const {
   parseRewardLevel,
   rewardRoleError,
 } = require("../utils/xpConfig");
+
+const resyncing = new Set();
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -62,6 +72,28 @@ module.exports = defineComponent({
         return interaction.update(
           renderRewardsView({ rewards: getRewards(db, guildId) }),
         );
+      if (action === "resync") {
+        if (getRewards(db, guildId).length === 0)
+          return refuse(interaction, "Aucune récompense à resynchroniser.");
+        return interaction.update(renderResyncConfirm());
+      }
+      if (action === "resync-confirm") {
+        if (resyncing.has(guildId))
+          return refuse(
+            interaction,
+            "Une resynchronisation est déjà en cours sur ce serveur.",
+          );
+
+        resyncing.add(guildId);
+        try {
+          await interaction.update(renderResyncProgress());
+          const members = await interaction.guild.members.fetch();
+          const report = await resyncRewardRoles(db, guildId, members);
+          return await interaction.editReply(renderResyncReport(report));
+        } finally {
+          resyncing.delete(guildId);
+        }
+      }
       if (action === "reward-level") {
         const [role] = params;
         const current = getRewards(db, guildId).find((r) => r.role === role);

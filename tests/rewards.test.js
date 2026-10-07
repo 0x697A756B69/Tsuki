@@ -9,7 +9,10 @@ const {
   rewardRoleFor,
   syncRewardRoles,
   updateRewardRoles,
+  resyncRewardRoles,
 } = require("../utils/rewards");
+const { addXp } = require("../utils/xp");
+const { totalXpForLevel } = require("../utils/levels");
 
 const REWARDS = [
   { level: 5, role: "regular" },
@@ -236,4 +239,106 @@ test("updateRewardRoles reports a failure instead of throwing", async () => {
   const result = await updateRewardRoles(db, "g", member, 10);
 
   assert.deepEqual(result, { added: null, removed: [], failed: true });
+});
+
+function guildMember(id, { held = [], bot = false, fail = false } = {}) {
+  const member = fakeMember({ held });
+  member.id = id;
+  member.user = { bot };
+  if (fail)
+    member.roles.add = async () => {
+      throw new Error("Missing Permissions");
+    };
+  return member;
+}
+
+function seedRewards(db) {
+  for (const { level, role } of REWARDS) setReward(db, "g", level, role);
+}
+
+test("resync gives each member the role of their total XP", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  addXp(db, "g", "1", totalXpForLevel(10));
+  const member = guildMember("1");
+
+  const report = await resyncRewardRoles(db, "g", new Map([["1", member]]));
+
+  assert.deepEqual(member.calls, [["add", "active"]]);
+  assert.deepEqual(report, { checked: 1, fixed: 1, failed: 0 });
+});
+
+test("resync removes reward roles from members without XP", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  const member = guildMember("2", { held: ["regular"] });
+
+  const report = await resyncRewardRoles(db, "g", new Map([["2", member]]));
+
+  assert.deepEqual(member.calls, [["remove", ["regular"]]]);
+  assert.deepEqual(report, { checked: 1, fixed: 1, failed: 0 });
+});
+
+test("resync only counts the members it actually changed", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  addXp(db, "g", "1", totalXpForLevel(10));
+  const right = guildMember("1", { held: ["active"] });
+  const wrong = guildMember("2", { held: ["veteran"] });
+
+  const report = await resyncRewardRoles(
+    db,
+    "g",
+    new Map([
+      ["1", right],
+      ["2", wrong],
+    ]),
+  );
+
+  assert.deepEqual(right.calls, []);
+  assert.deepEqual(report, { checked: 2, fixed: 1, failed: 0 });
+});
+
+test("resync skips bots", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  const bot = guildMember("3", { bot: true });
+
+  const report = await resyncRewardRoles(db, "g", new Map([["3", bot]]));
+
+  assert.deepEqual(bot.calls, []);
+  assert.deepEqual(report, { checked: 0, fixed: 0, failed: 0 });
+});
+
+test("resync keeps going when one member cannot be updated", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  addXp(db, "g", "1", totalXpForLevel(10));
+  addXp(db, "g", "2", totalXpForLevel(10));
+  const broken = guildMember("1", { fail: true });
+  const fine = guildMember("2");
+
+  const report = await resyncRewardRoles(
+    db,
+    "g",
+    new Map([
+      ["1", broken],
+      ["2", fine],
+    ]),
+  );
+
+  assert.deepEqual(fine.calls, [["add", "active"]]);
+  assert.deepEqual(report, { checked: 2, fixed: 1, failed: 1 });
+});
+
+test("resync ignores the XP of other guilds", async () => {
+  const db = createDatabase();
+  seedRewards(db);
+  addXp(db, "other", "1", totalXpForLevel(10));
+  const member = guildMember("1");
+
+  const report = await resyncRewardRoles(db, "g", new Map([["1", member]]));
+
+  assert.deepEqual(member.calls, []);
+  assert.deepEqual(report, { checked: 1, fixed: 0, failed: 0 });
 });

@@ -340,10 +340,18 @@ function renderRewardsView({ rewards }) {
     .setCustomId(id("reward-role"))
     .setPlaceholder("Ajouter ou modifier un rôle");
 
+  const resync = new ButtonBuilder()
+    .setCustomId(id("resync"))
+    .setLabel("Resynchroniser les rôles")
+    .setStyle(ButtonStyle.Primary)
+    .setDisabled(rewards.length === 0);
+
   container
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents((row) => row.addComponents(role))
-    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+    .addActionRowComponents((row) =>
+      row.addComponents(resync, backButton("back")),
+    );
 
   return panel(container);
 }
@@ -364,6 +372,58 @@ function renderRewardView({ role, level }) {
       text(`## Récompense <@&${role}>\nDonné au niveau ${level}`),
     )
     .addActionRowComponents((row) => row.addComponents(change, remove))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("rewards")));
+
+  return panel(container);
+}
+
+function renderResyncConfirm() {
+  const confirm = new ButtonBuilder()
+    .setCustomId(id("resync-confirm"))
+    .setLabel("Confirmer")
+    .setStyle(ButtonStyle.Primary);
+  const cancel = new ButtonBuilder()
+    .setCustomId(id("rewards"))
+    .setLabel("Annuler")
+    .setStyle(ButtonStyle.Secondary);
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        "## Resynchroniser les rôles\nLe rôle récompense de chaque membre sera recalculé d'après son XP total. Cela peut prendre un moment sur un gros serveur.",
+      ),
+    )
+    .addActionRowComponents((row) => row.addComponents(confirm, cancel));
+
+  return panel(container);
+}
+
+function renderResyncProgress() {
+  return panel(
+    new ContainerBuilder()
+      .setAccentColor(ACCENT_COLOR)
+      .addTextDisplayComponents(
+        text("## Resynchronisation en cours…\n-# Les rôles sont recalculés."),
+      ),
+  );
+}
+
+function renderResyncReport({ checked, fixed, failed }) {
+  const lines = [
+    `${plural(checked, "membre")} ${checked > 1 ? "vérifiés" : "vérifié"}, ${fixed} ${fixed > 1 ? "corrigés" : "corrigé"}`,
+  ];
+  if (failed > 0)
+    lines.push(
+      `-# ${plural(failed, "échec")} : vérifie que mon rôle est au-dessus des rôles récompenses.`,
+    );
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(`## Rôles resynchronisés\n${lines.join("\n")}`),
+    )
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents((row) => row.addComponents(backButton("rewards")));
 
@@ -442,6 +502,9 @@ module.exports = {
   renderBonusTargetView,
   renderRewardsView,
   renderRewardView,
+  renderResyncConfirm,
+  renderResyncProgress,
+  renderResyncReport,
   renderMessageModal,
   renderGainsModal,
   renderRewardModal,
