@@ -7,6 +7,7 @@ const COLUMNS = {
   cooldown: "cooldown",
   voiceEnabled: "voice_enabled",
   voiceXp: "voice_xp",
+  cardAccent: "card_accent",
 };
 
 function toSettings(row) {
@@ -20,6 +21,7 @@ function toSettings(row) {
     cooldown: Number(row.cooldown),
     voiceEnabled: Number(row.voice_enabled) === 1,
     voiceXp: Number(row.voice_xp),
+    cardAccent: row.card_accent === null ? null : String(row.card_accent),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };

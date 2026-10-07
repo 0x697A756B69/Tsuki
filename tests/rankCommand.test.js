@@ -4,7 +4,11 @@ const { DatabaseSync } = require("node:sqlite");
 const { createCanvas } = require("@napi-rs/canvas");
 const migrate = require("../loaders/migrate");
 const { addXp } = require("../utils/xp");
-const { getRankCardData, formatNoXp } = require("../utils/rankCommand");
+const {
+  getRankCardData,
+  formatNoXp,
+  getCardColors,
+} = require("../utils/rankCommand");
 const rank = require("../commands/rank");
 const r = require("../commands/r");
 
@@ -114,4 +118,9 @@ test("/rank replies publicly with a PNG card", async () => {
     ["deferReply", "editReply"],
   );
   assert.equal(interaction.calls[1][1].files[0].name, "rank.png");
+});
+
+test("getCardColors builds the bar gradient from the accent", () => {
+  assert.deepEqual(getCardColors("#ff8800"), ["#ff8800", "#ffffff"]);
+  assert.equal(getCardColors(null), undefined);
 });

@@ -20,6 +20,7 @@ test("getSettings returns the defaults for a new guild", () => {
     cooldown: 60,
     voiceEnabled: true,
     voiceXp: 10,
+    cardAccent: null,
     updatedBy: null,
     updatedAt: null,
   });
@@ -107,4 +108,25 @@ test("the database rejects a negative voice gain", () => {
   const db = createDatabase();
   assert.throws(() => updateSettings(db, "g", { voiceXp: -1 }, "admin"));
   assert.equal(getSettings(db, "g").voiceXp, 10);
+});
+
+test("updateSettings stores and clears the card accent", () => {
+  const db = createDatabase();
+  assert.equal(
+    updateSettings(db, "g", { cardAccent: "#ff8800" }, "admin").cardAccent,
+    "#ff8800",
+  );
+  assert.equal(
+    updateSettings(db, "g", { cardAccent: null }, "admin").cardAccent,
+    null,
+  );
+});
+
+test("the database rejects a badly formatted card accent", () => {
+  const db = createDatabase();
+  for (const value of ["ff8800", "#ff88", "#FF8800", "#gg8800", "red"])
+    assert.throws(() =>
+      updateSettings(db, "g", { cardAccent: value }, "admin"),
+    );
+  assert.equal(getSettings(db, "g").cardAccent, null);
 });

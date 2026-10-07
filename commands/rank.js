@@ -1,7 +1,12 @@
 const { AttachmentBuilder, MessageFlags } = require("discord.js");
 const defineCommand = require("../utils/defineCommand");
 const { checkMember } = require("../utils/xpAdmin");
-const { getRankCardData, formatNoXp } = require("../utils/rankCommand");
+const { getSettings } = require("../utils/settings");
+const {
+  getRankCardData,
+  formatNoXp,
+  getCardColors,
+} = require("../utils/rankCommand");
 
 module.exports = defineCommand({
   name: "rank",
@@ -39,6 +44,7 @@ module.exports = defineCommand({
     const { renderRankCard } = require("../utils/rankCard");
     const card = await renderRankCard({
       ...data,
+      colors: getCardColors(getSettings(db, interaction.guildId).cardAccent),
       username: member.displayName,
       avatar: member.displayAvatarURL({ extension: "png", size: 256 }),
     });

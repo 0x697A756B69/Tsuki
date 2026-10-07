@@ -13,4 +13,8 @@ function formatNoXp(member, isSelf) {
   return `${member} n'a pas encore d'XP.`;
 }
 
-module.exports = { getRankCardData, formatNoXp };
+function getCardColors(accent) {
+  return accent ? [accent, "#ffffff"] : undefined;
+}
+
+module.exports = { getRankCardData, formatNoXp, getCardColors };
