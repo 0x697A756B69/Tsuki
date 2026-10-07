@@ -17,11 +17,11 @@ async function announceLevelUp({ settings, member, level, channel, role }) {
   if (settings.announceMode === "dm")
     return member.send(message).catch(() => {});
 
-  if (settings.announceMode === "current") return channel.send(message);
+  if (settings.announceMode === "current") return channel?.send(message);
 
   if (settings.announceMode === "channel") {
     const target = member.guild.channels.cache.get(settings.announceChannel);
-    return (target?.isTextBased() ? target : channel).send(message);
+    return (target?.isTextBased() ? target : channel)?.send(message);
   }
 }
 
