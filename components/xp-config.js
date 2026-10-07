@@ -2,15 +2,25 @@ const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { getSettings, updateSettings } = require("../utils/settings");
 const { getModifiers, setModifier } = require("../utils/modifiers");
+const { getRewards, setReward, removeReward } = require("../utils/rewards");
 const {
   MULTIPLIER_PRESETS,
   renderAnnounceView,
   renderBonusView,
   renderBonusTargetView,
+  renderRewardsView,
+  renderRewardView,
   renderMessageModal,
   renderGainsModal,
+  renderRewardModal,
 } = require("../utils/xpPanel");
-const { GAIN_FIELDS, mainView, parseGains } = require("../utils/xpConfig");
+const {
+  GAIN_FIELDS,
+  mainView,
+  parseGains,
+  parseRewardLevel,
+  rewardRoleError,
+} = require("../utils/xpConfig");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -48,6 +58,24 @@ module.exports = defineComponent({
         return interaction.update(
           renderBonusView({ modifiers: getModifiers(db, guildId) }),
         );
+      if (action === "rewards")
+        return interaction.update(
+          renderRewardsView({ rewards: getRewards(db, guildId) }),
+        );
+      if (action === "reward-level") {
+        const [role] = params;
+        const current = getRewards(db, guildId).find((r) => r.role === role);
+        return interaction.showModal(
+          renderRewardModal({ role, level: current?.level ?? null }),
+        );
+      }
+      if (action === "reward-remove") {
+        removeReward(db, guildId, params[0]);
+        updateSettings(db, guildId, {}, author);
+        return interaction.update(
+          renderRewardsView({ rewards: getRewards(db, guildId) }),
+        );
+      }
     }
 
     if (interaction.isStringSelectMenu() && action === "mode") {
@@ -75,6 +103,19 @@ module.exports = defineComponent({
         bonusTarget(db, guildId, "role", interaction.values[0]),
       );
 
+    if (interaction.isRoleSelectMenu() && action === "reward-role") {
+      const [role] = interaction.values;
+      const error = rewardRoleError(interaction.roles.get(role), guildId);
+      if (error) return refuse(interaction, error);
+
+      const current = getRewards(db, guildId).find((r) => r.role === role);
+      if (current)
+        return interaction.update(
+          renderRewardView({ role, level: current.level }),
+        );
+      return interaction.showModal(renderRewardModal({ role, level: null }));
+    }
+
     if (interaction.isChannelSelectMenu() && action === "bonus-channel")
       return interaction.update(
         bonusTarget(db, guildId, "channel", interaction.values[0]),
@@ -100,6 +141,26 @@ module.exports = defineComponent({
           return refuse(interaction, "Le message ne peut pas être vide.");
         updateSettings(db, guildId, { announceMessage: message }, author);
         return interaction.update(mainView(interaction, db));
+      }
+
+      if (action === "save-reward") {
+        const [role] = params;
+        const error = rewardRoleError(
+          interaction.guild.roles.cache.get(role),
+          guildId,
+        );
+        if (error) return refuse(interaction, error);
+
+        const parsed = parseRewardLevel(
+          interaction.fields.getTextInputValue("level"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+
+        setReward(db, guildId, parsed.level, role);
+        updateSettings(db, guildId, {}, author);
+        return interaction.update(
+          renderRewardsView({ rewards: getRewards(db, guildId) }),
+        );
       }
 
       if (action === "save-gains") {

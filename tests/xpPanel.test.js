@@ -8,6 +8,9 @@ const {
   renderGainsModal,
   renderBonusView,
   renderBonusTargetView,
+  renderRewardsView,
+  renderRewardView,
+  renderRewardModal,
 } = require("../utils/xpPanel");
 
 const defaults = {
@@ -55,6 +58,7 @@ function main(settings = defaults, options = {}) {
     renderMainView({
       settings,
       modifiers: noModifiers,
+      rewards: [],
       guild,
       viewer: "<@1>",
       rankedMembers: 12,
@@ -76,6 +80,7 @@ test("main view shows every setting with a Modifier button", () => {
       "xp-config:message",
       "xp-config:gains",
       "xp-config:bonus",
+      "xp-config:rewards",
     ],
   );
 });
@@ -115,6 +120,7 @@ test("main view works without a server icon", () => {
     renderMainView({
       settings: defaults,
       modifiers: noModifiers,
+      rewards: [],
       guild: { name: "Tsuki", iconURL: () => null },
       viewer: "<@1>",
       rankedMembers: 0,
@@ -205,4 +211,63 @@ test("bonus target view preselects the current value", () => {
     select.options.filter((o) => o.default).map((o) => o.value),
     ["1.5"],
   );
+});
+
+const someRewards = [
+  { level: 5, role: "regular" },
+  { level: 10, role: "active" },
+];
+
+test("main view summarises the rewards", () => {
+  assert.match(main().text, /Aucune récompense/);
+  assert.match(
+    main(defaults, { rewards: someRewards }).text,
+    /2 rôles · niveaux 5 à 10/,
+  );
+  assert.match(
+    main(defaults, { rewards: [someRewards[0]] }).text,
+    /1 rôle · niveau 5/,
+  );
+});
+
+test("rewards view lists every reward by level", () => {
+  const view = render(renderRewardsView({ rewards: someRewards }));
+
+  assert.match(view.text, /Niveau 5 · <@&regular>/);
+  assert.match(view.text, /Niveau 10 · <@&active>/);
+  assert.equal(view.of(ComponentType.RoleSelect).length, 1);
+  assert.equal(
+    view.of(ComponentType.RoleSelect)[0].custom_id,
+    "xp-config:reward-role",
+  );
+});
+
+test("rewards view says when there is no reward", () => {
+  const view = render(renderRewardsView({ rewards: [] }));
+  assert.match(view.text, /Aucune récompense pour le moment/);
+});
+
+test("reward view offers to change or remove the reward", () => {
+  const view = render(renderRewardView({ role: "regular", level: 5 }));
+
+  assert.match(view.text, /Récompense <@&regular>\nDonné au niveau 5/);
+  assert.deepEqual(
+    view.of(ComponentType.Button).map((b) => b.custom_id),
+    [
+      "xp-config:reward-level:regular",
+      "xp-config:reward-remove:regular",
+      "xp-config:rewards",
+    ],
+  );
+});
+
+test("reward modal asks for the level and is prefilled when known", () => {
+  const field = (level) =>
+    render(renderRewardModal({ role: "regular", level })).of(
+      ComponentType.TextInput,
+    )[0];
+
+  assert.equal(field(null).custom_id, "level");
+  assert.equal(field(null).value, undefined);
+  assert.equal(field(7).value, "7");
 });

@@ -2,6 +2,9 @@ const { renderMainView } = require("./xpPanel");
 const { getSettings } = require("./settings");
 const { getModifiers } = require("./modifiers");
 const { countRanked } = require("./xp");
+const { getRewards } = require("./rewards");
+
+const MAX_REWARD_LEVEL = 100;
 
 const GAIN_FIELDS = [
   { key: "xpMin", field: "min", label: "L'XP minimum", max: 1000 },
@@ -13,6 +16,7 @@ function mainView(interaction, db) {
   return renderMainView({
     settings: getSettings(db, interaction.guildId),
     modifiers: getModifiers(db, interaction.guildId),
+    rewards: getRewards(db, interaction.guildId),
     guild: interaction.guild,
     viewer: interaction.member,
     rankedMembers: countRanked(db, interaction.guildId),
@@ -37,4 +41,35 @@ function parseGains(values) {
   return { gains };
 }
 
-module.exports = { GAIN_FIELDS, mainView, parseGains };
+function parseRewardLevel(value) {
+  const trimmed = value.trim();
+  if (
+    !/^\d+$/.test(trimmed) ||
+    Number(trimmed) < 1 ||
+    Number(trimmed) > MAX_REWARD_LEVEL
+  )
+    return {
+      error: `Le niveau doit être un nombre entier entre 1 et ${MAX_REWARD_LEVEL}.`,
+    };
+  return { level: Number(trimmed) };
+}
+
+function rewardRoleError(role, guildId) {
+  if (!role) return "Ce rôle n'existe plus.";
+  if (role.id === guildId)
+    return "Le rôle @everyone ne peut pas être une récompense.";
+  if (role.managed)
+    return "Ce rôle est géré par une intégration, je ne peux pas le donner.";
+  if (!role.editable)
+    return "Ce rôle est au-dessus du mien, je ne pourrais pas le donner.";
+  return null;
+}
+
+module.exports = {
+  GAIN_FIELDS,
+  MAX_REWARD_LEVEL,
+  mainView,
+  parseGains,
+  parseRewardLevel,
+  rewardRoleError,
+};

@@ -124,6 +124,15 @@ function describeBonuses(modifiers) {
     : summary;
 }
 
+function describeRewards(rewards) {
+  if (rewards.length === 0) return "Aucune récompense";
+  const first = rewards[0].level;
+  const last = rewards[rewards.length - 1].level;
+  const range =
+    first === last ? `niveau ${first}` : `niveaux ${first} à ${last}`;
+  return `${plural(rewards.length, "rôle")} · ${range}`;
+}
+
 function header(guild, rankedMembers) {
   const title = text(
     `## Niveaux — réglages\nServeur ${guild.name} · ${rankedMembers} membres classés`,
@@ -144,7 +153,14 @@ function panel(container) {
   };
 }
 
-function renderMainView({ settings, modifiers, guild, viewer, rankedMembers }) {
+function renderMainView({
+  settings,
+  modifiers,
+  rewards,
+  guild,
+  viewer,
+  rankedMembers,
+}) {
   const container = new ContainerBuilder().setAccentColor(ACCENT_COLOR);
   const top = header(guild, rankedMembers);
   if (top.section) container.addSectionComponents(top.section);
@@ -162,6 +178,7 @@ function renderMainView({ settings, modifiers, guild, viewer, rankedMembers }) {
       setting("Message", `> ${preview}`, "message"),
       setting("Gains", describeGains(settings), "gains"),
       setting("Bonus", describeBonuses(modifiers), "bonus"),
+      setting("Récompenses", describeRewards(rewards), "rewards"),
     )
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(text(describeHistory(settings)));
@@ -291,6 +308,66 @@ function renderBonusTargetView({ type, target, multiplier }) {
   return panel(container);
 }
 
+function renderRewardsView({ rewards }) {
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        "## Rôles récompenses\nUn membre reçoit le rôle du plus haut niveau atteint, qui remplace le précédent.",
+      ),
+    );
+
+  if (rewards.length > 0)
+    container.addTextDisplayComponents(
+      text(
+        rewards
+          .slice(0, MAX_LISTED)
+          .map(({ level, role }) => `Niveau ${level} · <@&${role}>`)
+          .join("\n") +
+          (rewards.length > MAX_LISTED
+            ? `\n-# et ${rewards.length - MAX_LISTED} autres`
+            : ""),
+      ),
+    );
+  else
+    container.addTextDisplayComponents(
+      text("-# Aucune récompense pour le moment."),
+    );
+
+  const role = new RoleSelectMenuBuilder()
+    .setCustomId(id("reward-role"))
+    .setPlaceholder("Ajouter ou modifier un rôle");
+
+  container
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(role))
+    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+
+  return panel(container);
+}
+
+function renderRewardView({ role, level }) {
+  const change = new ButtonBuilder()
+    .setCustomId(id("reward-level", role))
+    .setLabel("Changer le niveau")
+    .setStyle(ButtonStyle.Secondary);
+  const remove = new ButtonBuilder()
+    .setCustomId(id("reward-remove", role))
+    .setLabel("Retirer la récompense")
+    .setStyle(ButtonStyle.Danger);
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(`## Récompense <@&${role}>\nDonné au niveau ${level}`),
+    )
+    .addActionRowComponents((row) => row.addComponents(change, remove))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("rewards")));
+
+  return panel(container);
+}
+
 function input(fieldId, value, style = TextInputStyle.Short) {
   return new TextInputBuilder()
     .setCustomId(fieldId)
@@ -335,6 +412,25 @@ function renderGainsModal({ settings }) {
     );
 }
 
+function renderRewardModal({ role, level }) {
+  const field = new TextInputBuilder()
+    .setCustomId("level")
+    .setStyle(TextInputStyle.Short)
+    .setRequired(true)
+    .setMaxLength(3);
+  if (level !== null) field.setValue(String(level));
+
+  return new ModalBuilder()
+    .setCustomId(id("save-reward", role))
+    .setTitle("Niveau de la récompense")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Niveau")
+        .setDescription("Le rôle est donné dès ce niveau.")
+        .setTextInputComponent(field),
+    );
+}
+
 module.exports = {
   ANNOUNCE_MODES,
   MULTIPLIER_PRESETS,
@@ -342,6 +438,9 @@ module.exports = {
   renderAnnounceView,
   renderBonusView,
   renderBonusTargetView,
+  renderRewardsView,
+  renderRewardView,
   renderMessageModal,
   renderGainsModal,
+  renderRewardModal,
 };
