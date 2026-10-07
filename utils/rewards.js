@@ -54,10 +54,21 @@ async function syncRewardRoles(member, rewards, level) {
   return { added: missing ? wanted : null, removed: stale };
 }
 
+async function updateRewardRoles(db, guildId, member, level) {
+  const rewards = getRewards(db, guildId);
+  if (rewards.length === 0) return { added: null, removed: [] };
+  try {
+    return await syncRewardRoles(member, rewards, level);
+  } catch {
+    return { added: null, removed: [], failed: true };
+  }
+}
+
 module.exports = {
   getRewards,
   setReward,
   removeReward,
   rewardRoleFor,
   syncRewardRoles,
+  updateRewardRoles,
 };

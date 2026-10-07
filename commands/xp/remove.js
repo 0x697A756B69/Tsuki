@@ -1,6 +1,7 @@
 const { MessageFlags } = require("discord.js");
 const defineSubcommand = require("../../utils/defineSubcommand");
 const { addXp } = require("../../utils/xp");
+const { updateRewardRoles } = require("../../utils/rewards");
 const {
   checkMember,
   checkAmount,
@@ -37,6 +38,8 @@ module.exports = defineSubcommand({
       });
 
     const result = addXp(db, interaction.guildId, member.id, -amount);
+    if (result.level !== result.previousLevel)
+      await updateRewardRoles(db, interaction.guildId, member, result.level);
     await interaction.reply(formatAdjustment(member, result));
   },
 });

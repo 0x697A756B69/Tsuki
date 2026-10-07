@@ -8,6 +8,7 @@ const {
   removeReward,
   rewardRoleFor,
   syncRewardRoles,
+  updateRewardRoles,
 } = require("../utils/rewards");
 
 const REWARDS = [
@@ -193,4 +194,46 @@ test("syncRewardRoles skips a reward whose role was deleted", async () => {
 
   assert.deepEqual(member.calls, [["add", "regular"]]);
   assert.deepEqual(result, { added: "regular", removed: [] });
+});
+
+test("updateRewardRoles applies the rewards saved for the guild", async () => {
+  const db = createDatabase();
+  setReward(db, "g", 5, "regular");
+  setReward(db, "g", 10, "active");
+  const member = fakeMember({ held: ["regular"] });
+
+  const result = await updateRewardRoles(db, "g", member, 10);
+
+  assert.deepEqual(result, { added: "active", removed: ["regular"] });
+});
+
+test("updateRewardRoles ignores the rewards of other guilds", async () => {
+  const db = createDatabase();
+  setReward(db, "other", 5, "regular");
+  const member = fakeMember({});
+
+  const result = await updateRewardRoles(db, "g", member, 10);
+
+  assert.deepEqual(member.calls, []);
+  assert.deepEqual(result, { added: null, removed: [] });
+});
+
+test("updateRewardRoles does nothing without rewards", async () => {
+  const member = { roles: { cache: new Map() } };
+  const result = await updateRewardRoles(createDatabase(), "g", member, 10);
+
+  assert.deepEqual(result, { added: null, removed: [] });
+});
+
+test("updateRewardRoles reports a failure instead of throwing", async () => {
+  const db = createDatabase();
+  setReward(db, "g", 5, "regular");
+  const member = fakeMember({});
+  member.roles.add = async () => {
+    throw new Error("Missing Permissions");
+  };
+
+  const result = await updateRewardRoles(db, "g", member, 10);
+
+  assert.deepEqual(result, { added: null, removed: [], failed: true });
 });

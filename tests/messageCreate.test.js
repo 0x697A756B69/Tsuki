@@ -5,8 +5,13 @@ const migrate = require("../loaders/migrate");
 const messageCreate = require("../events/messageCreate");
 const { updateSettings } = require("../utils/settings");
 const { setModifier } = require("../utils/modifiers");
+const { setReward } = require("../utils/rewards");
+const { addXp } = require("../utils/xp");
+
+const granted = [];
 
 function createBot() {
+  granted.length = 0;
   const db = new DatabaseSync(":memory:");
   migrate(db);
   updateSettings(
@@ -30,7 +35,14 @@ function message(
     channel: { isThread: () => parentId !== null, parentId },
     content: "salut tout le monde",
     mentions: { repliedUser: null },
-    member: { roles: { cache: new Map(roles.map((id) => [id, {}])) } },
+    member: {
+      guild: { roles: { cache: new Map([["regular", {}]]) } },
+      roles: {
+        cache: new Map(roles.map((id) => [id, {}])),
+        add: async (role) => granted.push(role),
+        remove: async () => {},
+      },
+    },
   };
 }
 
@@ -76,4 +88,23 @@ test("an excluded role gives no XP", async () => {
   setModifier(bot.db, "g", "role", "muted", 0);
   await messageCreate(bot, message("muted", { roles: ["muted"] }));
   assert.equal(xpOf(bot, "muted"), 0);
+});
+
+test("reaching a level with a reward gives the role", async () => {
+  const bot = createBot();
+  setReward(bot.db, "g", 1, "regular");
+  addXp(bot.db, "g", "climber", 90);
+
+  await messageCreate(bot, message("climber"));
+
+  assert.deepEqual(granted, ["regular"]);
+});
+
+test("a message without a level up does not touch the roles", async () => {
+  const bot = createBot();
+  setReward(bot.db, "g", 1, "regular");
+
+  await messageCreate(bot, message("beginner"));
+
+  assert.deepEqual(granted, []);
 });

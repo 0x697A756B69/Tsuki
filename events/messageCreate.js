@@ -4,6 +4,7 @@ const { addXp } = require("../utils/xp");
 const { createMessageXpTracker } = require("../utils/messageXp");
 const { getModifiers, computeMultiplier } = require("../utils/modifiers");
 const { announceLevelUp } = require("../utils/announce");
+const { updateRewardRoles } = require("../utils/rewards");
 
 const tracker = createMessageXpTracker();
 
@@ -41,6 +42,10 @@ module.exports = async (bot, message) => {
     message.author.id,
     gain,
   );
+
+  if (level === previousLevel) return;
+
+  await updateRewardRoles(bot.db, message.guildId, message.member, level);
 
   if (level > previousLevel)
     await announceLevelUp({
