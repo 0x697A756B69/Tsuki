@@ -65,4 +65,22 @@ function countRanked(db, guildId) {
   return Number(row.count);
 }
 
-module.exports = { toDay, getTotalXp, addXp, resetXp, countRanked };
+function getRank(db, guildId, userId) {
+  const total = getTotalXp(db, guildId, userId);
+  if (total <= 0) return null;
+  const row = db
+    .prepare(
+      "SELECT COUNT(*) AS count FROM members WHERE guild = ? AND total_xp > ?",
+    )
+    .get(guildId, total);
+  return { position: Number(row.count) + 1, ranked: countRanked(db, guildId) };
+}
+
+module.exports = {
+  toDay,
+  getTotalXp,
+  addXp,
+  resetXp,
+  countRanked,
+  getRank,
+};

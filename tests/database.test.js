@@ -8,6 +8,7 @@ const {
   addXp,
   resetXp,
   countRanked,
+  getRank,
 } = require("../utils/xp");
 
 function createDatabase() {
@@ -93,6 +94,40 @@ test("countRanked counts members with XP in the guild", () => {
 
   assert.equal(countRanked(db, "g"), 2);
   assert.equal(countRanked(db, "empty"), 0);
+});
+
+test("getRank gives the position among ranked members of the guild", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 300);
+  addXp(db, "g", "b", 500);
+  addXp(db, "g", "c", 100);
+  addXp(db, "other", "d", 900);
+
+  assert.deepEqual(getRank(db, "g", "b"), { position: 1, ranked: 3 });
+  assert.deepEqual(getRank(db, "g", "a"), { position: 2, ranked: 3 });
+  assert.deepEqual(getRank(db, "g", "c"), { position: 3, ranked: 3 });
+});
+
+test("getRank shares the position between tied members", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 200);
+  addXp(db, "g", "b", 200);
+  addXp(db, "g", "c", 50);
+
+  assert.equal(getRank(db, "g", "a").position, 1);
+  assert.equal(getRank(db, "g", "b").position, 1);
+  assert.equal(getRank(db, "g", "c").position, 3);
+});
+
+test("getRank is null for members without XP", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 10);
+  addXp(db, "g", "b", 10);
+  addXp(db, "g", "b", -10);
+
+  assert.equal(getRank(db, "g", "b"), null);
+  assert.equal(getRank(db, "g", "nobody"), null);
+  assert.equal(getRank(db, "empty", "a"), null);
 });
 
 test("addXp with a negative amount removes XP and reports the level", () => {
