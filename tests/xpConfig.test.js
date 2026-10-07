@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const {
   parseGains,
+  parseVoiceGain,
   parseRewardLevel,
   rewardRoleError,
 } = require("../utils/xpConfig");
@@ -64,4 +65,15 @@ test("rewardRoleError refuses roles the bot cannot give", () => {
     rewardRoleError({ id: "r", editable: false }, "g"),
     /au-dessus du mien/,
   );
+});
+
+test("parseVoiceGain reads a whole number between 0 and 1000", () => {
+  assert.deepEqual(parseVoiceGain(" 25 "), { gain: 25 });
+  assert.deepEqual(parseVoiceGain("0"), { gain: 0 });
+  assert.deepEqual(parseVoiceGain("1000"), { gain: 1000 });
+});
+
+test("parseVoiceGain rejects anything else", () => {
+  for (const value of ["", "-1", "1001", "2.5", "abc", "1e2"])
+    assert.match(parseVoiceGain(value).error, /entre 0 et 1000/);
 });

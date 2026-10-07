@@ -6,6 +6,8 @@ const {
   renderAnnounceView,
   renderMessageModal,
   renderGainsModal,
+  renderVoiceView,
+  renderVoiceModal,
   renderBonusView,
   renderBonusTargetView,
   renderRewardsView,
@@ -23,6 +25,8 @@ const defaults = {
   xpMin: 10,
   xpMax: 20,
   cooldown: 60,
+  voiceEnabled: true,
+  voiceXp: 10,
   updatedBy: null,
   updatedAt: null,
 };
@@ -82,6 +86,7 @@ test("main view shows every setting with a Modifier button", () => {
       "xp-config:announce",
       "xp-config:message",
       "xp-config:gains",
+      "xp-config:voice",
       "xp-config:bonus",
       "xp-config:rewards",
     ],
@@ -335,4 +340,43 @@ test("resync report mentions the members it could not update", () => {
 
   assert.match(view.text, /2 échecs/);
   assert.match(view.text, /au-dessus des rôles récompenses/);
+});
+
+test("main view summarises the voice XP", () => {
+  assert.match(main().text, /Activé · 10 XP par minute/);
+  assert.match(main({ ...defaults, voiceEnabled: false }).text, /Désactivé/);
+});
+
+test("voice view offers to disable and change the gain", () => {
+  const view = render(renderVoiceView({ settings: defaults }));
+
+  assert.match(view.text, /Activé · 10 XP par minute/);
+  assert.deepEqual(
+    view.of(ComponentType.Button).map((b) => [b.custom_id, b.label]),
+    [
+      ["xp-config:voice-toggle", "Désactiver"],
+      ["xp-config:voice-gain", "Changer le gain"],
+      ["xp-config:back", "Retour"],
+    ],
+  );
+});
+
+test("voice view offers to enable when disabled", () => {
+  const view = render(
+    renderVoiceView({ settings: { ...defaults, voiceEnabled: false } }),
+  );
+
+  assert.match(view.text, /Désactivé/);
+  assert.equal(view.of(ComponentType.Button)[0].label, "Activer");
+});
+
+test("voice modal is prefilled with the current gain", () => {
+  const view = render(
+    renderVoiceModal({ settings: { ...defaults, voiceXp: 25 } }),
+  );
+
+  assert.deepEqual(
+    view.of(ComponentType.TextInput).map((i) => [i.custom_id, i.value]),
+    [["gain", "25"]],
+  );
 });

@@ -5,6 +5,7 @@ const { countRanked } = require("./xp");
 const { getRewards } = require("./rewards");
 
 const MAX_REWARD_LEVEL = 100;
+const MAX_VOICE_XP = 1000;
 
 const GAIN_FIELDS = [
   { key: "xpMin", field: "min", label: "L'XP minimum", max: 1000 },
@@ -41,6 +42,15 @@ function parseGains(values) {
   return { gains };
 }
 
+function parseVoiceGain(value) {
+  const trimmed = value.trim();
+  if (!/^\d+$/.test(trimmed) || Number(trimmed) > MAX_VOICE_XP)
+    return {
+      error: `Le gain doit être un nombre entier entre 0 et ${MAX_VOICE_XP}.`,
+    };
+  return { gain: Number(trimmed) };
+}
+
 function parseRewardLevel(value) {
   const trimmed = value.trim();
   if (
@@ -68,8 +78,10 @@ function rewardRoleError(role, guildId) {
 module.exports = {
   GAIN_FIELDS,
   MAX_REWARD_LEVEL,
+  MAX_VOICE_XP,
   mainView,
   parseGains,
+  parseVoiceGain,
   parseRewardLevel,
   rewardRoleError,
 };

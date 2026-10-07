@@ -99,6 +99,12 @@ function describeGains(settings) {
   );
 }
 
+function describeVoice(settings) {
+  return settings.voiceEnabled
+    ? `Activé · ${settings.voiceXp} XP par minute`
+    : "Désactivé";
+}
+
 function describeHistory(settings) {
   if (settings.updatedBy === null)
     return "-# Réglages par défaut, jamais modifiés";
@@ -179,6 +185,7 @@ function renderMainView({
       setting("Annonces", describeAnnounces(settings), "announce"),
       setting("Message", `> ${preview}`, "message"),
       setting("Gains", describeGains(settings), "gains"),
+      setting("Vocal", describeVoice(settings), "voice"),
       setting("Bonus", describeBonuses(modifiers), "bonus"),
       setting("Récompenses", describeRewards(rewards), "rewards"),
     )
@@ -221,6 +228,30 @@ function renderAnnounceView({ settings }) {
   }
 
   container
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents((row) => row.addComponents(backButton("back")));
+
+  return panel(container);
+}
+
+function renderVoiceView({ settings }) {
+  const toggle = new ButtonBuilder()
+    .setCustomId(id("voice-toggle"))
+    .setLabel(settings.voiceEnabled ? "Désactiver" : "Activer")
+    .setStyle(settings.voiceEnabled ? ButtonStyle.Danger : ButtonStyle.Success);
+  const gain = new ButtonBuilder()
+    .setCustomId(id("voice-gain"))
+    .setLabel("Changer le gain")
+    .setStyle(ButtonStyle.Secondary);
+
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## XP vocal\n${describeVoice(settings)}\n-# Gagné chaque minute en vocal, sauf si tu es muet ou sourd, dans le salon AFK, ou seul. Les bonus et exclusions s'appliquent.`,
+      ),
+    )
+    .addActionRowComponents((row) => row.addComponents(toggle, gain))
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents((row) => row.addComponents(backButton("back")));
 
@@ -474,6 +505,17 @@ function renderGainsModal({ settings }) {
     );
 }
 
+function renderVoiceModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-voice-gain"))
+    .setTitle("Gain d'XP vocal")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("XP par minute en vocal")
+        .setTextInputComponent(input("gain", settings.voiceXp).setMaxLength(4)),
+    );
+}
+
 function renderRewardModal({ role, level }) {
   const field = new TextInputBuilder()
     .setCustomId("level")
@@ -500,6 +542,7 @@ module.exports = {
   renderAnnounceView,
   renderBonusView,
   renderBonusTargetView,
+  renderVoiceView,
   renderRewardsView,
   renderRewardView,
   renderResyncConfirm,
@@ -507,5 +550,6 @@ module.exports = {
   renderResyncReport,
   renderMessageModal,
   renderGainsModal,
+  renderVoiceModal,
   renderRewardModal,
 };

@@ -11,6 +11,7 @@ const {
 const {
   MULTIPLIER_PRESETS,
   renderAnnounceView,
+  renderVoiceView,
   renderBonusView,
   renderBonusTargetView,
   renderRewardsView,
@@ -20,12 +21,14 @@ const {
   renderResyncReport,
   renderMessageModal,
   renderGainsModal,
+  renderVoiceModal,
   renderRewardModal,
 } = require("../utils/xpPanel");
 const {
   GAIN_FIELDS,
   mainView,
   parseGains,
+  parseVoiceGain,
   parseRewardLevel,
   rewardRoleError,
 } = require("../utils/xpConfig");
@@ -64,6 +67,19 @@ module.exports = defineComponent({
         return interaction.showModal(renderMessageModal({ settings }));
       if (action === "gains")
         return interaction.showModal(renderGainsModal({ settings }));
+      if (action === "voice")
+        return interaction.update(renderVoiceView({ settings }));
+      if (action === "voice-toggle") {
+        const updated = updateSettings(
+          db,
+          guildId,
+          { voiceEnabled: !settings.voiceEnabled },
+          author,
+        );
+        return interaction.update(renderVoiceView({ settings: updated }));
+      }
+      if (action === "voice-gain")
+        return interaction.showModal(renderVoiceModal({ settings }));
       if (action === "bonus")
         return interaction.update(
           renderBonusView({ modifiers: getModifiers(db, guildId) }),
@@ -193,6 +209,20 @@ module.exports = defineComponent({
         return interaction.update(
           renderRewardsView({ rewards: getRewards(db, guildId) }),
         );
+      }
+
+      if (action === "save-voice-gain") {
+        const parsed = parseVoiceGain(
+          interaction.fields.getTextInputValue("gain"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        const updated = updateSettings(
+          db,
+          guildId,
+          { voiceXp: parsed.gain },
+          author,
+        );
+        return interaction.update(renderVoiceView({ settings: updated }));
       }
 
       if (action === "save-gains") {
