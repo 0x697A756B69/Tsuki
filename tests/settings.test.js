@@ -18,6 +18,8 @@ test("getSettings returns the defaults for a new guild", () => {
     xpMin: 10,
     xpMax: 20,
     cooldown: 60,
+    voiceEnabled: true,
+    voiceXp: 10,
     updatedBy: null,
     updatedAt: null,
   });
@@ -85,4 +87,24 @@ test("updateSettings without changes only records the author", () => {
 
   assert.equal(settings.updatedBy, "admin");
   assert.equal(settings.cooldown, 60);
+});
+
+test("updateSettings stores the voice settings", () => {
+  const db = createDatabase();
+  const settings = updateSettings(
+    db,
+    "g",
+    { voiceEnabled: false, voiceXp: 25 },
+    "admin",
+  );
+
+  assert.equal(settings.voiceEnabled, false);
+  assert.equal(settings.voiceXp, 25);
+  assert.equal(getSettings(db, "g").voiceEnabled, false);
+});
+
+test("the database rejects a negative voice gain", () => {
+  const db = createDatabase();
+  assert.throws(() => updateSettings(db, "g", { voiceXp: -1 }, "admin"));
+  assert.equal(getSettings(db, "g").voiceXp, 10);
 });

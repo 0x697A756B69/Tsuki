@@ -5,6 +5,8 @@ const COLUMNS = {
   xpMin: "xp_min",
   xpMax: "xp_max",
   cooldown: "cooldown",
+  voiceEnabled: "voice_enabled",
+  voiceXp: "voice_xp",
 };
 
 function toSettings(row) {
@@ -16,6 +18,8 @@ function toSettings(row) {
     xpMin: Number(row.xp_min),
     xpMax: Number(row.xp_max),
     cooldown: Number(row.cooldown),
+    voiceEnabled: Number(row.voice_enabled) === 1,
+    voiceXp: Number(row.voice_xp),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };
@@ -43,7 +47,9 @@ function updateSettings(db, guildId, changes, authorId, date = Date.now()) {
     "updated_at = ?",
   ].join(", ");
   db.prepare(`UPDATE guild_settings SET ${assignments} WHERE guild = ?`).run(
-    ...entries.map(([, value]) => value),
+    ...entries.map(([key, value]) =>
+      key === "voiceEnabled" ? Number(value) : value,
+    ),
     authorId,
     date,
     guildId,
