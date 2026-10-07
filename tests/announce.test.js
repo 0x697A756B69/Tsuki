@@ -4,10 +4,15 @@ const { formatAnnouncement, announceLevelUp } = require("../utils/announce");
 
 function fakeChannel() {
   const sent = [];
+  const payloads = [];
   return {
     sent,
+    payloads,
     isTextBased: () => true,
-    send: async (content) => sent.push(content),
+    send: async (payload) => {
+      payloads.push(payload);
+      sent.push(payload.content);
+    },
   };
 }
 
@@ -25,8 +30,9 @@ function setup(announceMode, announceChannel = null) {
     announceChannel,
     announceMessage: "{membre} -> {niveau}",
   };
-  const announce = () =>
-    announceLevelUp({ settings, member, level: 3, channel: current });
+  const announce = (role = null) =>
+    announceLevelUp({ settings, member, level: 3, channel: current, role });
+  announce.settings = settings;
   return { current, dedicated, dms, announce };
 }
 
@@ -69,4 +75,42 @@ test("stays silent when announcements are off", async () => {
   const { current, dedicated, dms, announce } = setup("off");
   await announce();
   assert.deepEqual([...current.sent, ...dedicated.sent, ...dms.sent], []);
+});
+
+test("formatAnnouncement replaces {role} with a role mention", () => {
+  assert.equal(
+    formatAnnouncement("{membre} reçoit {role} !", {
+      member: "<@1>",
+      level: 7,
+      role: "regular",
+    }),
+    "<@1> reçoit <@&regular> !",
+  );
+});
+
+test("formatAnnouncement removes {role} cleanly when no role was gained", () => {
+  assert.equal(
+    formatAnnouncement("GG {membre}, tu reçois {role} !", {
+      member: "<@1>",
+      level: 7,
+    }),
+    "GG <@1>, tu reçois !",
+  );
+  assert.equal(
+    formatAnnouncement("Niveau {niveau} {role}", { member: "<@1>", level: 7 }),
+    "Niveau 7",
+  );
+});
+
+test("announces the role gained", async () => {
+  const { current, announce } = setup("current");
+  announce.settings.announceMessage = "{membre} -> {role}";
+  await announce("regular");
+  assert.deepEqual(current.sent, ["<@1> -> <@&regular>"]);
+});
+
+test("announcements never ping roles", async () => {
+  const { current, announce } = setup("current");
+  await announce("regular");
+  assert.deepEqual(current.payloads[0].allowedMentions, { parse: ["users"] });
 });
