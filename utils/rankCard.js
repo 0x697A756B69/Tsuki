@@ -191,6 +191,7 @@ async function renderRankCard({
 
 module.exports = {
   renderRankCard,
+  registerFonts,
   formatNumber,
   getBarRatio,
   truncateText,
