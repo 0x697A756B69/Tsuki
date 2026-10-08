@@ -146,3 +146,39 @@ test("the level up announcement has no role when none was gained", async () => {
 
   assert.deepEqual(announced, ["1"]);
 });
+
+function countOf(bot, author) {
+  const row = bot.db
+    .prepare(
+      "SELECT COALESCE(SUM(messages), 0) AS messages FROM message_daily WHERE user = ?",
+    )
+    .get(author);
+  return Number(row.messages);
+}
+
+test("every message is counted, even without XP", async () => {
+  const bot = createBot();
+  await messageCreate(bot, message("counter"));
+  await messageCreate(bot, message("counter"));
+  assert.equal(xpOf(bot, "counter"), 20);
+  assert.equal(countOf(bot, "counter"), 2);
+});
+
+test("a message in a thread is counted for its parent channel", async () => {
+  const bot = createBot();
+  await messageCreate(
+    bot,
+    message("threader", { channelId: "thread", parentId: "parent" }),
+  );
+  const row = bot.db
+    .prepare("SELECT channel FROM message_daily WHERE user = 'threader'")
+    .get();
+  assert.equal(row.channel, "parent");
+});
+
+test("an excluded channel is not counted", async () => {
+  const bot = createBot();
+  setModifier(bot.db, "g", "channel", "spam", 0);
+  await messageCreate(bot, message("spammer", { channelId: "spam" }));
+  assert.equal(countOf(bot, "spammer"), 0);
+});

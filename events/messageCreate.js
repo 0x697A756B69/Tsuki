@@ -5,6 +5,7 @@ const { createMessageXpTracker } = require("../utils/messageXp");
 const { getModifiers, computeMultiplier } = require("../utils/modifiers");
 const { announceLevelUp } = require("../utils/announce");
 const { updateRewardRoles } = require("../utils/rewards");
+const { addMessage } = require("../utils/messageCount");
 
 const tracker = createMessageXpTracker();
 
@@ -18,6 +19,13 @@ module.exports = async (bot, message) => {
   };
   const modifiers = getModifiers(bot.db, message.guildId);
   if (computeMultiplier(modifiers, context) === 0) return;
+
+  addMessage(
+    bot.db,
+    message.guildId,
+    context.parentId ?? context.channelId,
+    message.author.id,
+  );
 
   const settings = getSettings(bot.db, message.guildId);
   const result = tracker.evaluate(
