@@ -1,6 +1,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { DatabaseSync } = require("node:sqlite");
+const migrate = require("./migrate");
 
 module.exports = () => {
   const file = process.env.DATABASE_PATH ?? "./data/tsuki.db";
@@ -8,6 +9,7 @@ module.exports = () => {
 
   const db = new DatabaseSync(file);
   db.exec("PRAGMA journal_mode = WAL");
-  db.exec(fs.readFileSync(path.join(__dirname, "../schema.sql"), "utf8"));
+  for (const migration of migrate(db))
+    console.log(`Applied migration ${migration}`);
   return db;
 };

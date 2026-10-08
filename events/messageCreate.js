@@ -1,33 +1,71 @@
-const COOLDOWN = 60_000;
-const cooldowns = new Map();
+const { randomInt } = require("node:crypto");
+const { getSettings } = require("../utils/settings");
+const { addXp } = require("../utils/xp");
+const { createMessageXpTracker } = require("../utils/messageXp");
+const { getModifiers, computeMultiplier } = require("../utils/modifiers");
+const { announceLevelUp } = require("../utils/announce");
+const { updateRewardRoles } = require("../utils/rewards");
+const { addMessage } = require("../utils/messageCount");
+
+const tracker = createMessageXpTracker();
 
 module.exports = async (bot, message) => {
   if (message.author.bot || !message.inGuild()) return;
 
-  const key = `${message.guildId}:${message.author.id}`;
-  const now = Date.now();
-  if (now - (cooldowns.get(key) ?? 0) < COOLDOWN) return;
-  cooldowns.set(key, now);
+  const context = {
+    channelId: message.channelId,
+    parentId: message.channel.isThread() ? message.channel.parentId : null,
+    roleIds: [...message.member.roles.cache.keys()],
+  };
+  const modifiers = getModifiers(bot.db, message.guildId);
+  if (computeMultiplier(modifiers, context) === 0) return;
 
-  const gain = Math.floor(Math.random() * 25) + 1;
-  const { xp, level } = bot.db
-    .prepare(
-      `INSERT INTO xp (guild, user, xp) VALUES (?, ?, ?)
-       ON CONFLICT (guild, user) DO UPDATE SET xp = xp + excluded.xp
-       RETURNING xp, level`,
-    )
-    .get(message.guildId, message.author.id, gain);
-
-  const needed = (level + 1) * 1000;
-  if (xp < needed) return;
-
-  bot.db
-    .prepare(
-      "UPDATE xp SET xp = xp - ?, level = level + 1 WHERE guild = ? AND user = ?",
-    )
-    .run(needed, message.guildId, message.author.id);
-
-  await message.channel.send(
-    `${message.author} est passé niveau ${level + 1}, félicitations !`,
+  addMessage(
+    bot.db,
+    message.guildId,
+    context.parentId ?? context.channelId,
+    message.author.id,
   );
+
+  const settings = getSettings(bot.db, message.guildId);
+  const result = tracker.evaluate(
+    {
+      guildId: message.guildId,
+      channelId: message.channelId,
+      authorId: message.author.id,
+      content: message.content,
+      repliesTo: message.mentions.repliedUser?.id ?? null,
+    },
+    settings.cooldown,
+  );
+  if (!result.eligible) return;
+
+  const multiplier = computeMultiplier(modifiers, context, result.multiplier);
+  const gain = Math.round(
+    randomInt(settings.xpMin, settings.xpMax + 1) * multiplier,
+  );
+  const { previousLevel, level } = addXp(
+    bot.db,
+    message.guildId,
+    message.author.id,
+    gain,
+  );
+
+  if (level === previousLevel) return;
+
+  const { added } = await updateRewardRoles(
+    bot.db,
+    message.guildId,
+    message.member,
+    level,
+  );
+
+  if (level > previousLevel)
+    await announceLevelUp({
+      settings,
+      member: message.member,
+      level,
+      channel: message.channel,
+      role: added,
+    });
 };

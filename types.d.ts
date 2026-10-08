@@ -1,10 +1,12 @@
 import type { Collection } from "discord.js";
 import type { DatabaseSync } from "node:sqlite";
 import type { Command } from "./utils/defineCommand";
+import type { Component } from "./utils/defineComponent";
 
 declare module "discord.js" {
   interface Client {
     commands: Collection<string, Command>;
+    components: Collection<string, Component>;
     utils: { createId(prefix: string): Promise<string> };
     db: DatabaseSync;
   }
