@@ -56,25 +56,40 @@ async function resolveNames(guild, data) {
     ...data.members.map((row) => row.id),
     ...(data.voice ?? []).map((row) => row.id),
   ]);
-  const names = new Map(
+  const profiles = new Map(
     await Promise.all(
       [...ids].map(async (id) => {
         const member =
           guild.members.cache.get(id) ??
           (await guild.members.fetch(id).catch(() => null));
-        return /** @type {[string, string]} */ ([
+        return /** @type {[string, { name: string, avatar: string | null }]} */ ([
           id,
-          member?.displayName ?? UNKNOWN_MEMBER,
+          {
+            name: member?.displayName ?? UNKNOWN_MEMBER,
+            avatar:
+              member?.displayAvatarURL({
+                extension: "png",
+                size: 64,
+                forceStatic: true,
+              }) ?? null,
+          },
         ]);
       }),
     ),
   );
-  const named = ({ id, value }) => ({ name: names.get(id), value });
+  const named = ({ id, value }) => ({
+    name: profiles.get(id).name,
+    value,
+  });
+  const withAvatar = ({ id, value }) => ({
+    ...named({ id, value }),
+    avatar: profiles.get(id).avatar,
+  });
 
   return {
     type: data.type,
     period: data.period,
-    members: data.members.map(named),
+    members: data.members.map(withAvatar),
     activity: data.activity,
     channels: data.channels.map(({ id, value }) => {
       const channel = guild.channels.cache.get(id);

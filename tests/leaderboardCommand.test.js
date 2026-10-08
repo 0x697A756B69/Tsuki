@@ -35,7 +35,16 @@ function createGuild() {
   return {
     id: "g",
     members: {
-      cache: new Map([["a", { displayName: "Alice" }]]),
+      cache: new Map([
+        [
+          "a",
+          {
+            displayName: "Alice",
+            displayAvatarURL: (options) =>
+              `https://cdn/a.${options.extension}?size=${options.size}&static=${options.forceStatic}`,
+          },
+        ],
+      ]),
       fetch: async () => {
         throw new Error("Unknown Member");
       },
@@ -114,8 +123,12 @@ test("resolveNames swaps identifiers for names and keeps unknown ones readable",
   const resolved = await resolveNames(createGuild(), data);
 
   assert.deepEqual(resolved.members, [
-    { name: "Alice", value: 30 },
-    { name: "Ancien membre", value: 10 },
+    {
+      name: "Alice",
+      value: 30,
+      avatar: "https://cdn/a.png?size=64&static=true",
+    },
+    { name: "Ancien membre", value: 10, avatar: null },
   ]);
   assert.deepEqual(resolved.channels, [
     { name: "#general", value: 30 },
