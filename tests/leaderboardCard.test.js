@@ -217,13 +217,25 @@ test("renderLeaderboard centers the header text in its panel", async () => {
   assert.ok(Math.abs(middle - 50) <= 4, `text middle at ${middle}`);
 });
 
-async function pixelAt(png, x, y) {
+async function readPixels(png) {
   const { loadImage, createCanvas } = require("@napi-rs/canvas");
   const image = await loadImage(png);
   const canvas = createCanvas(image.width, image.height);
   const ctx = canvas.getContext("2d");
   ctx.drawImage(image, 0, 0);
-  return Array.from(ctx.getImageData(x, y, 1, 1).data);
+  return (x, y, width = 1, height = 1) =>
+    ctx.getImageData(x, y, width, height).data;
+}
+
+function middleOf(data, width, height, isInk) {
+  const rows = [];
+  for (let y = 0; y < height; y++)
+    for (let x = 0; x < width; x++)
+      if (isInk(data.slice((y * width + x) * 4, (y * width + x) * 4 + 3))) {
+        rows.push(y);
+        break;
+      }
+  return (Math.min(...rows) + Math.max(...rows)) / 2;
 }
 
 function redAvatar() {
@@ -235,6 +247,8 @@ function redAvatar() {
   return `data:image/png;base64,${canvas.toBuffer("image/png").toString("base64")}`;
 }
 
+const ROW_CENTER = 213;
+
 test("renderLeaderboard draws each avatar as a round image before the name", async () => {
   const png = await renderLeaderboard({
     type: "messages",
@@ -243,9 +257,10 @@ test("renderLeaderboard draws each avatar as a round image before the name", asy
     activity,
     channels: [],
   });
-  const [r, g, b] = await pixelAt(png, 222, 208);
+  const read = await readPixels(png);
+  const [r, g, b] = read(225, ROW_CENTER);
   assert.ok(r > 200 && g < 60 && b < 60, `center is ${r},${g},${b}`);
-  const [cr, cg, cb] = await pixelAt(png, 200, 186);
+  const [cr, cg, cb] = read(203, 191);
   assert.ok(!(cr > 200 && cg < 60 && cb < 60), "corner is not clipped");
 });
 
@@ -260,29 +275,62 @@ test("renderLeaderboard draws a grey disc when the avatar is missing", async () 
     activity,
     channels: [],
   });
-  for (const y of [208, 284]) {
-    const [r, g, b] = await pixelAt(png, 222, y);
+  const read = await readPixels(png);
+  for (const y of [ROW_CENTER, ROW_CENTER + 76]) {
+    const [r, g, b] = read(225, y);
     assert.ok(Math.abs(r - g) < 8 && Math.abs(g - b) < 8, `row at ${y}`);
     assert.ok(r > 60 && r < 140, `grey is ${r}`);
   }
 });
 
-test("renderLeaderboard moves the name after the avatar", async () => {
+test("renderLeaderboard keeps an even gap on both sides of the avatar", async () => {
   const png = await renderLeaderboard({
     type: "messages",
     period: "week",
-    members: [{ name: "WWWWWWWW", value: 10, avatar: null }],
+    members: [{ name: "WWWWWWWW", value: 10, avatar: redAvatar() }],
     activity,
     channels: [],
   });
-  const { loadImage, createCanvas } = require("@napi-rs/canvas");
-  const image = await loadImage(png);
-  const canvas = createCanvas(image.width, image.height);
-  const ctx = canvas.getContext("2d");
-  ctx.drawImage(image, 0, 0);
-  const { data } = ctx.getImageData(247, 190, 10, 30);
-  const bright = [];
-  for (let index = 0; index < data.length; index += 4)
-    if (data[index] > 235) bright.push(index);
-  assert.equal(bright.length, 0, "nothing white between avatar and name");
+  const read = await readPixels(png);
+  const data = read(150, 190, 200, 46);
+  const columns = [];
+  for (let x = 0; x < 200; x++)
+    for (let y = 0; y < 46; y++)
+      if (data[(y * 200 + x) * 4] > 100) {
+        columns.push(x + 150);
+        break;
+      }
+  const moonEnd = Math.max(...columns.filter((x) => x < 195));
+  const avatarStart = Math.min(...columns.filter((x) => x >= 195));
+  const avatarEnd = Math.max(...columns.filter((x) => x < 258));
+  const nameStart = Math.min(...columns.filter((x) => x >= 258));
+  assert.ok(
+    Math.abs(avatarStart - moonEnd - (nameStart - avatarEnd)) <= 4,
+    `gaps ${avatarStart - moonEnd} and ${nameStart - avatarEnd}`,
+  );
+});
+
+test("renderLeaderboard centers rank, moon, avatar and name on the same line", async () => {
+  const png = await renderLeaderboard({
+    type: "messages",
+    period: "week",
+    members: [{ name: "izuki", value: 10, avatar: null }],
+    activity,
+    channels: [],
+  });
+  const read = await readPixels(png);
+  const bright = ([r]) => r > 60;
+  const parts = {
+    rank: [72, 36],
+    moon: [150, 33],
+    avatar: [201, 48],
+    name: [267, 160],
+  };
+  for (const [part, [x, width]] of Object.entries(parts)) {
+    const middle = middleOf(read(x, 175, width, 76), width, 76, bright);
+    assert.ok(
+      Math.abs(middle + 175 - ROW_CENTER) <= 3,
+      `${part} middle at ${middle + 175}`,
+    );
+  }
 });

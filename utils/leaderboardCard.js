@@ -32,8 +32,10 @@ const TRAIL_SLOTS = 36;
 const TRAIL_STEP = 14;
 const SPRITE_SCALE = 3;
 const AVATAR_SIZE = 48;
-const AVATAR_X = 198;
-const NAME_X = 258;
+const AVATAR_X = 201;
+const NAME_X = 267;
+const NAME_WIDTH = 493;
+const TRAIL_GAP = 14;
 const AVATAR_PLACEHOLDER = "#5a5a5a";
 
 let sky = null;
@@ -205,43 +207,47 @@ async function drawMembers(ctx, background, { type, members }) {
 
   shown.forEach((member, index) => {
     const position = index + 1;
-    const top = 174 + index * ROW_HEIGHT;
+    const center = 175 + index * ROW_HEIGHT + ROW_HEIGHT / 2;
     const medal = getMedalColor(position);
 
     ctx.textAlign = "left";
     ctx.fillStyle = position <= 3 ? medal : DIM;
     ctx.font = `600 32px ${FONT}`;
-    ctx.fillText(`#${position}`, 72, top + 34);
+    const capHeight = ctx.measureText("H").actualBoundingBoxAscent;
+    ctx.fillText(`#${position}`, 72, center + capHeight / 2);
 
     const moon = moons[getMoonPhase(position)];
+    const moonHeight = moon.height * SPRITE_SCALE;
     ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
       moon,
       150,
-      top + 8,
+      Math.round(center - moonHeight / 2),
       moon.width * SPRITE_SCALE,
-      moon.height * SPRITE_SCALE,
+      moonHeight,
     );
     ctx.imageSmoothingEnabled = true;
 
-    drawAvatar(ctx, avatars[index], AVATAR_X, top + 10);
+    drawAvatar(ctx, avatars[index], AVATAR_X, center - AVATAR_SIZE / 2);
+
+    const blockHeight = capHeight + TRAIL_GAP + 8;
+    const baseline = center - blockHeight / 2 + capHeight;
 
     ctx.fillStyle = WHITE;
-    ctx.font = `600 32px ${FONT}`;
     ctx.fillText(
-      truncateText(member.name, 502, measureWith(ctx)),
+      truncateText(member.name, NAME_WIDTH, measureWith(ctx)),
       NAME_X,
-      top + 34,
+      baseline,
     );
 
     ctx.textAlign = "right";
     ctx.fillStyle = LIGHT;
-    ctx.fillText(formatValue(type, member.value), 928, top + 34);
+    ctx.fillText(formatValue(type, member.value), 928, baseline);
 
     drawTrail(
       ctx,
       NAME_X,
-      top + 48,
+      Math.round(baseline + TRAIL_GAP),
       getTrailLength(member.value, max),
       position <= 3 ? medal : DIM,
     );
