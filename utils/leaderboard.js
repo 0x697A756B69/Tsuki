@@ -62,25 +62,51 @@ function getTopChannels(db, guildId, period, date = new Date(), limit = 5) {
     .map((row) => ({ channel: String(row.channel), value: Number(row.value) }));
 }
 
-function getActivity(db, guildId, type, date = new Date(), days = 7) {
-  const { table, column } = getSource(type);
+function getActivityBuckets(period, date) {
   const today = toDay(date);
-  const first = shiftDay(today, 1 - days);
-  const totals = new Map(
-    db
-      .prepare(
-        `SELECT day, SUM(${column}) AS value FROM ${table}
-         WHERE guild = ? AND day >= ? AND day <= ?
-         GROUP BY day`,
-      )
-      .all(guildId, first, today)
-      .map((row) => [String(row.day), Number(row.value)]),
-  );
+  const monday = getPeriodStart("week", date);
+  if (period === "week")
+    return Array.from({ length: 7 }, (_, index) => ({
+      start: shiftDay(monday, index),
+      end: shiftDay(monday, index),
+    }));
+  if (period === "month")
+    return Array.from({ length: 4 }, (_, index) => {
+      const start = shiftDay(monday, (index - 3) * 7);
+      return { start, end: shiftDay(start, 6) };
+    });
+  if (period === "global") {
+    const year = Number(today.slice(0, 4));
+    const month = Number(today.slice(5, 7)) - 1;
+    return Array.from({ length: 6 }, (_, index) => {
+      const first = new Date(Date.UTC(year, month - 5 + index, 1, 12));
+      const last = new Date(Date.UTC(year, month - 4 + index, 0, 12));
+      return {
+        start: first.toISOString().slice(0, 10),
+        end: last.toISOString().slice(0, 10),
+      };
+    });
+  }
+  throw new RangeError(`Unknown period: ${period}`);
+}
 
-  return Array.from({ length: days }, (_, index) => {
-    const day = shiftDay(first, index);
-    return { day, value: totals.get(day) ?? 0 };
-  });
+function getActivity(db, guildId, type, period, date = new Date()) {
+  const { table, column } = getSource(type);
+  const buckets = getActivityBuckets(period, date);
+  const rows = db
+    .prepare(
+      `SELECT day, SUM(${column}) AS value FROM ${table}
+       WHERE guild = ? AND day >= ? AND day <= ?
+       GROUP BY day`,
+    )
+    .all(guildId, buckets[0].start, buckets[buckets.length - 1].end);
+
+  return buckets.map(({ start, end }) => ({
+    day: start,
+    value: rows
+      .filter((row) => String(row.day) >= start && String(row.day) <= end)
+      .reduce((total, row) => total + Number(row.value), 0),
+  }));
 }
 
 module.exports = {

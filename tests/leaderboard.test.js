@@ -157,39 +157,82 @@ test("getTopChannels ranks channels by messages over the period", () => {
   assert.equal(getTopChannels(db, "g", "global", NOW, 1).length, 1);
 });
 
-test("getActivity returns the last seven days, oldest first, with zeros", () => {
+test("getActivity covers the current week for the week period, future days empty", () => {
   const db = createDatabase();
   addMessages(db, "2026-10-08", "c", "a", 5);
   addMessages(db, "2026-10-08", "d", "b", 2);
   addMessages(db, "2026-10-05", "c", "a", 3);
-  addMessages(db, "2026-10-01", "c", "a", 99);
+  addMessages(db, "2026-10-04", "c", "a", 99);
 
-  assert.deepEqual(getActivity(db, "g", "messages", NOW), [
-    { day: "2026-10-02", value: 0 },
-    { day: "2026-10-03", value: 0 },
-    { day: "2026-10-04", value: 0 },
+  assert.deepEqual(getActivity(db, "g", "messages", "week", NOW), [
     { day: "2026-10-05", value: 3 },
     { day: "2026-10-06", value: 0 },
     { day: "2026-10-07", value: 0 },
     { day: "2026-10-08", value: 7 },
+    { day: "2026-10-09", value: 0 },
+    { day: "2026-10-10", value: 0 },
+    { day: "2026-10-11", value: 0 },
   ]);
 });
 
-test("getActivity covers voice minutes and month boundaries", () => {
+test("getActivity sums the last four weeks, labelled by their Monday, for the month period", () => {
   const db = createDatabase();
-  addMinutes(db, "2026-09-30", "a", 12);
-  addMinutes(db, "2026-10-02", "b", 8);
-  addMinutes(db, "2026-10-02", "a", 2);
+  addMessages(db, "2026-09-14", "c", "a", 1);
+  addMessages(db, "2026-09-15", "c", "a", 10);
+  addMessages(db, "2026-09-28", "c", "a", 4);
+  addMessages(db, "2026-10-04", "c", "b", 6);
+  addMessages(db, "2026-10-08", "c", "a", 5);
+  addMessages(db, "2026-09-13", "c", "a", 99);
+
+  assert.deepEqual(getActivity(db, "g", "messages", "month", NOW), [
+    { day: "2026-09-14", value: 11 },
+    { day: "2026-09-21", value: 0 },
+    { day: "2026-09-28", value: 10 },
+    { day: "2026-10-05", value: 5 },
+  ]);
+});
+
+test("getActivity sums the last six months for the global period", () => {
+  const db = createDatabase();
+  addMessages(db, "2026-05-31", "c", "a", 99);
+  addMessages(db, "2026-06-01", "c", "a", 2);
+  addMessages(db, "2026-06-30", "c", "b", 3);
+  addMessages(db, "2026-09-15", "c", "a", 7);
+  addMessages(db, "2026-10-08", "c", "a", 4);
+
+  assert.deepEqual(getActivity(db, "g", "messages", "global", NOW), [
+    { day: "2026-05-01", value: 99 },
+    { day: "2026-06-01", value: 5 },
+    { day: "2026-07-01", value: 0 },
+    { day: "2026-08-01", value: 0 },
+    { day: "2026-09-01", value: 7 },
+    { day: "2026-10-01", value: 4 },
+  ]);
+});
+
+test("getActivity covers voice minutes and year boundaries", () => {
+  const db = createDatabase();
+  addMinutes(db, "2026-12-30", "a", 12);
+  addMinutes(db, "2027-01-02", "b", 8);
+  addMinutes(db, "2027-01-02", "a", 2);
 
   const activity = getActivity(
     db,
     "g",
     "voice",
-    new Date("2026-10-03T10:00:00Z"),
+    "global",
+    new Date("2027-01-10T10:00:00Z"),
   );
 
-  assert.equal(activity.length, 7);
-  assert.equal(activity[0].day, "2026-09-27");
-  assert.equal(activity[3].value, 12);
+  assert.equal(activity.length, 6);
+  assert.equal(activity[0].day, "2026-08-01");
+  assert.equal(activity[4].value, 12);
   assert.equal(activity[5].value, 10);
+});
+
+test("getActivity rejects an unknown period", () => {
+  assert.throws(
+    () => getActivity(createDatabase(), "g", "messages", "year", NOW),
+    RangeError,
+  );
 });

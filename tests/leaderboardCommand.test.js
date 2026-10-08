@@ -1,4 +1,5 @@
 const test = require("node:test");
+const { ButtonStyle } = require("discord.js");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
@@ -71,8 +72,8 @@ test("getLeaderboardData gathers the lists with raw identifiers", () => {
     { id: "b", value: 90 },
     { id: "a", value: 20 },
   ]);
-  assert.equal(data.activity.length, 7);
-  assert.equal(data.activity[6].value, 40);
+  assert.equal(data.activity.length, 6);
+  assert.equal(data.activity[5].value, 40);
 });
 
 test("getLeaderboardData ranks voice minutes for the voice type", () => {
@@ -85,7 +86,7 @@ test("getLeaderboardData ranks voice minutes for the voice type", () => {
 
   assert.equal(data.type, "voice");
   assert.deepEqual(data.members[0], { id: "b", value: 90 });
-  assert.equal(data.activity[6].value, 110);
+  assert.equal(data.activity[3].value, 110);
 });
 
 test("getLeaderboardData drops the voice data when voice is disabled", () => {
@@ -141,36 +142,39 @@ test("resolveNames keeps a missing voice panel missing", async () => {
   assert.equal(resolved.voice, null);
 });
 
-test("the controls offer the periods and the types as buttons", () => {
-  const [periods, types] = buildLeaderboardControls({
+test("the controls are one row of period then type buttons", () => {
+  const rows = buildLeaderboardControls({
     type: "voice",
     period: "month",
     authorId: "me",
     voiceEnabled: true,
-  }).map((row) => /** @type {any} */ (row));
+  });
+  const buttons = /** @type {any} */ (rows[0]).components;
 
+  assert.equal(rows.length, 1);
   assert.deepEqual(
-    periods.components.map((button) => button.label),
-    ["Global", "Mois", "Semaine"],
+    buttons.map((button) => button.label),
+    ["Global", "Mois", "Semaine", "Messages", "Vocal"],
   );
   assert.deepEqual(
-    periods.components.map((button) => button.disabled),
-    [false, true, false],
+    buttons.map((button) => button.disabled ?? false),
+    [false, false, false, false, false],
   );
-  assert.deepEqual(parseCustomId(periods.components[2].custom_id), {
+  assert.deepEqual(
+    buttons.map((button) => button.style),
+    [
+      ButtonStyle.Secondary,
+      ButtonStyle.Primary,
+      ButtonStyle.Secondary,
+      ButtonStyle.Secondary,
+      ButtonStyle.Success,
+    ],
+  );
+  assert.deepEqual(parseCustomId(buttons[2].custom_id), {
     id: "leaderboard",
     params: ["period", "voice", "week", "me"],
   });
-
-  assert.deepEqual(
-    types.components.map((button) => button.label),
-    ["Messages", "Vocal"],
-  );
-  assert.deepEqual(
-    types.components.map((button) => button.disabled),
-    [false, true],
-  );
-  assert.deepEqual(parseCustomId(types.components[0].custom_id), {
+  assert.deepEqual(parseCustomId(buttons[3].custom_id), {
     id: "leaderboard",
     params: ["type", "messages", "month", "me"],
   });
@@ -209,7 +213,7 @@ test("buildLeaderboardMessage returns a PNG and the controls", async () => {
     "PNG",
   );
   assert.deepEqual(message.attachments, []);
-  assert.equal(message.components.length, 2);
+  assert.equal(message.components.length, 1);
 });
 
 test("buildLeaderboardMessage falls back to messages when voice is disabled", async () => {
@@ -251,7 +255,7 @@ test("/leaderboard replies publicly with the global messages ranking", async () 
     "leaderboard-messages-global.png",
   );
   const buttons = interaction.calls[1][1].components[0];
-  assert.equal(buttons.components[0].disabled, true);
+  assert.equal(buttons.components[0].style, ButtonStyle.Primary);
 });
 
 test("/lb is a shortcut that reuses /leaderboard", () => {

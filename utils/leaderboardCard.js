@@ -18,6 +18,12 @@ const PERIOD_LABELS = {
   month: "Ce mois-ci",
   week: "Cette semaine",
 };
+const MONTHS = ["J", "F", "M", "A", "M", "J", "J", "A", "S", "O", "N", "D"];
+const ACTIVITY_TITLES = {
+  global: "6 mois",
+  month: "4 semaines",
+  week: "7 jours",
+};
 const TYPE_LABELS = { messages: "Messages", voice: "Vocal" };
 
 const ROW_HEIGHT = 76;
@@ -75,6 +81,17 @@ function getActivityBlocks(values, maxBlocks) {
 
 function getWeekdayLabel(day) {
   return WEEKDAYS[new Date(`${day}T12:00:00Z`).getUTCDay()];
+}
+
+function getActivityLabel(period, day) {
+  if (period === "week") return getWeekdayLabel(day);
+  if (period === "month")
+    return `${Number(day.slice(8))}/${Number(day.slice(5, 7))}`;
+  return MONTHS[Number(day.slice(5, 7)) - 1];
+}
+
+function getActivityTitle(period) {
+  return `Activité · ${ACTIVITY_TITLES[period] ?? ACTIVITY_TITLES.week}`;
 }
 
 function getPeriodLabel(period) {
@@ -206,7 +223,7 @@ async function drawMembers(ctx, background, { type, members }) {
   ctx.imageSmoothingEnabled = true;
 }
 
-function drawActivity(ctx, background, { activity }) {
+function drawActivity(ctx, background, { period, activity }) {
   const x = 1000;
   const y = 400;
   frostedPanel(ctx, background, x, y, 460, 200);
@@ -214,7 +231,7 @@ function drawActivity(ctx, background, { activity }) {
   ctx.textAlign = "left";
   ctx.fillStyle = LIGHT;
   ctx.font = `600 26px ${FONT}`;
-  ctx.fillText("Activité · 7 jours", x + 28, y + 42);
+  ctx.fillText(getActivityTitle(period), x + 28, y + 42);
 
   const columns = getActivityBlocks(
     activity.map((entry) => entry.value),
@@ -222,8 +239,9 @@ function drawActivity(ctx, background, { activity }) {
   );
   const baseline = y + 156;
   const step = 60;
+  const offset = (404 - ((columns.length - 1) * step + 40)) / 2;
   columns.forEach((column, index) => {
-    const left = x + 28 + index * step;
+    const left = x + 28 + offset + index * step;
     ctx.fillStyle = column.peak ? WHITE : DIM;
     for (let block = 0; block < column.blocks; block++)
       ctx.fillRect(left, baseline - (block + 1) * 16, 40, 12);
@@ -231,7 +249,11 @@ function drawActivity(ctx, background, { activity }) {
     ctx.fillStyle = DIM;
     ctx.font = `400 22px ${FONT}`;
     ctx.textAlign = "center";
-    ctx.fillText(getWeekdayLabel(activity[index].day), left + 20, y + 184);
+    ctx.fillText(
+      getActivityLabel(period, activity[index].day),
+      left + 20,
+      y + 184,
+    );
   });
 }
 
@@ -285,7 +307,7 @@ async function renderLeaderboard({
 
   drawHeader(ctx, background, { type, period });
   await drawMembers(ctx, background, { type, members });
-  drawActivity(ctx, background, { activity });
+  drawActivity(ctx, background, { period, activity });
   drawList(ctx, background, {
     title: "Salons",
     rows: channels,
@@ -311,6 +333,8 @@ module.exports = {
   getMoonPhase,
   getActivityBlocks,
   getWeekdayLabel,
+  getActivityLabel,
+  getActivityTitle,
   getPeriodLabel,
   getTypeLabel,
 };

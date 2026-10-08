@@ -40,7 +40,7 @@ function getLeaderboardData(
     type: effectiveType,
     period,
     members: toIds(getTopMembers(db, guildId, effectiveType, period, date)),
-    activity: getActivity(db, guildId, effectiveType, date),
+    activity: getActivity(db, guildId, effectiveType, period, date),
     channels: getTopChannels(db, guildId, period, date, SIDE_ROWS).map(
       ({ channel, value }) => ({ id: channel, value }),
     ),
@@ -83,30 +83,32 @@ async function resolveNames(guild, data) {
   };
 }
 
-function buildRow(entries, current, createId) {
-  const buttons = entries.map(({ value, label }) =>
-    new ButtonBuilder()
-      .setCustomId(createId(value))
-      .setLabel(label)
-      .setStyle(value === current ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setDisabled(value === current),
-  );
-  return new ActionRowBuilder().addComponents(buttons).toJSON();
+function buildButton(label, customId, style) {
+  return new ButtonBuilder()
+    .setCustomId(customId)
+    .setLabel(label)
+    .setStyle(style);
 }
 
 function buildLeaderboardControls({ type, period, authorId, voiceEnabled }) {
-  const rows = [
-    buildRow(PERIODS, period, (value) =>
+  const buttons = PERIODS.map(({ value, label }) =>
+    buildButton(
+      label,
       buildCustomId("leaderboard", "period", type, value, authorId),
+      value === period ? ButtonStyle.Primary : ButtonStyle.Secondary,
     ),
-  ];
+  );
   if (voiceEnabled)
-    rows.push(
-      buildRow(TYPES, type, (value) =>
-        buildCustomId("leaderboard", "type", value, period, authorId),
+    buttons.push(
+      ...TYPES.map(({ value, label }) =>
+        buildButton(
+          label,
+          buildCustomId("leaderboard", "type", value, period, authorId),
+          value === type ? ButtonStyle.Success : ButtonStyle.Secondary,
+        ),
       ),
     );
-  return rows;
+  return [new ActionRowBuilder().addComponents(buttons).toJSON()];
 }
 
 async function buildLeaderboardMessage(

@@ -8,6 +8,8 @@ const {
   getMoonPhase,
   getActivityBlocks,
   getWeekdayLabel,
+  getActivityLabel,
+  getActivityTitle,
   getPeriodLabel,
   getTypeLabel,
 } = require("../utils/leaderboardCard");
@@ -110,6 +112,21 @@ test("getWeekdayLabel gives the French initial of the day", () => {
   assert.equal(getWeekdayLabel("2026-10-09"), "V");
   assert.equal(getWeekdayLabel("2026-10-10"), "S");
   assert.equal(getWeekdayLabel("2026-10-11"), "D");
+});
+
+test("getActivityLabel adapts to the period", () => {
+  assert.equal(getActivityLabel("week", "2026-10-05"), "L");
+  assert.equal(getActivityLabel("month", "2026-09-28"), "28/9");
+  assert.equal(getActivityLabel("month", "2026-10-05"), "5/10");
+  assert.equal(getActivityLabel("global", "2026-10-01"), "O");
+  assert.equal(getActivityLabel("global", "2026-01-01"), "J");
+});
+
+test("getActivityTitle names the covered span", () => {
+  assert.equal(getActivityTitle("week"), "Activité · 7 jours");
+  assert.equal(getActivityTitle("month"), "Activité · 4 semaines");
+  assert.equal(getActivityTitle("global"), "Activité · 6 mois");
+  assert.equal(getActivityTitle("year"), "Activité · 7 jours");
 });
 
 test("period and type labels are in French with a safe default", () => {
