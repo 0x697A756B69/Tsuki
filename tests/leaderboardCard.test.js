@@ -216,3 +216,73 @@ test("renderLeaderboard centers the header text in its panel", async () => {
   const middle = (Math.min(...rows) + Math.max(...rows)) / 2;
   assert.ok(Math.abs(middle - 50) <= 4, `text middle at ${middle}`);
 });
+
+async function pixelAt(png, x, y) {
+  const { loadImage, createCanvas } = require("@napi-rs/canvas");
+  const image = await loadImage(png);
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  return Array.from(ctx.getImageData(x, y, 1, 1).data);
+}
+
+function redAvatar() {
+  const { createCanvas } = require("@napi-rs/canvas");
+  const canvas = createCanvas(64, 64);
+  const ctx = canvas.getContext("2d");
+  ctx.fillStyle = "#ff0000";
+  ctx.fillRect(0, 0, 64, 64);
+  return `data:image/png;base64,${canvas.toBuffer("image/png").toString("base64")}`;
+}
+
+test("renderLeaderboard draws each avatar as a round image before the name", async () => {
+  const png = await renderLeaderboard({
+    type: "messages",
+    period: "week",
+    members: [{ name: "izuki", value: 10, avatar: redAvatar() }],
+    activity,
+    channels: [],
+  });
+  const [r, g, b] = await pixelAt(png, 222, 208);
+  assert.ok(r > 200 && g < 60 && b < 60, `center is ${r},${g},${b}`);
+  const [cr, cg, cb] = await pixelAt(png, 200, 186);
+  assert.ok(!(cr > 200 && cg < 60 && cb < 60), "corner is not clipped");
+});
+
+test("renderLeaderboard draws a grey disc when the avatar is missing", async () => {
+  const png = await renderLeaderboard({
+    type: "messages",
+    period: "week",
+    members: [
+      { name: "gone", value: 10, avatar: null },
+      { name: "broken", value: 5, avatar: "https://invalid.invalid/a.png" },
+    ],
+    activity,
+    channels: [],
+  });
+  for (const y of [208, 284]) {
+    const [r, g, b] = await pixelAt(png, 222, y);
+    assert.ok(Math.abs(r - g) < 8 && Math.abs(g - b) < 8, `row at ${y}`);
+    assert.ok(r > 60 && r < 140, `grey is ${r}`);
+  }
+});
+
+test("renderLeaderboard moves the name after the avatar", async () => {
+  const png = await renderLeaderboard({
+    type: "messages",
+    period: "week",
+    members: [{ name: "WWWWWWWW", value: 10, avatar: null }],
+    activity,
+    channels: [],
+  });
+  const { loadImage, createCanvas } = require("@napi-rs/canvas");
+  const image = await loadImage(png);
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  const { data } = ctx.getImageData(247, 190, 10, 30);
+  const bright = [];
+  for (let index = 0; index < data.length; index += 4)
+    if (data[index] > 235) bright.push(index);
+  assert.equal(bright.length, 0, "nothing white between avatar and name");
+});

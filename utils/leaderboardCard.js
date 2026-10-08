@@ -1,6 +1,7 @@
 const path = require("node:path");
 const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const { registerFonts, formatNumber, truncateText } = require("./rankCard");
+const { loadAvatar } = require("./avatarCache");
 
 const images = path.join(__dirname, "..", "assets", "images", "leaderboard");
 const FONT = "Bricolage";
@@ -30,6 +31,10 @@ const ROW_HEIGHT = 76;
 const TRAIL_SLOTS = 36;
 const TRAIL_STEP = 14;
 const SPRITE_SCALE = 3;
+const AVATAR_SIZE = 48;
+const AVATAR_X = 198;
+const NAME_X = 258;
+const AVATAR_PLACEHOLDER = "#5a5a5a";
 
 let sky = null;
 let sprites = null;
@@ -155,6 +160,21 @@ function drawHeader(ctx, background, { type, period }) {
   );
 }
 
+function drawAvatar(ctx, avatar, x, y) {
+  const radius = AVATAR_SIZE / 2;
+  ctx.save();
+  ctx.beginPath();
+  ctx.arc(x + radius, y + radius, radius, 0, Math.PI * 2);
+  if (avatar) {
+    ctx.clip();
+    ctx.drawImage(avatar, x, y, AVATAR_SIZE, AVATAR_SIZE);
+  } else {
+    ctx.fillStyle = AVATAR_PLACEHOLDER;
+    ctx.fill();
+  }
+  ctx.restore();
+}
+
 function drawTrail(ctx, x, y, length, color) {
   for (let index = 0; index < length; index++) {
     ctx.globalAlpha = 0.25 + 0.75 * ((index + 1) / length);
@@ -178,9 +198,12 @@ async function drawMembers(ctx, background, { type, members }) {
 
   const moons = await getSprites();
   const max = Math.max(...members.map((member) => member.value));
-  ctx.imageSmoothingEnabled = false;
+  const shown = members.slice(0, 10);
+  const avatars = await Promise.all(
+    shown.map((member) => loadAvatar(member.avatar)),
+  );
 
-  members.slice(0, 10).forEach((member, index) => {
+  shown.forEach((member, index) => {
     const position = index + 1;
     const top = 174 + index * ROW_HEIGHT;
     const medal = getMedalColor(position);
@@ -191,6 +214,7 @@ async function drawMembers(ctx, background, { type, members }) {
     ctx.fillText(`#${position}`, 72, top + 34);
 
     const moon = moons[getMoonPhase(position)];
+    ctx.imageSmoothingEnabled = false;
     ctx.drawImage(
       moon,
       150,
@@ -198,12 +222,15 @@ async function drawMembers(ctx, background, { type, members }) {
       moon.width * SPRITE_SCALE,
       moon.height * SPRITE_SCALE,
     );
+    ctx.imageSmoothingEnabled = true;
+
+    drawAvatar(ctx, avatars[index], AVATAR_X, top + 10);
 
     ctx.fillStyle = WHITE;
     ctx.font = `600 32px ${FONT}`;
     ctx.fillText(
-      truncateText(member.name, 550, measureWith(ctx)),
-      210,
+      truncateText(member.name, 502, measureWith(ctx)),
+      NAME_X,
       top + 34,
     );
 
@@ -213,14 +240,12 @@ async function drawMembers(ctx, background, { type, members }) {
 
     drawTrail(
       ctx,
-      210,
+      NAME_X,
       top + 48,
       getTrailLength(member.value, max),
       position <= 3 ? medal : DIM,
     );
   });
-
-  ctx.imageSmoothingEnabled = true;
 }
 
 function drawActivity(ctx, background, { period, activity }) {
