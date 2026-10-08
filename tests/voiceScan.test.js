@@ -221,3 +221,62 @@ test("a failing member does not stop the scan", async () => {
   assert.equal(xpOf(bot, "a"), 10);
   assert.equal(xpOf(bot, "b"), 10);
 });
+
+function minutesOf(bot, user) {
+  const row = bot.db
+    .prepare(
+      "SELECT COALESCE(SUM(minutes), 0) AS minutes FROM voice_daily WHERE user = ?",
+    )
+    .get(user);
+  return Number(row.minutes);
+}
+
+test("each scan counts one voice minute for eligible members", async () => {
+  const bot = createBot();
+  addGuild(bot, {
+    v: [voiceMember("a"), voiceMember("b")],
+    alone: [voiceMember("loner")],
+  });
+
+  await scanVoice(bot);
+  await scanVoice(bot);
+
+  assert.equal(minutesOf(bot, "a"), 2);
+  assert.equal(minutesOf(bot, "b"), 2);
+  assert.equal(minutesOf(bot, "loner"), 0);
+});
+
+test("voice minutes are counted even when the voice XP is zero", async () => {
+  const bot = createBot({ voiceXp: 0 });
+  addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
+
+  await scanVoice(bot);
+
+  assert.equal(xpOf(bot, "a"), 0);
+  assert.equal(minutesOf(bot, "a"), 1);
+});
+
+test("voice minutes are not counted when voice is disabled", async () => {
+  const bot = createBot({ voiceEnabled: false });
+  addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
+
+  await scanVoice(bot);
+
+  assert.equal(minutesOf(bot, "a"), 0);
+});
+
+test("excluded channels and roles are not counted", async () => {
+  const bot = createBot();
+  setModifier(bot.db, "g", "channel", "quiet", 0);
+  setModifier(bot.db, "g", "role", "muted", 0);
+  addGuild(bot, {
+    quiet: [voiceMember("a"), voiceMember("b")],
+    plain: [voiceMember("c"), voiceMember("d", { roles: ["muted"] })],
+  });
+
+  await scanVoice(bot);
+
+  assert.equal(minutesOf(bot, "a"), 0);
+  assert.equal(minutesOf(bot, "c"), 1);
+  assert.equal(minutesOf(bot, "d"), 0);
+});

@@ -4,6 +4,7 @@ const { getModifiers, computeMultiplier } = require("./modifiers");
 const { voiceEligibleMembers } = require("./voice");
 const { announceLevelUp } = require("./announce");
 const { updateRewardRoles } = require("./rewards");
+const { addVoiceMinute } = require("./voiceCount");
 
 async function rewardMember(bot, guild, settings, modifiers, channel, member) {
   const multiplier = computeMultiplier(modifiers, {
@@ -11,6 +12,10 @@ async function rewardMember(bot, guild, settings, modifiers, channel, member) {
     parentId: null,
     roleIds: [...member.roles.cache.keys()],
   });
+  if (multiplier === 0) return;
+
+  addVoiceMinute(bot.db, guild.id, member.id);
+
   const gain = Math.round(settings.voiceXp * multiplier);
   if (gain <= 0) return;
 
@@ -31,7 +36,7 @@ async function rewardMember(bot, guild, settings, modifiers, channel, member) {
 async function scanVoice(bot) {
   for (const guild of bot.guilds.cache.values()) {
     const settings = getSettings(bot.db, guild.id);
-    if (!settings.voiceEnabled || settings.voiceXp === 0) continue;
+    if (!settings.voiceEnabled) continue;
 
     const modifiers = getModifiers(bot.db, guild.id);
     for (const channel of guild.channels.cache.values()) {
