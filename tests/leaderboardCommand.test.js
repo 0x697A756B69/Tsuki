@@ -142,45 +142,46 @@ test("resolveNames keeps a missing voice panel missing", async () => {
   assert.equal(resolved.voice, null);
 });
 
-test("the controls are one row of period then type buttons", () => {
-  const rows = buildLeaderboardControls({
+test("the controls are a type menu above the period buttons", () => {
+  const [menuRow, buttonRow] = buildLeaderboardControls({
     type: "voice",
     period: "month",
     authorId: "me",
     voiceEnabled: true,
-  });
-  const buttons = /** @type {any} */ (rows[0]).components;
+  }).map((row) => /** @type {any} */ (row));
 
-  assert.equal(rows.length, 1);
+  const menu = menuRow.components[0];
+  assert.deepEqual(parseCustomId(menu.custom_id), {
+    id: "leaderboard",
+    params: ["type", "voice", "month", "me"],
+  });
   assert.deepEqual(
-    buttons.map((button) => button.label),
-    ["Global", "Mois", "Semaine", "Messages", "Vocal"],
-  );
-  assert.deepEqual(
-    buttons.map((button) => button.disabled ?? false),
-    [false, false, false, false, false],
-  );
-  assert.deepEqual(
-    buttons.map((button) => button.style),
+    menu.options.map((option) => [option.label, option.value, option.default]),
     [
-      ButtonStyle.Secondary,
-      ButtonStyle.Primary,
-      ButtonStyle.Secondary,
-      ButtonStyle.Secondary,
-      ButtonStyle.Success,
+      ["Messages", "messages", false],
+      ["Vocal", "voice", true],
     ],
   );
-  assert.deepEqual(parseCustomId(buttons[2].custom_id), {
+
+  assert.deepEqual(
+    buttonRow.components.map((button) => button.label),
+    ["Global", "Mois", "Semaine"],
+  );
+  assert.deepEqual(
+    buttonRow.components.map((button) => button.style),
+    [ButtonStyle.Secondary, ButtonStyle.Primary, ButtonStyle.Secondary],
+  );
+  assert.deepEqual(
+    buttonRow.components.map((button) => button.disabled ?? false),
+    [false, false, false],
+  );
+  assert.deepEqual(parseCustomId(buttonRow.components[2].custom_id), {
     id: "leaderboard",
     params: ["period", "voice", "week", "me"],
   });
-  assert.deepEqual(parseCustomId(buttons[3].custom_id), {
-    id: "leaderboard",
-    params: ["type", "messages", "month", "me"],
-  });
 });
 
-test("the type buttons disappear when voice is disabled", () => {
+test("the type menu disappears when voice is disabled", () => {
   const rows = buildLeaderboardControls({
     type: "messages",
     period: "global",
@@ -213,7 +214,7 @@ test("buildLeaderboardMessage returns a PNG and the controls", async () => {
     "PNG",
   );
   assert.deepEqual(message.attachments, []);
-  assert.equal(message.components.length, 1);
+  assert.equal(message.components.length, 2);
 });
 
 test("buildLeaderboardMessage falls back to messages when voice is disabled", async () => {
@@ -254,7 +255,7 @@ test("/leaderboard replies publicly with the global messages ranking", async () 
     interaction.calls[1][1].files[0].name,
     "leaderboard-messages-global.png",
   );
-  const buttons = interaction.calls[1][1].components[0];
+  const buttons = interaction.calls[1][1].components[1];
   assert.equal(buttons.components[0].style, ButtonStyle.Primary);
 });
 
@@ -265,12 +266,14 @@ test("/lb is a shortcut that reuses /leaderboard", () => {
   assert.equal(lb.permission, leaderboard.permission);
 });
 
-function createComponentInteraction({ userId = "me" } = {}) {
+function createComponentInteraction({ userId = "me", values = null } = {}) {
   const calls = [];
   return /** @type {any} */ ({
     calls,
     guild: createGuild(),
     user: { id: userId },
+    values,
+    isStringSelectMenu: () => values !== null,
     deferUpdate: async () => calls.push(["deferUpdate"]),
     editReply: async (payload) => calls.push(["editReply", payload]),
     reply: async (payload) => calls.push(["reply", payload]),
@@ -297,13 +300,13 @@ test("a period button redraws the ranking for that period", async () => {
   );
 });
 
-test("a type button redraws the ranking for that type", async () => {
-  const interaction = createComponentInteraction();
+test("the type menu redraws the ranking for the chosen type", async () => {
+  const interaction = createComponentInteraction({ values: ["voice"] });
 
   await component.run(
     null,
     interaction,
-    ["type", "voice", "month", "me"],
+    ["type", "messages", "month", "me"],
     createDatabase(),
   );
 

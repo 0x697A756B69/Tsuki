@@ -3,6 +3,7 @@ const {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
+  StringSelectMenuBuilder,
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
 const { getSettings } = require("./settings");
@@ -83,32 +84,44 @@ async function resolveNames(guild, data) {
   };
 }
 
-function buildButton(label, customId, style) {
-  return new ButtonBuilder()
-    .setCustomId(customId)
-    .setLabel(label)
-    .setStyle(style);
-}
-
 function buildLeaderboardControls({ type, period, authorId, voiceEnabled }) {
-  const buttons = PERIODS.map(({ value, label }) =>
-    buildButton(
-      label,
-      buildCustomId("leaderboard", "period", type, value, authorId),
-      value === period ? ButtonStyle.Primary : ButtonStyle.Secondary,
-    ),
-  );
+  const rows = [];
   if (voiceEnabled)
-    buttons.push(
-      ...TYPES.map(({ value, label }) =>
-        buildButton(
-          label,
-          buildCustomId("leaderboard", "type", value, period, authorId),
-          value === type ? ButtonStyle.Success : ButtonStyle.Secondary,
-        ),
-      ),
+    rows.push(
+      new ActionRowBuilder()
+        .addComponents(
+          new StringSelectMenuBuilder()
+            .setCustomId(
+              buildCustomId("leaderboard", "type", type, period, authorId),
+            )
+            .setPlaceholder("Type de classement")
+            .addOptions(
+              TYPES.map(({ value, label }) => ({
+                label,
+                value,
+                default: value === type,
+              })),
+            ),
+        )
+        .toJSON(),
     );
-  return [new ActionRowBuilder().addComponents(buttons).toJSON()];
+  rows.push(
+    new ActionRowBuilder()
+      .addComponents(
+        PERIODS.map(({ value, label }) =>
+          new ButtonBuilder()
+            .setCustomId(
+              buildCustomId("leaderboard", "period", type, value, authorId),
+            )
+            .setLabel(label)
+            .setStyle(
+              value === period ? ButtonStyle.Primary : ButtonStyle.Secondary,
+            ),
+        ),
+      )
+      .toJSON(),
+  );
+  return rows;
 }
 
 async function buildLeaderboardMessage(

@@ -13,13 +13,17 @@ function refuse(interaction, content) {
 module.exports = defineComponent({
   id: "leaderboard",
 
-  async run(bot, interaction, [action, type, period, authorId], db) {
+  async run(bot, interaction, [action, current, period, authorId], db) {
     if (interaction.user.id !== authorId)
       return refuse(
         interaction,
         "Seule la personne qui a lancé la commande peut changer le classement.",
       );
 
+    const type =
+      action === "type" && interaction.isStringSelectMenu()
+        ? interaction.values[0]
+        : current;
     const next = { type, period };
 
     if (
