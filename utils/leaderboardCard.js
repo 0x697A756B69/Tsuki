@@ -113,16 +113,29 @@ function measureWith(ctx) {
 }
 
 function drawHeader(ctx, background, { type, period }) {
-  frostedPanel(ctx, background, 40, 30, 920, 100);
+  const top = 30;
+  const height = 100;
+  frostedPanel(ctx, background, 40, top, 920, height);
   ctx.textBaseline = "alphabetic";
+
+  const centeredBaseline = (font) => {
+    ctx.font = font;
+    return top + height / 2 + ctx.measureText("H").actualBoundingBoxAscent / 2;
+  };
+
   ctx.textAlign = "left";
   ctx.fillStyle = WHITE;
-  ctx.font = `600 72px ${FONT}`;
-  ctx.fillText("Classement", 72, 102);
+  const titleFont = `600 72px ${FONT}`;
+  ctx.fillText("Classement", 72, centeredBaseline(titleFont));
+
   ctx.textAlign = "right";
   ctx.fillStyle = LIGHT;
-  ctx.font = `400 32px ${FONT}`;
-  ctx.fillText(`${getTypeLabel(type)} · ${getPeriodLabel(period)}`, 928, 100);
+  const subtitleFont = `400 32px ${FONT}`;
+  ctx.fillText(
+    `${getTypeLabel(type)} · ${getPeriodLabel(period)}`,
+    928,
+    centeredBaseline(subtitleFont),
+  );
 }
 
 function drawTrail(ctx, x, y, length, color) {

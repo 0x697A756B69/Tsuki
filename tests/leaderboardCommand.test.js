@@ -141,8 +141,8 @@ test("resolveNames keeps a missing voice panel missing", async () => {
   assert.equal(resolved.voice, null);
 });
 
-test("the controls offer the three periods with the current one disabled", () => {
-  const [buttons, menu] = buildLeaderboardControls({
+test("the controls offer the periods and the types as buttons", () => {
+  const [periods, types] = buildLeaderboardControls({
     type: "voice",
     period: "month",
     authorId: "me",
@@ -150,43 +150,44 @@ test("the controls offer the three periods with the current one disabled", () =>
   }).map((row) => /** @type {any} */ (row));
 
   assert.deepEqual(
-    buttons.components.map((button) => button.label),
+    periods.components.map((button) => button.label),
     ["Global", "Mois", "Semaine"],
   );
   assert.deepEqual(
-    buttons.components.map((button) => button.disabled),
+    periods.components.map((button) => button.disabled),
     [false, true, false],
   );
-  assert.deepEqual(parseCustomId(buttons.components[2].custom_id), {
+  assert.deepEqual(parseCustomId(periods.components[2].custom_id), {
     id: "leaderboard",
     params: ["period", "voice", "week", "me"],
   });
 
-  const select = menu.components[0];
-  assert.deepEqual(parseCustomId(select.custom_id), {
-    id: "leaderboard",
-    params: ["type", "voice", "month", "me"],
-  });
   assert.deepEqual(
-    select.options.map((option) => [option.value, Boolean(option.default)]),
-    [
-      ["messages", false],
-      ["voice", true],
-    ],
+    types.components.map((button) => button.label),
+    ["Messages", "Vocal"],
   );
+  assert.deepEqual(
+    types.components.map((button) => button.disabled),
+    [false, true],
+  );
+  assert.deepEqual(parseCustomId(types.components[0].custom_id), {
+    id: "leaderboard",
+    params: ["type", "messages", "month", "me"],
+  });
 });
 
-test("the type menu hides the voice choice when voice is disabled", () => {
-  const [, menu] = buildLeaderboardControls({
+test("the type buttons disappear when voice is disabled", () => {
+  const rows = buildLeaderboardControls({
     type: "messages",
     period: "global",
     authorId: "me",
     voiceEnabled: false,
-  }).map((row) => /** @type {any} */ (row));
+  });
 
+  assert.equal(rows.length, 1);
   assert.deepEqual(
-    menu.components[0].options.map((option) => option.value),
-    ["messages"],
+    /** @type {any} */ (rows[0]).components.map((button) => button.label),
+    ["Global", "Mois", "Semaine"],
   );
 });
 
@@ -260,14 +261,12 @@ test("/lb is a shortcut that reuses /leaderboard", () => {
   assert.equal(lb.permission, leaderboard.permission);
 });
 
-function createComponentInteraction({ userId = "me", values = null } = {}) {
+function createComponentInteraction({ userId = "me" } = {}) {
   const calls = [];
   return /** @type {any} */ ({
     calls,
     guild: createGuild(),
     user: { id: userId },
-    values,
-    isStringSelectMenu: () => values !== null,
     deferUpdate: async () => calls.push(["deferUpdate"]),
     editReply: async (payload) => calls.push(["editReply", payload]),
     reply: async (payload) => calls.push(["reply", payload]),
@@ -294,13 +293,13 @@ test("a period button redraws the ranking for that period", async () => {
   );
 });
 
-test("the type menu redraws the ranking for the chosen type", async () => {
-  const interaction = createComponentInteraction({ values: ["voice"] });
+test("a type button redraws the ranking for that type", async () => {
+  const interaction = createComponentInteraction();
 
   await component.run(
     null,
     interaction,
-    ["type", "messages", "month", "me"],
+    ["type", "voice", "month", "me"],
     createDatabase(),
   );
 

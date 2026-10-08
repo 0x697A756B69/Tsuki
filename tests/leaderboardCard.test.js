@@ -171,3 +171,31 @@ test("renderLeaderboard handles extreme values", async () => {
   });
   assert.deepEqual(size(png), [1500, 1000]);
 });
+
+test("renderLeaderboard centers the header text in its panel", async () => {
+  const { loadImage } = require("@napi-rs/canvas");
+  const png = await renderLeaderboard({
+    type: "messages",
+    period: "month",
+    members: [],
+    activity,
+    channels: [],
+  });
+  const image = await loadImage(png);
+  const { createCanvas } = require("@napi-rs/canvas");
+  const canvas = createCanvas(image.width, image.height);
+  const ctx = canvas.getContext("2d");
+  ctx.drawImage(image, 0, 0);
+  const { data } = ctx.getImageData(72, 30, 880, 100);
+
+  const rows = [];
+  for (let y = 0; y < 100; y++)
+    for (let x = 0; x < 880; x++)
+      if (data[(y * 880 + x) * 4] > 235) {
+        rows.push(y);
+        break;
+      }
+
+  const middle = (Math.min(...rows) + Math.max(...rows)) / 2;
+  assert.ok(Math.abs(middle - 50) <= 4, `text middle at ${middle}`);
+});

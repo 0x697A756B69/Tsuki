@@ -20,15 +20,12 @@ module.exports = defineComponent({
         "Seule la personne qui a lancé la commande peut changer le classement.",
       );
 
-    const choice = interaction.isStringSelectMenu()
-      ? interaction.values[0]
-      : type;
-    const next = { type: action === "type" ? choice : type, period };
+    const next = { type, period };
 
     if (
       !["type", "period"].includes(action) ||
-      !isType(next.type) ||
-      !isPeriod(next.period)
+      !isType(type) ||
+      !isPeriod(period)
     )
       return refuse(interaction, "Ce bouton n'est plus actif.");
 

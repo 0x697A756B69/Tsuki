@@ -3,7 +3,6 @@ const {
   AttachmentBuilder,
   ButtonBuilder,
   ButtonStyle,
-  StringSelectMenuBuilder,
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
 const { getSettings } = require("./settings");
@@ -15,8 +14,8 @@ const PERIODS = [
   { value: "week", label: "Semaine" },
 ];
 const TYPES = [
-  { value: "messages", label: "Messages", description: "Qui écrit le plus" },
-  { value: "voice", label: "Vocal", description: "Qui passe le plus de temps" },
+  { value: "messages", label: "Messages" },
+  { value: "voice", label: "Vocal" },
 ];
 const SIDE_ROWS = 3;
 const UNKNOWN_MEMBER = "Ancien membre";
@@ -84,36 +83,30 @@ async function resolveNames(guild, data) {
   };
 }
 
-function buildLeaderboardControls({ type, period, authorId, voiceEnabled }) {
-  const buttons = PERIODS.map(({ value, label }) =>
+function buildRow(entries, current, createId) {
+  const buttons = entries.map(({ value, label }) =>
     new ButtonBuilder()
-      .setCustomId(
-        buildCustomId("leaderboard", "period", type, value, authorId),
-      )
+      .setCustomId(createId(value))
       .setLabel(label)
-      .setStyle(value === period ? ButtonStyle.Primary : ButtonStyle.Secondary)
-      .setDisabled(value === period),
+      .setStyle(value === current ? ButtonStyle.Primary : ButtonStyle.Secondary)
+      .setDisabled(value === current),
   );
+  return new ActionRowBuilder().addComponents(buttons).toJSON();
+}
 
-  const types = TYPES.filter(
-    ({ value }) => voiceEnabled || value === "messages",
-  );
-  const menu = new StringSelectMenuBuilder()
-    .setCustomId(buildCustomId("leaderboard", "type", type, period, authorId))
-    .setPlaceholder("Type de classement")
-    .addOptions(
-      types.map(({ value, label, description }) => ({
-        value,
-        label,
-        description,
-        default: value === type,
-      })),
-    );
-
-  return [
-    new ActionRowBuilder().addComponents(buttons).toJSON(),
-    new ActionRowBuilder().addComponents(menu).toJSON(),
+function buildLeaderboardControls({ type, period, authorId, voiceEnabled }) {
+  const rows = [
+    buildRow(PERIODS, period, (value) =>
+      buildCustomId("leaderboard", "period", type, value, authorId),
+    ),
   ];
+  if (voiceEnabled)
+    rows.push(
+      buildRow(TYPES, type, (value) =>
+        buildCustomId("leaderboard", "type", value, period, authorId),
+      ),
+    );
+  return rows;
 }
 
 async function buildLeaderboardMessage(
