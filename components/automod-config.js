@@ -4,6 +4,7 @@ const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("../utils/automodSettings");
+const { profileSettings } = require("../utils/automodProfiles");
 const { syncRules } = require("../utils/automodRules");
 const {
   renderExemptionsView,
@@ -132,6 +133,13 @@ module.exports = defineComponent({
           renderLogsView({ settings: updated }),
         );
       }
+    }
+
+    if (interaction.isStringSelectMenu() && action === "profile") {
+      const profile = profileSettings(interaction.values[0]);
+      if (!profile) return refuse(interaction, "Ce profil n'existe pas.");
+      updateAutomodSettings(db, guildId, profile, author);
+      return interaction.update(main());
     }
 
     if (interaction.isRoleSelectMenu() && action === "exempt-roles") {

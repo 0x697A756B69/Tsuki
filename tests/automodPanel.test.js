@@ -318,3 +318,33 @@ test("the points modal asks for the points of every rule", () => {
     ],
   );
 });
+
+test("main view offers the three profiles in a select", () => {
+  const selects = main().of(ComponentType.StringSelect);
+  assert.equal(selects.length, 1);
+  assert.equal(selects[0].custom_id, "automod-config:profile");
+  assert.deepEqual(
+    selects[0].options.map((option) => option.value),
+    ["calm", "standard", "strict"],
+  );
+});
+
+test("main view marks the profile matching the settings", () => {
+  const view = main();
+  const [select] = view.of(ComponentType.StringSelect);
+  assert.match(view.text, /Standard/);
+  assert.deepEqual(
+    select.options.filter((option) => option.default).map((o) => o.value),
+    ["standard"],
+  );
+});
+
+test("main view says Personnalisé when no profile matches", () => {
+  const view = main({ ...defaults, sensitivity: 8 });
+  const [select] = view.of(ComponentType.StringSelect);
+  assert.match(view.text, /Personnalisé/);
+  assert.equal(
+    select.options.some((option) => option.default),
+    false,
+  );
+});

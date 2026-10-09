@@ -1,4 +1,5 @@
 const {
+  ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
   ChannelSelectMenuBuilder,
@@ -9,12 +10,14 @@ const {
   RoleSelectMenuBuilder,
   SectionBuilder,
   SeparatorBuilder,
+  StringSelectMenuBuilder,
   TextDisplayBuilder,
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
 const { formatDuration } = require("./estimate");
+const { PROFILES, currentProfile, profileLabel } = require("./automodProfiles");
 
 const ACCENT_COLOR = 0xe5484d;
 const MAX_EXEMPT_ROLES = 20;
@@ -94,6 +97,25 @@ function describeHistory(settings) {
   return `-# Dernière modification par <@${settings.updatedBy}> <t:${when}:R>`;
 }
 
+function profileRow(settings) {
+  const current = currentProfile(settings);
+  return /** @type {ActionRowBuilder<StringSelectMenuBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(id("profile"))
+      .setPlaceholder(`Profil : ${profileLabel(settings)}`)
+      .addOptions(
+        Object.entries(PROFILES).map(([key, profile]) => ({
+          label: profile.label,
+          description: profile.description,
+          value: key,
+          default: key === current,
+        })),
+      ),
+  );
+}
+
 function panel(container) {
   return {
     components: [container],
@@ -107,6 +129,14 @@ function renderMainView({ settings, words, exemptions, guild }) {
     .addTextDisplayComponents(
       text(`## AutoMod — réglages\nServeur ${guild.name}`),
     )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(
+      text(
+        `**Profil**
+${profileLabel(settings)} : règle la sensibilité, la durée de décroissance et les points par règle`,
+      ),
+    )
+    .addActionRowComponents(profileRow(settings))
     .addSeparatorComponents(new SeparatorBuilder())
     .addSectionComponents(
       setting(
