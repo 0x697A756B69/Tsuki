@@ -212,6 +212,15 @@ function setLogTimeout(db, { guildId, channelId, messageId }, timeoutUntil) {
   ).run(timeoutUntil, guildId, channelId, messageId);
 }
 
+function setContestStatus(db, { guildId, channelId, messageId }, status) {
+  const result = db
+    .prepare(
+      "UPDATE automod_logs SET contest_status = ? WHERE guild = ? AND channel = ? AND message = ? AND contest_status = 'pending'",
+    )
+    .run(status, guildId, channelId, messageId);
+  return Number(result.changes) > 0;
+}
+
 function markContested(
   db,
   { guildId, channelId, messageId },
@@ -284,6 +293,7 @@ module.exports = {
   getLog,
   setLogTimeout,
   markContested,
+  setContestStatus,
   getExpiredLogs,
   deleteLog,
   sendLog,

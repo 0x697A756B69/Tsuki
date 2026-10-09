@@ -26,6 +26,14 @@ const ACTIONS = {
     permission: PermissionFlagsBits.ModerateMembers,
     label: "mis en sourdine",
   },
+  accept: {
+    permission: PermissionFlagsBits.ManageMessages,
+    label: "contestation acceptée",
+  },
+  refuse: {
+    permission: PermissionFlagsBits.ManageMessages,
+    label: "contestation refusée",
+  },
   ban: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   banok: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   bancancel: { permission: null, label: "annulé" },
@@ -69,6 +77,19 @@ function addModeratorWarning(
   return { id, reason, total: Number(row.total) };
 }
 
+function canLiftTimeout(log, member) {
+  return (
+    log?.timeoutUntil != null &&
+    member?.communicationDisabledUntilTimestamp === log.timeoutUntil
+  );
+}
+
+function contestVerdict(guildName, accepted, timeoutLifted = false) {
+  if (!accepted)
+    return `Ta contestation sur ${guildName} a été refusée : l'avertissement est maintenu.`;
+  return `Ta contestation sur ${guildName} a été acceptée : ton avertissement est retiré${timeoutLifted ? " et ta sourdine est levée" : ""}.`;
+}
+
 function banConfirmation(userId, messageId) {
   const row = /** @type {ActionRowBuilder<ButtonBuilder>} */ (
     new ActionRowBuilder()
@@ -96,5 +117,7 @@ module.exports = {
   missingPermission,
   removeWarning,
   addModeratorWarning,
+  canLiftTimeout,
+  contestVerdict,
   banConfirmation,
 };

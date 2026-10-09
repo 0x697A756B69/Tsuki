@@ -11,12 +11,14 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId } = require("./customId");
+const { buildCustomId, parseCustomId } = require("./customId");
+const { ACTION_ID } = require("./automodLogs");
 
 const CONTEST_ID = "automod-contest";
 const CONTEST_COLOR = 0x8b5cf6;
 const REASON_LENGTH = 300;
 const HOUR = 60 * 60 * 1000;
+const NO_WARNING = "-";
 
 function contestRow({ guildId, channelId, messageId }) {
   return /** @type {ActionRowBuilder<ButtonBuilder>} */ (
@@ -74,8 +76,45 @@ function parseReason(value) {
   return reason === "" ? null : reason.slice(0, REASON_LENGTH);
 }
 
+function reviewTarget(container) {
+  const buttons = container.components
+    .filter((part) => part.type === ComponentType.ActionRow)
+    .flatMap((row) => row.components)
+    .map((button) => parseCustomId(button.custom_id).params);
+  const remove = buttons.find((params) => params[0] === "remove");
+  const timeout = buttons.find((params) => params[0] === "timeout");
+  return {
+    userId: timeout?.[1] ?? null,
+    warningId: remove?.[2] ?? null,
+  };
+}
+
+function reviewRow({ userId, warningId }) {
+  const button = (action, label, style, ...params) =>
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(ACTION_ID, action, ...params))
+      .setLabel(label)
+      .setStyle(style);
+  return /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    button(
+      "accept",
+      "Accepter",
+      ButtonStyle.Success,
+      userId,
+      warningId ?? NO_WARNING,
+    ),
+    button("refuse", "Refuser", ButtonStyle.Secondary, userId),
+    button("ban", "Bannir", ButtonStyle.Danger, userId),
+  );
+}
+
 function contestedPayload(container, { reason, date = Date.now() }) {
-  const parts = [...container.components];
+  const target = reviewTarget(container);
+  const parts = container.components.filter(
+    (part) => part.type !== ComponentType.ActionRow,
+  );
   const title = parts.findIndex(
     (part) => part.type === ComponentType.TextDisplay,
   );
@@ -104,6 +143,7 @@ function contestedPayload(container, { reason, date = Date.now() }) {
       .toJSON(),
     new SeparatorBuilder().toJSON(),
   );
+  if (target.userId !== null) parts.push(reviewRow(target).toJSON());
 
   return {
     components: [
@@ -120,7 +160,10 @@ module.exports = {
   CONTEST_ID,
   CONTEST_COLOR,
   REASON_LENGTH,
+  NO_WARNING,
   contestRow,
+  reviewTarget,
+  reviewRow,
   contestCheck,
   renderContestModal,
   parseReason,

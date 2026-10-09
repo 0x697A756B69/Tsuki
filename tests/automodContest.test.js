@@ -10,7 +10,10 @@ const {
   CONTEST_ID,
   CONTEST_COLOR,
   REASON_LENGTH,
+  NO_WARNING,
   contestRow,
+  reviewTarget,
+  reviewRow,
   contestCheck,
   renderContestModal,
   parseReason,
@@ -153,7 +156,7 @@ test("contestedPayload says so when no reason is given", () => {
   assert.match(json, /Aucun motif donné/);
 });
 
-test("contestedPayload keeps the moderator buttons and the footer last", () => {
+test("contestedPayload keeps the footer right before the buttons", () => {
   const container = contestedPayload(panel(), { reason: "x" }).components[0];
   const types = container.components.map((part) => part.type);
   assert.equal(types.at(-1), ComponentType.ActionRow);
@@ -238,4 +241,56 @@ test("no contest button without a log to review", async () => {
   const { bot, channel } = createBot(sent);
   await autoModerationActionExecution(bot, execution(channel));
   assert.deepEqual(sent[0].components, []);
+});
+
+function buttons(container) {
+  return JSON.parse(JSON.stringify(container))
+    .components.filter((part) => part.type === ComponentType.ActionRow)
+    .flatMap((row) => row.components);
+}
+
+test("reviewTarget finds the member and the warning in the buttons", () => {
+  assert.deepEqual(reviewTarget(panel()), { userId: "u", warningId: "WARN-1" });
+});
+
+test("reviewTarget has no warning when none was added", () => {
+  const container = buildLogMessage({
+    ruleKey: "words",
+    ruleName: RULE_NAMES.words,
+    userId: "u",
+    channelId: "c",
+    content: "x",
+  }).components[0].toJSON();
+  assert.deepEqual(reviewTarget(container), { userId: "u", warningId: null });
+});
+
+test("reviewRow offers accept, refuse and ban", () => {
+  const row = JSON.parse(
+    JSON.stringify(reviewRow({ userId: "u", warningId: "WARN-1" })),
+  );
+  assert.deepEqual(
+    row.components.map((button) => [button.label, button.custom_id]),
+    [
+      ["Accepter", "automod-action:accept:u:WARN-1"],
+      ["Refuser", "automod-action:refuse:u"],
+      ["Bannir", "automod-action:ban:u"],
+    ],
+  );
+});
+
+test("reviewRow marks a contest without warning", () => {
+  const row = JSON.parse(
+    JSON.stringify(reviewRow({ userId: "u", warningId: null })),
+  );
+  assert.equal(
+    row.components[0].custom_id,
+    `automod-action:accept:u:${NO_WARNING}`,
+  );
+});
+
+test("a contested log swaps the moderator buttons for the review ones", () => {
+  const labels = buttons(
+    contestedPayload(panel(), { reason: "x" }).components[0],
+  ).map((button) => button.label);
+  assert.deepEqual(labels, ["Accepter", "Refuser", "Bannir"]);
 });

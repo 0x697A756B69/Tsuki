@@ -5,13 +5,22 @@ const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
 const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { ACTION_ID, buildLogMessage } = require("../utils/automodLogs");
+const {
+  ACTION_ID,
+  buildLogMessage,
+  addLog,
+  getLog,
+  markContested,
+} = require("../utils/automodLogs");
+const { contestedPayload } = require("../utils/automodContest");
 const {
   ACTIONS,
   parseAction,
   missingPermission,
   removeWarning,
   addModeratorWarning,
+  canLiftTimeout,
+  contestVerdict,
   banConfirmation,
 } = require("../utils/automodActions");
 const component = require("../components/automod-action");
@@ -75,7 +84,14 @@ function logMessage(changes) {
 /** @param {any} [options] */
 function setup({ moderator, target, flags, message = logMessage() } = {}) {
   const db = createDatabase();
-  const calls = { updates: [], replies: [], follow: [], bans: [], deleted: [] };
+  const calls = {
+    updates: [],
+    replies: [],
+    follow: [],
+    bans: [],
+    deleted: [],
+    dms: [],
+  };
   const timeouts = [];
   const member =
     target === null
@@ -86,6 +102,9 @@ function setup({ moderator, target, flags, message = logMessage() } = {}) {
         }));
   const bot = /** @type {any} */ ({
     utils: { createId: async (prefix) => `${prefix}-9` },
+    users: {
+      fetch: async () => ({ send: async (text) => calls.dms.push(text) }),
+    },
   });
   const interaction = /** @type {any} */ ({
     isButton: () => true,
@@ -95,8 +114,10 @@ function setup({ moderator, target, flags, message = logMessage() } = {}) {
     message,
     channel: { messages: { fetch: async () => message } },
     guildId: "g",
+    channelId: "log",
     guild: {
       id: "g",
+      name: "Serveur",
       members: {
         fetch: async () => member ?? Promise.reject(new Error("unknown")),
       },
@@ -123,6 +144,8 @@ test("every action needs its permission, and cancelling needs none", () => {
   assert.equal(ACTIONS.delete.permission, ManageMessages);
   assert.equal(ACTIONS.close.permission, ManageMessages);
   assert.equal(ACTIONS.timeout.permission, ModerateMembers);
+  assert.equal(ACTIONS.accept.permission, ManageMessages);
+  assert.equal(ACTIONS.refuse.permission, ManageMessages);
   assert.equal(ACTIONS.ban.permission, BanMembers);
   assert.equal(ACTIONS.banok.permission, BanMembers);
   assert.equal(ACTIONS.bancancel.permission, null);
@@ -324,4 +347,152 @@ test("cancelling the ban leaves the log alone", async () => {
   await run("bancancel");
   assert.equal(calls.bans.length, 0);
   assert.match(calls.updates[0].content, /annulé/);
+});
+
+const REF = { guildId: "g", channelId: "log", messageId: "LOG" };
+
+function contested({ timeoutUntil = null, contest = true } = {}) {
+  const payload = contestedPayload(logMessage().components[0].toJSON(), {
+    reason: "faux positif",
+  });
+  const message = {
+    id: "LOG",
+    components: [{ toJSON: () => payload.components[0] }],
+  };
+  return { message, timeoutUntil, contest };
+}
+
+function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
+  const { message } = contested();
+  const timeouts = [];
+  const target = fakeMember("u", [], 1, {
+    communicationDisabledUntilTimestamp: memberUntil,
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const context = setup({ message, target });
+  insertWarning(context.db);
+  addLog(context.db, { ...REF, userId: "u", timeoutUntil, date: 1_000 });
+  markContested(context.db, REF, 2_000);
+  return { ...context, timeouts };
+}
+
+test("canLiftTimeout only matches the timeout Tsuki noted", () => {
+  const log = { timeoutUntil: 500 };
+  assert.equal(
+    canLiftTimeout(log, { communicationDisabledUntilTimestamp: 500 }),
+    true,
+  );
+  assert.equal(
+    canLiftTimeout(log, { communicationDisabledUntilTimestamp: 900 }),
+    false,
+  );
+  assert.equal(
+    canLiftTimeout(log, { communicationDisabledUntilTimestamp: null }),
+    false,
+  );
+  assert.equal(
+    canLiftTimeout(
+      { timeoutUntil: null },
+      { communicationDisabledUntilTimestamp: null },
+    ),
+    false,
+  );
+  assert.equal(canLiftTimeout(log, null), false);
+  assert.equal(canLiftTimeout(null, null), false);
+});
+
+test("contestVerdict tells the member the outcome", () => {
+  assert.equal(
+    contestVerdict("Serveur", false),
+    "Ta contestation sur Serveur a été refusée : l'avertissement est maintenu.",
+  );
+  assert.equal(
+    contestVerdict("Serveur", true),
+    "Ta contestation sur Serveur a été acceptée : ton avertissement est retiré.",
+  );
+  assert.match(
+    contestVerdict("Serveur", true, true),
+    /et ta sourdine est levée/,
+  );
+});
+
+test("accepting a contest removes the warning and tells the member", async () => {
+  const { db, calls, run } = setupContest();
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 0);
+  assert.equal(getLog(db, REF).contestStatus, "accepted");
+  assert.match(
+    JSON.stringify(calls.updates[0]),
+    /Traité par <@mod> : contestation acceptée/,
+  );
+  assert.match(calls.dms[0], /acceptée/);
+});
+
+test("accepting lifts the timeout Tsuki set", async () => {
+  const { calls, timeouts, run } = setupContest({
+    timeoutUntil: 7_000,
+    memberUntil: 7_000,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(timeouts[0][0], null);
+  assert.match(calls.dms[0], /sourdine est levée/);
+});
+
+test("accepting keeps a timeout set by hand", async () => {
+  const { calls, timeouts, run } = setupContest({
+    timeoutUntil: 7_000,
+    memberUntil: 9_000,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(timeouts.length, 0);
+  assert.doesNotMatch(calls.dms[0], /sourdine/);
+});
+
+test("accepting without a warning only settles the contest", async () => {
+  const { db, run } = setupContest();
+  await run("accept", "u", "-");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "accepted");
+});
+
+test("refusing a contest keeps the warning", async () => {
+  const { db, calls, timeouts, run } = setupContest({
+    timeoutUntil: 7_000,
+    memberUntil: 7_000,
+  });
+  await run("refuse", "u");
+  assert.equal(countWarns(db), 1);
+  assert.equal(timeouts.length, 0);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.match(calls.dms[0], /refusée/);
+  assert.match(JSON.stringify(calls.updates[0]), /contestation refusée/);
+});
+
+test("a contest already settled cannot be settled again", async () => {
+  const { db, calls, run } = setupContest();
+  await run("refuse", "u");
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.match(calls.replies.at(-1).content, /déjà été traitée/);
+});
+
+test("a contest review respects the hierarchy", async () => {
+  const message = contested().message;
+  const strong = setup({
+    message,
+    target: fakeMember("u", ALL, 5),
+  });
+  insertWarning(strong.db);
+  addLog(strong.db, { ...REF, userId: "u", date: 1_000 });
+  markContested(strong.db, REF, 2_000);
+  await strong.run("accept", "u", "WARN-1");
+  assert.equal(countWarns(strong.db), 1);
+  assert.match(strong.calls.replies[0].content, /Tu ne peux pas modérer/);
+});
+
+test("banning from a contest works like the other bans", async () => {
+  const { calls, run } = setupContest();
+  await run("ban", "u");
+  assert.match(JSON.stringify(calls.replies[0]), /Bannir <@u>/);
 });
