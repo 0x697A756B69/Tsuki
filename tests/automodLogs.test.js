@@ -268,6 +268,8 @@ test("logs are stored with identifiers and dates only", () => {
       contested_at: null,
       contest_status: null,
       timeout_until: null,
+      points: null,
+      trust: null,
     },
   );
 });
@@ -282,6 +284,8 @@ test("getLog reads the member and the contest state of a log", () => {
     contestedAt: null,
     contestStatus: null,
     timeoutUntil: 9,
+    points: null,
+    trust: null,
   });
 });
 
@@ -364,7 +368,12 @@ test("sendLog posts the panel and remembers it", async () => {
     id: "g",
     channels: { cache: new Map([["log", logChannel(sent)]]) },
   };
-  const message = await sendLog(bot, guild, "log", data());
+  const message = await sendLog(
+    bot,
+    guild,
+    "log",
+    data({ points: 2, trust: 1.5 }),
+  );
   assert.equal(message.id, "M-1");
   assert.equal(sent.length, 1);
   assert.deepEqual(
@@ -378,6 +387,8 @@ test("sendLog posts the panel and remembers it", async () => {
       contested_at: null,
       contest_status: null,
       timeout_until: null,
+      points: 2,
+      trust: 1.5,
     },
   );
 });
@@ -581,4 +592,32 @@ test("a log notes no timeout when the member is only warned", async () => {
   const ref = { guildId: "g", channelId: "log", messageId: "M-1" };
   assert.equal(getLog(bot.db, ref).userId, "u");
   assert.equal(getLog(bot.db, ref).timeoutUntil, null);
+});
+
+test("addLog freezes the points and the trust of the infraction", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u", points: 3, trust: 0.5, date: 5 });
+  const log = getLog(db, ref);
+  assert.equal(log.points, 3);
+  assert.equal(log.trust, 0.5);
+});
+
+test("the database rejects points and trust out of range", () => {
+  const db = createDatabase();
+  for (const [index, changes] of [
+    { points: 0 },
+    { points: 21 },
+    { trust: 0 },
+    { trust: -1 },
+  ].entries())
+    assert.throws(() =>
+      addLog(db, {
+        guildId: "g",
+        channelId: "log",
+        messageId: `m${index}`,
+        ...changes,
+      }),
+    );
+  assert.equal(db.prepare("SELECT * FROM automod_logs").get(), undefined);
 });

@@ -181,12 +181,23 @@ function addLog(
     messageId,
     userId = null,
     timeoutUntil = null,
+    points = null,
+    trust = null,
     date = Date.now(),
   },
 ) {
   db.prepare(
-    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id, timeout_until) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(guildId, channelId, messageId, date, userId, timeoutUntil);
+    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id, timeout_until, points, trust) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
+  ).run(
+    guildId,
+    channelId,
+    messageId,
+    date,
+    userId,
+    timeoutUntil,
+    points,
+    trust,
+  );
 }
 
 function getLog(db, { guildId, channelId, messageId }) {
@@ -203,6 +214,8 @@ function getLog(db, { guildId, channelId, messageId }) {
     contestStatus:
       row.contest_status === null ? null : String(row.contest_status),
     timeoutUntil: row.timeout_until === null ? null : Number(row.timeout_until),
+    points: row.points === null ? null : Number(row.points),
+    trust: row.trust === null ? null : Number(row.trust),
   };
 }
 
@@ -266,6 +279,8 @@ async function sendLog(bot, guild, logChannelId, data) {
     channelId: channel.id,
     messageId: message.id,
     userId: data.userId,
+    points: data.points,
+    trust: data.trust,
     date: data.date,
   });
   return message;

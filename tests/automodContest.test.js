@@ -3,6 +3,8 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const { AutoModerationActionType, ComponentType } = require("discord.js");
 const migrate = require("../loaders/migrate");
+const { addXp } = require("../utils/xp");
+const { totalXpForLevel } = require("../utils/levels");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { buildLogMessage, getLog } = require("../utils/automodLogs");
@@ -329,4 +331,55 @@ test("a contested log swaps the moderator buttons for the review ones", () => {
     contestedPayload(panel(), { reason: "x" }).components[0],
   ).map((button) => button.label);
   assert.deepEqual(labels, ["Accepter", "Refuser", "Bannir"]);
+});
+
+function loggedRisk(bot) {
+  const row = bot.db.prepare("SELECT points, trust FROM automod_logs").get();
+  return { points: row.points, trust: row.trust };
+}
+
+test("a block logs the points of the rule at a neutral trust", async () => {
+  const { bot, channel } = createBot([]);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(bot, execution(channel));
+  assert.deepEqual(loggedRisk(bot), { points: 2, trust: 1 });
+});
+
+test("a block logs the points set for the rule", async () => {
+  const { bot, channel } = createBot([]);
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { logChannel: "log", pointsWords: 7 },
+    "admin",
+  );
+  await autoModerationActionExecution(bot, execution(channel));
+  assert.equal(loggedRisk(bot).points, 7);
+});
+
+test("a block by a new member logs a raised trust", async () => {
+  const { bot, channel } = createBot([]);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  const blocked = execution(channel);
+  blocked.guild.members.fetch = async () => ({
+    joinedTimestamp: Date.now() - HOUR,
+  });
+  await autoModerationActionExecution(bot, blocked);
+  assert.equal(loggedRisk(bot).trust, 1.5);
+});
+
+test("a block by a high level member logs a lowered trust", async () => {
+  const { bot, channel } = createBot([]);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  addXp(bot.db, "g", "u", totalXpForLevel(10));
+  await autoModerationActionExecution(bot, execution(channel));
+  assert.equal(loggedRisk(bot).trust, 0.5);
+});
+
+test("the logged trust stays frozen when the member levels up later", async () => {
+  const { bot, channel } = createBot([]);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(bot, execution(channel));
+  addXp(bot.db, "g", "u", totalXpForLevel(20));
+  assert.equal(loggedRisk(bot).trust, 1);
 });

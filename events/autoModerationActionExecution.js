@@ -9,6 +9,7 @@ const {
 } = require("../utils/automodWarnings");
 const { sendLog, setLogTimeout } = require("../utils/automodLogs");
 const { contestRow } = require("../utils/automodContest");
+const { infractionRisk, getMemberLevel } = require("../utils/riskScore");
 
 module.exports = async (bot, execution) => {
   const rule =
@@ -55,7 +56,18 @@ module.exports = async (bot, execution) => {
     ruleKey,
   });
 
+  const member = await execution.guild.members
+    .fetch(execution.userId)
+    .catch(() => null);
+  const risk = infractionRisk({
+    settings,
+    ruleKey,
+    joinedAt: member?.joinedTimestamp ?? null,
+    level: getMemberLevel(bot.db, execution.guild.id, execution.userId),
+  });
+
   const log = await sendLog(bot, execution.guild, settings.logChannel, {
+    ...risk,
     ruleKey,
     ruleName: rule.name,
     userId: execution.userId,
@@ -69,11 +81,8 @@ module.exports = async (bot, execution) => {
   });
 
   const escalation = getEscalation(settings, warning.total);
-  const member = escalation
-    ? await execution.guild.members.fetch(execution.userId).catch(() => null)
-    : null;
   const timedOutMember =
-    member?.moderatable === true
+    escalation && member?.moderatable === true
       ? await member
           .timeout(escalation.minutes * 60 * 1000, escalation.reason)
           .catch(() => null)
