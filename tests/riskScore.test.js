@@ -4,12 +4,16 @@ const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { addXp } = require("../utils/xp");
 const { totalXpForLevel } = require("../utils/levels");
+const { addLog } = require("../utils/automodLogs");
 const {
   NEW_MEMBER_TRUST,
   TRUSTED_TRUST,
   trustFactor,
   rulePoints,
   infractionRisk,
+  formatNumber,
+  getRiskScore,
+  escalationFor,
   getMemberLevel,
 } = require("../utils/riskScore");
 
@@ -105,4 +109,107 @@ test("getMemberLevel reads the level from the total XP", () => {
   assert.equal(getMemberLevel(db, "g", "u"), 10);
   assert.equal(getMemberLevel(db, "g", "other"), 3);
   assert.equal(getMemberLevel(db, "elsewhere", "u"), 0);
+});
+
+let next = 0;
+
+function infraction(db, changes = {}) {
+  addLog(db, {
+    guildId: "g",
+    channelId: "log",
+    messageId: `m${++next}`,
+    userId: "u",
+    points: 2,
+    trust: 1,
+    date: NOW,
+    ...changes,
+  });
+}
+
+const SCORE = { guildId: "g", userId: "u", halfLifeDays: 3, now: NOW };
+
+test("formatNumber writes decimals with a comma", () => {
+  assert.equal(formatNumber(4.5), "4,5");
+  assert.equal(formatNumber(6), "6");
+  assert.equal(formatNumber(1.25), "1,25");
+});
+
+test("getRiskScore is zero without infractions", () => {
+  assert.equal(getRiskScore(createDatabase(), SCORE), 0);
+});
+
+test("getRiskScore weighs the points by the frozen trust", () => {
+  const db = createDatabase();
+  infraction(db, { points: 2, trust: 1.5 });
+  infraction(db, { points: 3, trust: 0.5 });
+  assert.equal(getRiskScore(db, SCORE), 4.5);
+});
+
+test("getRiskScore halves the points every half-life", () => {
+  const db = createDatabase();
+  infraction(db, { points: 8, date: NOW - 3 * DAY });
+  assert.equal(getRiskScore(db, SCORE), 4);
+  infraction(db, { points: 4, date: NOW - 6 * DAY });
+  assert.equal(getRiskScore(db, SCORE), 5);
+  assert.equal(getRiskScore(db, { ...SCORE, halfLifeDays: 6 }), 7.66);
+});
+
+test("getRiskScore follows the half-life of the server", () => {
+  const db = createDatabase();
+  infraction(db, { points: 8, date: NOW - 3 * DAY });
+  assert.equal(getRiskScore(db, { ...SCORE, halfLifeDays: 1 }), 1);
+  assert.equal(getRiskScore(db, { ...SCORE, halfLifeDays: 30 }), 7.46);
+});
+
+test("getRiskScore forgets infractions older than 30 days", () => {
+  const db = createDatabase();
+  infraction(db, { points: 20, date: NOW - 30 * DAY });
+  infraction(db, { points: 20, date: NOW - 31 * DAY });
+  assert.equal(getRiskScore(db, { ...SCORE, halfLifeDays: 30 }), 0);
+  infraction(db, { points: 4, date: NOW - 30 * DAY + 1 });
+  assert.equal(getRiskScore(db, { ...SCORE, halfLifeDays: 30 }), 2);
+});
+
+test("getRiskScore only counts the member of the guild", () => {
+  const db = createDatabase();
+  infraction(db, { userId: "other" });
+  infraction(db, { guildId: "elsewhere" });
+  assert.equal(getRiskScore(db, SCORE), 0);
+});
+
+test("getRiskScore ignores logs without points", () => {
+  const db = createDatabase();
+  infraction(db, { points: null, trust: null });
+  assert.equal(getRiskScore(db, SCORE), 0);
+});
+
+test("getRiskScore adds the infraction that is happening now", () => {
+  const db = createDatabase();
+  infraction(db, { points: 8, date: NOW - 3 * DAY });
+  assert.equal(getRiskScore(db, { ...SCORE, extra: 3 }), 7);
+  assert.equal(getRiskScore(createDatabase(), { ...SCORE, extra: 6 }), 6);
+});
+
+test("getRiskScore rounds to two decimals", () => {
+  const db = createDatabase();
+  infraction(db, { points: 1, date: NOW - DAY });
+  assert.equal(getRiskScore(db, SCORE), 0.79);
+});
+
+const SANCTION = { sensitivity: 6, escalationMinutes: 30 };
+
+test("escalationFor waits for the sensitivity", () => {
+  assert.equal(escalationFor(SANCTION, 5.99), null);
+  assert.deepEqual(escalationFor(SANCTION, 6), {
+    minutes: 30,
+    reason: "AutoMod : score de risque 6",
+  });
+  assert.equal(
+    escalationFor(SANCTION, 7.5).reason,
+    "AutoMod : score de risque 7,5",
+  );
+});
+
+test("escalationFor is off when the sensitivity is 0", () => {
+  assert.equal(escalationFor({ ...SANCTION, sensitivity: 0 }, 50), null);
 });

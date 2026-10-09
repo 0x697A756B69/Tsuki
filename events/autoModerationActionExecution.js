@@ -4,12 +4,21 @@ const {
   getRuleKey,
   addAutomodWarning,
   blockedNotice,
-  getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
-const { sendLog, setLogTimeout } = require("../utils/automodLogs");
+const {
+  sendLog,
+  addLog,
+  setLogTimeout,
+  UNLOGGED_CHANNEL,
+} = require("../utils/automodLogs");
 const { contestRow } = require("../utils/automodContest");
-const { infractionRisk, getMemberLevel } = require("../utils/riskScore");
+const {
+  infractionRisk,
+  getMemberLevel,
+  getRiskScore,
+  escalationFor,
+} = require("../utils/riskScore");
 
 module.exports = async (bot, execution) => {
   const rule =
@@ -66,8 +75,17 @@ module.exports = async (bot, execution) => {
     level: getMemberLevel(bot.db, execution.guild.id, execution.userId),
   });
 
+  const score = getRiskScore(bot.db, {
+    guildId: execution.guild.id,
+    userId: execution.userId,
+    halfLifeDays: settings.halfLifeDays,
+    extra: risk.points * risk.trust,
+  });
+
   const log = await sendLog(bot, execution.guild, settings.logChannel, {
     ...risk,
+    score,
+    threshold: settings.sensitivity,
     ruleKey,
     ruleName: rule.name,
     userId: execution.userId,
@@ -80,7 +98,16 @@ module.exports = async (bot, execution) => {
       : null,
   });
 
-  const escalation = getEscalation(settings, warning.total);
+  if (log === null)
+    addLog(bot.db, {
+      guildId: execution.guild.id,
+      channelId: UNLOGGED_CHANNEL,
+      messageId: warning.id,
+      userId: execution.userId,
+      ...risk,
+    });
+
+  const escalation = escalationFor(settings, score);
   const timedOutMember =
     escalation && member?.moderatable === true
       ? await member
@@ -106,7 +133,7 @@ module.exports = async (bot, execution) => {
       content: blockedNotice(
         execution.guild.name,
         ruleKey,
-        warning.total,
+        { total: warning.total, score },
         settings,
       ),
       components: canContest

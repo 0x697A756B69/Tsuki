@@ -10,14 +10,15 @@ const {
   countWarnings,
   addAutomodWarning,
   blockedNotice,
-  getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
 
 const { updateAutomodSettings } = require("../utils/automodSettings");
+const { addLog } = require("../utils/automodLogs");
 
 const BOT = "bot";
+const DAY = 24 * 60 * 60 * 1000;
 
 function createDatabase() {
   const db = new DatabaseSync(":memory:");
@@ -56,6 +57,7 @@ function execution({
   rule = { creatorId: BOT, name: RULE_NAMES.spam },
   userId = "u",
   moderatable = true,
+  joinedTimestamp = null,
   timeouts = [],
 } = {}) {
   return {
@@ -69,6 +71,7 @@ function execution({
       members: {
         fetch: async () => ({
           moderatable,
+          joinedTimestamp,
           timeout: async (ms, reason) => timeouts.push([ms, reason]),
         }),
       },
@@ -137,34 +140,47 @@ test("addAutomodWarning refuses an unknown rule", () => {
   );
 });
 
-test("blockedNotice names the server, the rule and the count", () => {
+test("blockedNotice names the server, the rule, the count and the score", () => {
   assert.equal(
-    blockedNotice("Serveur", "words", 2, {
-      escalationWarns: 0,
-      escalationMinutes: 10,
-    }),
-    "Ton message a été bloqué sur Serveur.\n**Règle :** mot interdit\n**Avertissements :** 2.",
+    blockedNotice(
+      "Serveur",
+      "words",
+      { total: 2, score: 4.5 },
+      {
+        sensitivity: 0,
+        escalationMinutes: 10,
+      },
+    ),
+    "Ton message a été bloqué sur Serveur.\n**Règle :** mot interdit\n**Avertissements :** 2.\n**Score :** 4,5.",
   );
 });
 
-test("blockedNotice announces the next sanction before the threshold", () => {
-  const settings = { escalationWarns: 3, escalationMinutes: 10 };
+test("blockedNotice announces the next sanction below the threshold", () => {
+  const settings = { sensitivity: 6, escalationMinutes: 10 };
   assert.equal(
-    blockedNotice("Serveur", "spam", 2, settings),
-    "Ton message a été bloqué sur Serveur.\n**Règle :** spam\n**Avertissements :** 2 sur 3, à 3, tu seras mis en sourdine 10 minutes.",
+    blockedNotice("Serveur", "spam", { total: 2, score: 3 }, settings),
+    "Ton message a été bloqué sur Serveur.\n**Règle :** spam\n**Avertissements :** 2.\n**Score :** 3 sur 6, à 6, tu seras mis en sourdine 10 minutes.",
   );
   assert.match(
-    blockedNotice("Serveur", "spam", 1, { ...settings, escalationMinutes: 1 }),
+    blockedNotice(
+      "Serveur",
+      "spam",
+      { total: 1, score: 1 },
+      { ...settings, escalationMinutes: 1 },
+    ),
     /sourdine 1 minute\./,
   );
 });
 
 test("blockedNotice stops announcing once the threshold is reached", () => {
-  const settings = { escalationWarns: 3, escalationMinutes: 10 };
+  const settings = { sensitivity: 6, escalationMinutes: 10 };
   assert.equal(
-    blockedNotice("Serveur", "mentions", 3, settings).endsWith(
-      "**Avertissements :** 3.",
-    ),
+    blockedNotice(
+      "Serveur",
+      "mentions",
+      { total: 3, score: 6 },
+      settings,
+    ).endsWith("**Score :** 6."),
     true,
   );
 });
@@ -210,25 +226,10 @@ test("a member with closed DMs is still warned", async () => {
   assert.equal(countWarnings(bot.db, "g", "u"), 1);
 });
 
-const SETTINGS = { escalationWarns: 3, escalationMinutes: 60 };
-
-test("getEscalation waits for the threshold", () => {
-  assert.equal(getEscalation(SETTINGS, 2), null);
-  assert.deepEqual(getEscalation(SETTINGS, 3), {
-    minutes: 60,
-    reason: "AutoMod : 3 avertissements",
-  });
-  assert.equal(getEscalation(SETTINGS, 5).reason, "AutoMod : 5 avertissements");
-});
-
-test("getEscalation is off when the threshold is 0", () => {
-  assert.equal(getEscalation({ ...SETTINGS, escalationWarns: 0 }, 10), null);
-});
-
 test("escalationNotice pluralises the minutes", () => {
   assert.equal(
     escalationNotice("Serveur", 1),
-    "Tu as été mis en sourdine 1 minute sur Serveur après plusieurs avertissements.",
+    "Tu as été mis en sourdine 1 minute sur Serveur : ton score de risque est trop élevé.",
   );
   assert.match(escalationNotice("Serveur", 60), /60 minutes/);
 });
@@ -238,19 +239,19 @@ test("the warning at the threshold times the member out", async () => {
   updateAutomodSettings(
     bot.db,
     "g",
-    { escalationWarns: 2, escalationMinutes: 10 },
+    { sensitivity: 2, escalationMinutes: 10 },
     "admin",
   );
   await autoModerationActionExecution(bot, execution({ timeouts }));
   assert.equal(timeouts.length, 0);
   await autoModerationActionExecution(bot, execution({ timeouts }));
-  assert.deepEqual(timeouts, [[600000, "AutoMod : 2 avertissements"]]);
+  assert.deepEqual(timeouts, [[600000, "AutoMod : score de risque 2"]]);
   assert.equal(sent.length, 3);
 });
 
 test("a member Tsuki cannot moderate is only warned", async () => {
   const { bot, sent, timeouts } = createBot();
-  updateAutomodSettings(bot.db, "g", { escalationWarns: 1 }, "admin");
+  updateAutomodSettings(bot.db, "g", { sensitivity: 1 }, "admin");
   await autoModerationActionExecution(
     bot,
     execution({ timeouts, moderatable: false }),
@@ -258,4 +259,104 @@ test("a member Tsuki cannot moderate is only warned", async () => {
   assert.equal(timeouts.length, 0);
   assert.equal(countWarnings(bot.db, "g", "u"), 1);
   assert.equal(sent.length, 1);
+});
+
+function pastInfraction(db, points, daysAgo) {
+  addLog(db, {
+    guildId: "g",
+    channelId: "log",
+    messageId: `old-${points}-${daysAgo}`,
+    userId: "u",
+    points,
+    trust: 1,
+    date: Date.now() - daysAgo * DAY,
+  });
+}
+
+test("an infraction without a log channel still counts for the score", async () => {
+  const { bot } = createBot();
+  await autoModerationActionExecution(bot, execution());
+  const row = { ...bot.db.prepare("SELECT * FROM automod_logs").get() };
+  assert.equal(row.channel, "-");
+  assert.equal(row.message, "WARN-1");
+  assert.equal(row.user_id, "u");
+  assert.equal(row.points, 1);
+  assert.equal(row.trust, 1);
+});
+
+test("the score adds the infractions of the last days", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(bot.db, "g", { sensitivity: 3 }, "admin");
+  pastInfraction(bot.db, 4, 3);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.deepEqual(timeouts, [[3600000, "AutoMod : score de risque 3"]]);
+});
+
+test("an old infraction fades away before the threshold", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(bot.db, "g", { sensitivity: 3 }, "admin");
+  pastInfraction(bot.db, 4, 6);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.equal(timeouts.length, 0);
+});
+
+test("a very old infraction is not counted at all", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { sensitivity: 3, halfLifeDays: 30 },
+    "admin",
+  );
+  pastInfraction(bot.db, 20, 31);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.equal(timeouts.length, 0);
+});
+
+test("the half-life of the server sets how fast the score fades", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { sensitivity: 3, halfLifeDays: 1 },
+    "admin",
+  );
+  pastInfraction(bot.db, 4, 3);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.equal(timeouts.length, 0);
+});
+
+test("a sensitivity of zero never times the member out", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(bot.db, "g", { sensitivity: 0 }, "admin");
+  pastInfraction(bot.db, 20, 0);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.equal(timeouts.length, 0);
+});
+
+test("a member who just arrived reaches the threshold sooner", async () => {
+  const { bot, timeouts } = createBot();
+  updateAutomodSettings(bot.db, "g", { sensitivity: 3 }, "admin");
+  const rule = { creatorId: BOT, name: RULE_NAMES.words };
+  await autoModerationActionExecution(
+    bot,
+    execution({ rule, timeouts, joinedTimestamp: Date.now() - DAY }),
+  );
+  assert.deepEqual(timeouts, [[3600000, "AutoMod : score de risque 3"]]);
+});
+
+test("the private notice tells the score and the threshold", async () => {
+  const { bot, sent } = createBot();
+  await autoModerationActionExecution(bot, execution());
+  assert.match(
+    sent[0].content,
+    /\*\*Score :\*\* 1 sur 6, à 6, tu seras mis en sourdine 60 minutes\./,
+  );
+});
+
+test("the private notice stops announcing when the threshold is reached", async () => {
+  const { bot, sent } = createBot();
+  updateAutomodSettings(bot.db, "g", { sensitivity: 1 }, "admin");
+  await autoModerationActionExecution(bot, execution());
+  assert.match(sent[0].content, /\*\*Score :\*\* 1\.$/);
 });

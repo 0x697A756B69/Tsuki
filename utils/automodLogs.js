@@ -10,6 +10,7 @@ const {
 } = require("discord.js");
 const { RULE_LABELS } = require("./automodWarnings");
 const { buildCustomId } = require("./customId");
+const { formatNumber } = require("./riskScore");
 
 const BLOCKED_COLOR = 0xe5484d;
 const OBSERVED_COLOR = 0xf5a524;
@@ -18,6 +19,7 @@ const ACTION_ID = "automod-action";
 const EXCERPT_LENGTH = 200;
 const RETENTION = 30 * 24 * 60 * 60 * 1000;
 const PURGE_BATCH = 100;
+const UNLOGGED_CHANNEL = "-";
 
 function logTitle(ruleKey, observed = false) {
   return `${observed ? "Message détecté" : "Message bloqué"} : ${RULE_LABELS[ruleKey]}`;
@@ -84,6 +86,12 @@ function resolvedNotice({ moderatorId, label, date }) {
   return `Traité par <@${moderatorId}> : ${label}, le <t:${Math.floor(date / 1000)}:f>`;
 }
 
+function scoreLine({ observed, score, threshold, points, trust }) {
+  if (observed || score === null) return "";
+  const limit = threshold > 0 ? ` / ${threshold}` : "";
+  return `\n**Score :** ${formatNumber(score)}${limit} (${points} × ${formatNumber(trust)})`;
+}
+
 function buildLogMessage({
   ruleKey,
   ruleName,
@@ -96,6 +104,10 @@ function buildLogMessage({
   messageId = null,
   resolved = null,
   observed = false,
+  score = null,
+  threshold = 0,
+  points = null,
+  trust = null,
   date = Date.now(),
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
@@ -112,7 +124,7 @@ function buildLogMessage({
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(
       text(
-        `**Règle :** ${ruleName}\n**Action :** ${observed ? "observation, aucune sanction" : `bloqué, avertissement ajouté (${warningTotal} au total)`}`,
+        `**Règle :** ${ruleName}\n**Action :** ${observed ? "observation, aucune sanction" : `bloqué, avertissement ajouté (${warningTotal} au total)`}${scoreLine({ observed, score, threshold, points, trust })}`,
       ),
     );
 
@@ -300,6 +312,7 @@ module.exports = {
   ACTION_ID,
   EXCERPT_LENGTH,
   RETENTION,
+  UNLOGGED_CHANNEL,
   logTitle,
   excerpt,
   buildLogMessage,

@@ -1,4 +1,5 @@
 const { RULE_NAMES } = require("./automodRules");
+const { formatNumber } = require("./riskScore");
 
 const RULE_LABELS = {
   words: "mot interdit",
@@ -38,33 +39,24 @@ function addAutomodWarning(
   return { id, reason, total: countWarnings(db, guildId, userId) };
 }
 
-function blockedNotice(guildName, ruleKey, total, settings) {
-  const left = settings.escalationWarns > 0 && total < settings.escalationWarns;
+function blockedNotice(guildName, ruleKey, { total, score }, settings) {
+  const left = settings.sensitivity > 0 && score < settings.sensitivity;
   const minutes = settings.escalationMinutes;
-  const count = left
-    ? `${total} sur ${settings.escalationWarns}, à ${settings.escalationWarns}, tu seras mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""}.`
-    : `${total}.`;
+  const risk = left
+    ? `${formatNumber(score)} sur ${settings.sensitivity}, à ${settings.sensitivity}, tu seras mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""}.`
+    : `${formatNumber(score)}.`;
   return `Ton message a été bloqué sur ${guildName}.
 **Règle :** ${RULE_LABELS[ruleKey]}
-**Avertissements :** ${count}`;
-}
-
-function getEscalation(settings, total) {
-  if (settings.escalationWarns === 0 || total < settings.escalationWarns)
-    return null;
-  return {
-    minutes: settings.escalationMinutes,
-    reason: `AutoMod : ${total} avertissements`,
-  };
+**Avertissements :** ${total}.
+**Score :** ${risk}`;
 }
 
 function escalationNotice(guildName, minutes) {
-  return `Tu as été mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""} sur ${guildName} après plusieurs avertissements.`;
+  return `Tu as été mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""} sur ${guildName} : ton score de risque est trop élevé.`;
 }
 
 module.exports = {
   RULE_LABELS,
-  getEscalation,
   escalationNotice,
   getRuleKey,
   warningReason,

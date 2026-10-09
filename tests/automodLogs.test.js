@@ -248,6 +248,36 @@ test("a blocked message log carries the warning for its buttons", async () => {
   assert.match(json, new RegExp(`${ACTION_ID}:remove:u:WARN-1`));
 });
 
+test("a blocked log shows the score, the threshold and its detail", () => {
+  const json = render({ score: 4.5, threshold: 6, points: 3, trust: 1.5 });
+  assert.match(json, /\*\*Score :\*\* 4,5 \/ 6 \(3 × 1,5\)/);
+});
+
+test("a log leaves the threshold out when the muting is off", () => {
+  const json = render({ score: 3, threshold: 0, points: 3, trust: 1 });
+  assert.match(json, /\*\*Score :\*\* 3 \(3 × 1\)/);
+});
+
+test("an observed or unscored log has no score line", () => {
+  assert.doesNotMatch(
+    render({ observed: true, score: 3, threshold: 6, points: 3, trust: 1 }),
+    /Score/,
+  );
+  assert.doesNotMatch(render(), /Score/);
+});
+
+test("a block posts the score of the member in the log", async () => {
+  const sent = [];
+  const channel = logChannel(sent);
+  const bot = createBot(channel);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(bot, execution({ channel }));
+  assert.match(
+    JSON.stringify(sent[0].components[0].toJSON()),
+    /Score :\*\* 2 \/ 6 \(2 × 1\)/,
+  );
+});
+
 test("logs are stored with identifiers and dates only", () => {
   const db = createDatabase();
   addLog(db, {
@@ -571,7 +601,7 @@ test("a timeout is noted in the log with the exact end", async () => {
   updateAutomodSettings(
     bot.db,
     "g",
-    { logChannel: "log", escalationWarns: 1 },
+    { logChannel: "log", sensitivity: 2 },
     "admin",
   );
   const member = {
