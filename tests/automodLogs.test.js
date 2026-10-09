@@ -100,6 +100,10 @@ test("logTitle names the blocked rule", () => {
   assert.equal(logTitle("mentions"), "Message bloqué : mentions de masse");
 });
 
+test("logTitle says detected instead of blocked in observation", () => {
+  assert.equal(logTitle("spam", true), "Message détecté : spam");
+});
+
 test("excerpt keeps a short text as one line", () => {
   assert.equal(excerpt("  un  \n mot  "), "un mot");
 });
@@ -322,4 +326,64 @@ test("the native alert is deleted once a log channel is set", async () => {
   );
   assert.deepEqual(deleted, ["alert"]);
   assert.equal(bot.db.prepare("SELECT COUNT(*) AS n FROM warns").get().n, 0);
+});
+
+test("an observed message is logged in yellow without sanction", () => {
+  const json = render({
+    observed: true,
+    messageUrl: "https://discord.com/channels/g/c/m",
+  });
+  assert.match(json, /Message détecté : mot interdit/);
+  assert.match(json, /observation, aucune sanction/);
+  assert.match(json, /Aller au message/);
+  assert.doesNotMatch(json, /avertissement ajouté/);
+  assert.notEqual(
+    buildLogMessage(data({ observed: true })).components[0].toJSON()
+      .accent_color,
+    buildLogMessage(data()).components[0].toJSON().accent_color,
+  );
+});
+
+test("in observation the alert becomes a log, with no warning", async () => {
+  const sent = [];
+  const deleted = [];
+  const channel = logChannel(sent, deleted);
+  const bot = createBot(channel);
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { logChannel: "log", observation: true },
+    "admin",
+  );
+  await autoModerationActionExecution(
+    bot,
+    execution({
+      channel,
+      type: AutoModerationActionType.SendAlertMessage,
+      messageId: "m",
+      alertSystemMessageId: "alert",
+    }),
+  );
+  assert.equal(sent.length, 1);
+  const json = JSON.stringify(sent[0].components[0].toJSON());
+  assert.match(json, /Message détecté/);
+  assert.match(json, /channels\/g\/c\/m/);
+  assert.deepEqual(deleted, ["alert"]);
+  assert.equal(bot.db.prepare("SELECT COUNT(*) AS n FROM warns").get().n, 0);
+});
+
+test("outside observation the alert is deleted but nothing is logged", async () => {
+  const sent = [];
+  const channel = logChannel(sent);
+  const bot = createBot(channel);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(
+    bot,
+    execution({
+      channel,
+      type: AutoModerationActionType.SendAlertMessage,
+      alertSystemMessageId: "alert",
+    }),
+  );
+  assert.equal(sent.length, 0);
 });

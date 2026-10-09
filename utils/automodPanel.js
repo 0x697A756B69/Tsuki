@@ -130,6 +130,13 @@ function renderMainView({ settings, words, exemptions, guild }) {
         settings.logChannel ? `<#${settings.logChannel}>` : "Aucun salon",
         button("logs", "Modifier"),
       ),
+      setting(
+        "Mode observation",
+        settings.observation
+          ? "Activé : rien n'est bloqué ni sanctionné, les messages sont seulement signalés dans les logs"
+          : "Désactivé",
+        toggle("observation-toggle", settings.observation),
+      ),
     )
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(text(describeHistory(settings)));

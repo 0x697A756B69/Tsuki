@@ -22,6 +22,7 @@ const {
   getExemptions,
   setExemptions,
   getAutomodConfig,
+  toggleObservation,
   syncErrorMessage,
 } = require("../utils/automodConfig");
 
@@ -102,11 +103,17 @@ module.exports = defineComponent({
         );
         return finish(interaction, db, main);
       }
+      if (action === "observation-toggle") {
+        const result = toggleObservation(settings);
+        if (result.error) return refuse(interaction, result.error);
+        updateAutomodSettings(db, guildId, result, author);
+        return finish(interaction, db, main);
+      }
       if (action === "logs-clear") {
         const updated = updateAutomodSettings(
           db,
           guildId,
-          { logChannel: null },
+          { logChannel: null, observation: false },
           author,
         );
         return finish(interaction, db, () =>

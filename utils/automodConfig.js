@@ -124,7 +124,18 @@ function getAutomodConfig(db, guildId) {
     exemptRoles: exemptions.roles,
     exemptChannels: exemptions.channels,
     logChannel: settings.logChannel,
+    observation: settings.observation,
   };
+}
+
+function toggleObservation(settings) {
+  if (settings.observation) return { observation: false };
+  if (settings.logChannel === null)
+    return {
+      error:
+        "Choisis d'abord un salon de logs : le mode observation y signale les messages au lieu de les bloquer.",
+    };
+  return { observation: true };
 }
 
 function syncErrorMessage(error) {
@@ -158,6 +169,7 @@ module.exports = {
   getExemptions,
   setExemptions,
   getAutomodConfig,
+  toggleObservation,
   syncErrorMessage,
   mainView,
 };

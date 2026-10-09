@@ -19,6 +19,7 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     spamEnabled: false,
     mentionsEnabled: false,
     mentionLimit: 5,
+    observation: false,
     escalationWarns: 3,
     escalationMinutes: 60,
     updatedBy: null,
@@ -121,4 +122,16 @@ test("updateAutomodSettings turns the spam and mention rules on and off", () => 
   const off = updateAutomodSettings(db, "g", { spamEnabled: false }, "admin");
   assert.equal(off.spamEnabled, false);
   assert.equal(off.mentionsEnabled, true);
+});
+
+test("updateAutomodSettings turns the observation mode on and off", () => {
+  const db = createDatabase();
+  assert.equal(
+    updateAutomodSettings(db, "g", { observation: true }, "admin").observation,
+    true,
+  );
+  assert.equal(
+    updateAutomodSettings(db, "g", { observation: false }, "admin").observation,
+    false,
+  );
 });

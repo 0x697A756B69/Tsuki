@@ -15,6 +15,7 @@ const defaults = {
   spamEnabled: false,
   mentionsEnabled: false,
   mentionLimit: 5,
+  observation: false,
   escalationWarns: 3,
   escalationMinutes: 60,
   updatedBy: null,
@@ -61,6 +62,7 @@ test("main view shows every setting with a button", () => {
     "Exemptions",
     "Escalade",
     "Logs",
+    "Mode observation",
   ])
     assert.match(view.text, new RegExp(title));
   assert.deepEqual(
@@ -73,6 +75,7 @@ test("main view shows every setting with a button", () => {
       "automod-config:exemptions",
       "automod-config:escalation",
       "automod-config:logs",
+      "automod-config:observation-toggle",
     ],
   );
 });
@@ -207,4 +210,20 @@ test("the modals post to the automod component", () => {
     [renderEscalationModal({ settings: defaults }), "save-escalation"],
   ])
     assert.equal(render(modal).all[0].custom_id, `automod-config:${action}`);
+});
+
+test("main view shows the observation mode", () => {
+  const off = main({ ...defaults, logChannel: "42" });
+  assert.match(off.text, /Mode observation\*\*\nDésactivé/);
+  const on = main({ ...defaults, logChannel: "42", observation: true });
+  assert.match(
+    on.text,
+    /Mode observation\*\*\nActivé : rien n'est bloqué ni sanctionné/,
+  );
+  const toggle = (view) =>
+    view
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === "automod-config:observation-toggle");
+  assert.equal(toggle(off).label, "Activer");
+  assert.equal(toggle(on).label, "Désactiver");
 });

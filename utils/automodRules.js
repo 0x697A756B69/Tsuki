@@ -24,6 +24,7 @@ function buildRules(config) {
     type: AutoModerationActionType.BlockMessage,
     metadata: { customMessage: BLOCK_MESSAGE },
   };
+  const observing = config.observation && config.logChannel !== null;
   const alert =
     config.logChannel === null
       ? []
@@ -36,7 +37,7 @@ function buildRules(config) {
 
   const base = {
     eventType: AutoModerationRuleEventType.MessageSend,
-    actions: [block, ...alert],
+    actions: observing ? alert : [block, ...alert],
     enabled: true,
     exemptRoles: config.exemptRoles.slice(0, MAX_EXEMPT_ROLES),
     exemptChannels: config.exemptChannels.slice(0, MAX_EXEMPT_CHANNELS),

@@ -3,6 +3,7 @@ const COLUMNS = {
   spamEnabled: "spam_enabled",
   mentionsEnabled: "mentions_enabled",
   mentionLimit: "mention_limit",
+  observation: "observation",
   escalationWarns: "escalation_warns",
   escalationMinutes: "escalation_minutes",
 };
@@ -13,6 +14,7 @@ function toSettings(row) {
     spamEnabled: Number(row.spam_enabled) === 1,
     mentionsEnabled: Number(row.mentions_enabled) === 1,
     mentionLimit: Number(row.mention_limit),
+    observation: Number(row.observation) === 1,
     escalationWarns: Number(row.escalation_warns),
     escalationMinutes: Number(row.escalation_minutes),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),

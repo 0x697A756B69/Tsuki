@@ -17,6 +17,7 @@ function config(changes = {}) {
     exemptRoles: [],
     exemptChannels: [],
     logChannel: null,
+    observation: false,
     ...changes,
   };
 }
@@ -130,4 +131,22 @@ test("syncRules leaves other people's rules alone", async () => {
 
   assert.deepEqual(result, { created: [], updated: [], deleted: [] });
   assert.equal(calls.deleted.length, 0);
+});
+
+test("observation keeps only the alert, no blocking", () => {
+  const [rule] = buildRules(
+    config({ spam: true, logChannel: "42", observation: true }),
+  );
+  assert.deepEqual(
+    rule.actions.map((action) => action.type),
+    [AutoModerationActionType.SendAlertMessage],
+  );
+});
+
+test("observation without a log channel still blocks", () => {
+  const [rule] = buildRules(config({ spam: true, observation: true }));
+  assert.deepEqual(
+    rule.actions.map((action) => action.type),
+    [AutoModerationActionType.BlockMessage],
+  );
 });
