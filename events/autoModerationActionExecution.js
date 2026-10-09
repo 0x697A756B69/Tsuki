@@ -1,8 +1,11 @@
 const { AutoModerationActionType } = require("discord.js");
+const { getAutomodSettings } = require("../utils/automodSettings");
 const {
   getRuleKey,
   addAutomodWarning,
   warningNotice,
+  getEscalation,
+  escalationNotice,
 } = require("../utils/automodWarnings");
 
 module.exports = async (bot, execution) => {
@@ -25,8 +28,26 @@ module.exports = async (bot, execution) => {
     ruleKey,
   });
 
+  const escalation = getEscalation(
+    getAutomodSettings(bot.db, execution.guild.id),
+    warning.total,
+  );
+  const member = escalation
+    ? await execution.guild.members.fetch(execution.userId).catch(() => null)
+    : null;
+  const timedOut =
+    member?.moderatable === true &&
+    (await member
+      .timeout(escalation.minutes * 60 * 1000, escalation.reason)
+      .then(() => true)
+      .catch(() => false));
+
   const user = await bot.users.fetch(execution.userId).catch(() => null);
   await user
     ?.send(warningNotice(execution.guild.name, warning.reason))
     .catch(() => {});
+  if (timedOut)
+    await user
+      ?.send(escalationNotice(execution.guild.name, escalation.minutes))
+      .catch(() => {});
 };

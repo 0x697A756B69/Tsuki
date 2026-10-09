@@ -42,7 +42,22 @@ function warningNotice(guildName, reason) {
   return `Tu as reçu un avertissement automatique sur ${guildName}.\n> **Raison :** \`${reason}\``;
 }
 
+function getEscalation(settings, total) {
+  if (settings.escalationWarns === 0 || total < settings.escalationWarns)
+    return null;
+  return {
+    minutes: settings.escalationMinutes,
+    reason: `AutoMod : ${total} avertissements`,
+  };
+}
+
+function escalationNotice(guildName, minutes) {
+  return `Tu as été mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""} sur ${guildName} après plusieurs avertissements.`;
+}
+
 module.exports = {
+  getEscalation,
+  escalationNotice,
   getRuleKey,
   warningReason,
   countWarnings,

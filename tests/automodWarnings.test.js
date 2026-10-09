@@ -10,8 +10,12 @@ const {
   countWarnings,
   addAutomodWarning,
   warningNotice,
+  getEscalation,
+  escalationNotice,
 } = require("../utils/automodWarnings");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
+
+const { updateAutomodSettings } = require("../utils/automodSettings");
 
 const BOT = "bot";
 
@@ -35,20 +39,24 @@ function warning(changes = {}) {
 
 function createBot() {
   const sent = [];
+  const timeouts = [];
   let next = 0;
   const bot = {
     db: createDatabase(),
     user: { id: BOT },
     utils: { createId: async (prefix) => `${prefix}-${++next}` },
+    timeouts,
     users: { fetch: async () => ({ send: async (text) => sent.push(text) }) },
   };
-  return { bot, sent };
+  return { bot, sent, timeouts };
 }
 
 function execution({
   type = AutoModerationActionType.BlockMessage,
   rule = { creatorId: BOT, name: RULE_NAMES.spam },
   userId = "u",
+  moderatable = true,
+  timeouts = [],
 } = {}) {
   return {
     action: { type },
@@ -58,6 +66,12 @@ function execution({
     guild: {
       id: "g",
       name: "Serveur",
+      members: {
+        fetch: async () => ({
+          moderatable,
+          timeout: async (ms, reason) => timeouts.push([ms, reason]),
+        }),
+      },
       autoModerationRules: { fetch: async () => rule },
     },
   };
@@ -169,4 +183,54 @@ test("a member with closed DMs is still warned", async () => {
   });
   await autoModerationActionExecution(bot, execution());
   assert.equal(countWarnings(bot.db, "g", "u"), 1);
+});
+
+const SETTINGS = { escalationWarns: 3, escalationMinutes: 60 };
+
+test("getEscalation waits for the threshold", () => {
+  assert.equal(getEscalation(SETTINGS, 2), null);
+  assert.deepEqual(getEscalation(SETTINGS, 3), {
+    minutes: 60,
+    reason: "AutoMod : 3 avertissements",
+  });
+  assert.equal(getEscalation(SETTINGS, 5).reason, "AutoMod : 5 avertissements");
+});
+
+test("getEscalation is off when the threshold is 0", () => {
+  assert.equal(getEscalation({ ...SETTINGS, escalationWarns: 0 }, 10), null);
+});
+
+test("escalationNotice pluralises the minutes", () => {
+  assert.equal(
+    escalationNotice("Serveur", 1),
+    "Tu as été mis en sourdine 1 minute sur Serveur après plusieurs avertissements.",
+  );
+  assert.match(escalationNotice("Serveur", 60), /60 minutes/);
+});
+
+test("the warning at the threshold times the member out", async () => {
+  const { bot, sent, timeouts } = createBot();
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { escalationWarns: 2, escalationMinutes: 10 },
+    "admin",
+  );
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.equal(timeouts.length, 0);
+  await autoModerationActionExecution(bot, execution({ timeouts }));
+  assert.deepEqual(timeouts, [[600000, "AutoMod : 2 avertissements"]]);
+  assert.equal(sent.length, 3);
+});
+
+test("a member Tsuki cannot moderate is only warned", async () => {
+  const { bot, sent, timeouts } = createBot();
+  updateAutomodSettings(bot.db, "g", { escalationWarns: 1 }, "admin");
+  await autoModerationActionExecution(
+    bot,
+    execution({ timeouts, moderatable: false }),
+  );
+  assert.equal(timeouts.length, 0);
+  assert.equal(countWarnings(bot.db, "g", "u"), 1);
+  assert.equal(sent.length, 1);
 });
