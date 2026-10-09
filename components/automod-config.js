@@ -11,12 +11,14 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderContestModal,
 } = require("../utils/automodPanel");
 const {
   mainView,
   parseWords,
   parseMentionLimit,
   parseEscalation,
+  parseContest,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -79,6 +81,8 @@ module.exports = defineComponent({
         return interaction.showModal(renderMentionLimitModal({ settings }));
       if (action === "escalation")
         return interaction.showModal(renderEscalationModal({ settings }));
+      if (action === "contest")
+        return interaction.showModal(renderContestModal({ settings }));
       if (action === "exemptions")
         return interaction.update(
           renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
@@ -179,6 +183,15 @@ module.exports = defineComponent({
         });
         if (parsed.error) return refuse(interaction, parsed.error);
         updateAutomodSettings(db, guildId, parsed.escalation, author);
+        return interaction.update(main());
+      }
+
+      if (action === "save-contest") {
+        const parsed = parseContest(
+          interaction.fields.getTextInputValue("hours"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        updateAutomodSettings(db, guildId, parsed, author);
         return interaction.update(main());
       }
     }

@@ -4,6 +4,7 @@ const COLUMNS = {
   mentionsEnabled: "mentions_enabled",
   mentionLimit: "mention_limit",
   observation: "observation",
+  contestHours: "contest_hours",
   escalationWarns: "escalation_warns",
   escalationMinutes: "escalation_minutes",
 };
@@ -15,6 +16,7 @@ function toSettings(row) {
     mentionsEnabled: Number(row.mentions_enabled) === 1,
     mentionLimit: Number(row.mention_limit),
     observation: Number(row.observation) === 1,
+    contestHours: Number(row.contest_hours),
     escalationWarns: Number(row.escalation_warns),
     escalationMinutes: Number(row.escalation_minutes),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),

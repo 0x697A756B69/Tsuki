@@ -6,6 +6,7 @@ const {
   parseWords,
   parseMentionLimit,
   parseEscalation,
+  parseContest,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -163,4 +164,15 @@ test("toggleObservation can always stop", () => {
   assert.deepEqual(toggleObservation({ logChannel: null, observation: true }), {
     observation: false,
   });
+});
+
+test("parseContest reads a window between 0 and 720 hours", () => {
+  assert.deepEqual(parseContest(" 48 "), { contestHours: 48 });
+  assert.deepEqual(parseContest("0"), { contestHours: 0 });
+  assert.deepEqual(parseContest("720"), { contestHours: 720 });
+});
+
+test("parseContest rejects anything else", () => {
+  for (const value of ["", "721", "-1", "1.5", "abc"])
+    assert.match(parseContest(value).error, /entre 0 et 720 heures/);
 });

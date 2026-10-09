@@ -8,6 +8,7 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderContestModal,
 } = require("../utils/automodPanel");
 
 const defaults = {
@@ -16,6 +17,7 @@ const defaults = {
   mentionsEnabled: false,
   mentionLimit: 5,
   observation: false,
+  contestHours: 168,
   escalationWarns: 3,
   escalationMinutes: 60,
   updatedBy: null,
@@ -61,6 +63,7 @@ test("main view shows every setting with a button", () => {
     "Limite de mentions",
     "Exemptions",
     "Escalade",
+    "Contestation",
     "Logs",
     "Mode observation",
   ])
@@ -74,6 +77,7 @@ test("main view shows every setting with a button", () => {
       "automod-config:mention-limit",
       "automod-config:exemptions",
       "automod-config:escalation",
+      "automod-config:contest",
       "automod-config:logs",
       "automod-config:observation-toggle",
     ],
@@ -88,6 +92,7 @@ test("main view describes the defaults", () => {
   assert.match(view.text, /5 mentions par message/);
   assert.match(view.text, /Aucune exemption/);
   assert.match(view.text, /Timeout de 1 h à 3 avertissements/);
+  assert.match(view.text, /Fenêtre de 7 j/);
   assert.match(view.text, /Aucun salon/);
   assert.match(view.text, /jamais modifiés/);
 });
@@ -208,6 +213,7 @@ test("the modals post to the automod component", () => {
     [renderWordsModal({ words: [] }), "save-words"],
     [renderMentionLimitModal({ settings: defaults }), "save-mention-limit"],
     [renderEscalationModal({ settings: defaults }), "save-escalation"],
+    [renderContestModal({ settings: defaults }), "save-contest"],
   ])
     assert.equal(render(modal).all[0].custom_id, `automod-config:${action}`);
 });
@@ -226,4 +232,25 @@ test("main view shows the observation mode", () => {
       .find((b) => b.custom_id === "automod-config:observation-toggle");
   assert.equal(toggle(off).label, "Activer");
   assert.equal(toggle(on).label, "Désactiver");
+});
+
+test("main view describes the contest window", () => {
+  assert.match(
+    main({ ...defaults, contestHours: 12 }).text,
+    /Contestation\*\*\nFenêtre de 12 h/,
+  );
+  assert.match(
+    main({ ...defaults, contestHours: 0 }).text,
+    /Contestation\*\*\nDésactivée/,
+  );
+});
+
+test("the contest modal asks for the window in hours", () => {
+  const fields = render(renderContestModal({ settings: defaults })).of(
+    ComponentType.TextInput,
+  );
+  assert.deepEqual(
+    fields.map((i) => [i.custom_id, i.value]),
+    [["hours", "168"]],
+  );
 });

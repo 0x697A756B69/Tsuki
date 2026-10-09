@@ -10,6 +10,7 @@ const MAX_WORD_LENGTH = 60;
 const MAX_MENTION_LIMIT = 50;
 const MAX_ESCALATION_WARNS = 20;
 const MAX_ESCALATION_MINUTES = 40320;
+const MAX_CONTEST_HOURS = 720;
 const EXEMPTION_KINDS = ["role", "channel"];
 
 function parseWords(value) {
@@ -66,6 +67,15 @@ function parseEscalation({ warns, minutes }) {
       escalationMinutes: Number(duration),
     },
   };
+}
+
+function parseContest(value) {
+  const hours = value.trim();
+  if (!/^\d+$/.test(hours) || Number(hours) > MAX_CONTEST_HOURS)
+    return {
+      error: `La durée doit être un entier entre 0 et ${MAX_CONTEST_HOURS} heures.`,
+    };
+  return { contestHours: Number(hours) };
 }
 
 function getAutomodWords(db, guildId) {
@@ -161,9 +171,11 @@ module.exports = {
   MAX_MENTION_LIMIT,
   MAX_ESCALATION_WARNS,
   MAX_ESCALATION_MINUTES,
+  MAX_CONTEST_HOURS,
   parseWords,
   parseMentionLimit,
   parseEscalation,
+  parseContest,
   getAutomodWords,
   setAutomodWords,
   getExemptions,

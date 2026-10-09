@@ -73,6 +73,11 @@ function describeEscalation(settings) {
   return `Timeout de ${formatDuration(settings.escalationMinutes)} à ${plural(settings.escalationWarns, "avertissement")}`;
 }
 
+function describeContest(settings) {
+  if (settings.contestHours === 0) return "Désactivée";
+  return `Fenêtre de ${formatDuration(settings.contestHours * 60)}`;
+}
+
 function describeHistory(settings) {
   if (settings.updatedBy === null)
     return "-# Réglages par défaut, jamais modifiés";
@@ -124,6 +129,11 @@ function renderMainView({ settings, words, exemptions, guild }) {
         "Escalade",
         describeEscalation(settings),
         button("escalation", "Modifier"),
+      ),
+      setting(
+        "Contestation",
+        describeContest(settings),
+        button("contest", "Modifier"),
       ),
       setting(
         "Logs",
@@ -263,6 +273,24 @@ function renderEscalationModal({ settings }) {
     );
 }
 
+function renderContestModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-contest"))
+    .setTitle("Contestation")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Durée de la fenêtre (heures)")
+        .setDescription(
+          "Le membre bloqué peut contester pendant ce temps. 0 désactive. Jusqu'à 720 heures (30 jours).",
+        )
+        .setTextInputComponent(
+          field("hours", settings.contestHours)
+            .setRequired(true)
+            .setMaxLength(3),
+        ),
+    );
+}
+
 module.exports = {
   renderMainView,
   renderExemptionsView,
@@ -270,4 +298,5 @@ module.exports = {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderContestModal,
 };

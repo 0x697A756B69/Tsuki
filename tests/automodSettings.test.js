@@ -20,6 +20,7 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     mentionsEnabled: false,
     mentionLimit: 5,
     observation: false,
+    contestHours: 168,
     escalationWarns: 3,
     escalationMinutes: 60,
     updatedBy: null,
@@ -89,6 +90,8 @@ test("the database rejects invalid values", () => {
     { escalationWarns: -1 },
     { escalationMinutes: 0 },
     { escalationMinutes: 40321 },
+    { contestHours: -1 },
+    { contestHours: 721 },
   ])
     assert.throws(() => updateAutomodSettings(db, "g", changes, "admin"));
 
@@ -133,5 +136,17 @@ test("updateAutomodSettings turns the observation mode on and off", () => {
   assert.equal(
     updateAutomodSettings(db, "g", { observation: false }, "admin").observation,
     false,
+  );
+});
+
+test("updateAutomodSettings changes the contest window and turns it off", () => {
+  const db = createDatabase();
+  assert.equal(
+    updateAutomodSettings(db, "g", { contestHours: 48 }, "admin").contestHours,
+    48,
+  );
+  assert.equal(
+    updateAutomodSettings(db, "g", { contestHours: 0 }, "admin").contestHours,
+    0,
   );
 });
