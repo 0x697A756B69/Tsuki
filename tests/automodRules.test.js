@@ -75,6 +75,19 @@ test("buildRules always blocks the message", () => {
   assert.ok(rule.actions[0].metadata.customMessage.length <= 150);
 });
 
+test("buildRules explains each rule in its own block message", () => {
+  const rules = buildRules(
+    config({ words: ["a"], spam: true, mentions: true }),
+  );
+  const messages = rules.map((rule) => rule.actions[0].metadata.customMessage);
+
+  assert.equal(new Set(messages).size, 3);
+  for (const message of messages) assert.ok(message.length <= 150);
+  assert.match(messages[0], /mot interdit/);
+  assert.match(messages[1], /spam/);
+  assert.match(messages[2], /mentions/);
+});
+
 test("buildRules alerts the log channel when there is one", () => {
   const [rule] = buildRules(config({ spam: true, logChannel: "42" }));
 

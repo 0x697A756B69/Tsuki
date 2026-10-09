@@ -9,7 +9,7 @@ const {
   warningReason,
   countWarnings,
   addAutomodWarning,
-  warningNotice,
+  blockedNotice,
   getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
@@ -137,10 +137,35 @@ test("addAutomodWarning refuses an unknown rule", () => {
   );
 });
 
-test("warningNotice names the server and the reason", () => {
+test("blockedNotice names the server, the rule and the count", () => {
   assert.equal(
-    warningNotice("Serveur", "AutoMod : spam"),
-    "Tu as reçu un avertissement automatique sur Serveur.\n> **Raison :** `AutoMod : spam`",
+    blockedNotice("Serveur", "words", 2, {
+      escalationWarns: 0,
+      escalationMinutes: 10,
+    }),
+    "Ton message a été bloqué sur Serveur.\n**Règle :** mot interdit\n**Avertissements :** 2.",
+  );
+});
+
+test("blockedNotice announces the next sanction before the threshold", () => {
+  const settings = { escalationWarns: 3, escalationMinutes: 10 };
+  assert.equal(
+    blockedNotice("Serveur", "spam", 2, settings),
+    "Ton message a été bloqué sur Serveur.\n**Règle :** spam\n**Avertissements :** 2 sur 3, à 3, tu seras mis en sourdine 10 minutes.",
+  );
+  assert.match(
+    blockedNotice("Serveur", "spam", 1, { ...settings, escalationMinutes: 1 }),
+    /sourdine 1 minute\./,
+  );
+});
+
+test("blockedNotice stops announcing once the threshold is reached", () => {
+  const settings = { escalationWarns: 3, escalationMinutes: 10 };
+  assert.equal(
+    blockedNotice("Serveur", "mentions", 3, settings).endsWith(
+      "**Avertissements :** 3.",
+    ),
+    true,
   );
 });
 

@@ -3,7 +3,7 @@ const { getAutomodSettings } = require("../utils/automodSettings");
 const {
   getRuleKey,
   addAutomodWarning,
-  warningNotice,
+  blockedNotice,
   getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
@@ -78,7 +78,9 @@ module.exports = async (bot, execution) => {
 
   const user = await bot.users.fetch(execution.userId).catch(() => null);
   await user
-    ?.send(warningNotice(execution.guild.name, warning.reason))
+    ?.send(
+      blockedNotice(execution.guild.name, ruleKey, warning.total, settings),
+    )
     .catch(() => {});
   if (timedOut)
     await user

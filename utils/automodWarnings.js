@@ -38,8 +38,15 @@ function addAutomodWarning(
   return { id, reason, total: countWarnings(db, guildId, userId) };
 }
 
-function warningNotice(guildName, reason) {
-  return `Tu as reçu un avertissement automatique sur ${guildName}.\n> **Raison :** \`${reason}\``;
+function blockedNotice(guildName, ruleKey, total, settings) {
+  const left = settings.escalationWarns > 0 && total < settings.escalationWarns;
+  const minutes = settings.escalationMinutes;
+  const count = left
+    ? `${total} sur ${settings.escalationWarns}, à ${settings.escalationWarns}, tu seras mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""}.`
+    : `${total}.`;
+  return `Ton message a été bloqué sur ${guildName}.
+**Règle :** ${RULE_LABELS[ruleKey]}
+**Avertissements :** ${count}`;
 }
 
 function getEscalation(settings, total) {
@@ -63,5 +70,5 @@ module.exports = {
   warningReason,
   countWarnings,
   addAutomodWarning,
-  warningNotice,
+  blockedNotice,
 };
