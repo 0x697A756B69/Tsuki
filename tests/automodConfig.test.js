@@ -11,6 +11,7 @@ const {
   getExemptions,
   setExemptions,
   getAutomodConfig,
+  toggleObservation,
   syncErrorMessage,
 } = require("../utils/automodConfig");
 const {
@@ -140,6 +141,7 @@ test("getAutomodConfig gathers everything the rules need", () => {
     exemptRoles: ["r1"],
     exemptChannels: ["c1"],
     logChannel: "42",
+    observation: false,
   });
 });
 
@@ -147,4 +149,18 @@ test("syncErrorMessage explains the usual Discord refusals", () => {
   assert.match(syncErrorMessage({ code: 50013 }), /Gérer le serveur/);
   assert.match(syncErrorMessage({ code: 30032 }), /limite/);
   assert.match(syncErrorMessage(new Error("boom")), /refusé/);
+});
+
+test("toggleObservation needs a log channel to start", () => {
+  const settings = { logChannel: null, observation: false };
+  assert.match(toggleObservation(settings).error, /salon de logs/);
+  assert.deepEqual(toggleObservation({ ...settings, logChannel: "42" }), {
+    observation: true,
+  });
+});
+
+test("toggleObservation can always stop", () => {
+  assert.deepEqual(toggleObservation({ logChannel: null, observation: true }), {
+    observation: false,
+  });
 });
