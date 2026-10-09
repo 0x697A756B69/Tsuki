@@ -22,7 +22,20 @@ module.exports = async (bot, execution) => {
   const settings = getAutomodSettings(bot.db, execution.guild.id);
 
   if (execution.action.type === AutoModerationActionType.SendAlertMessage) {
-    if (settings.logChannel === null || !execution.alertSystemMessageId) return;
+    if (settings.logChannel === null) return;
+    if (settings.observation)
+      await sendLog(bot, execution.guild, settings.logChannel, {
+        ruleKey,
+        ruleName: rule.name,
+        userId: execution.userId,
+        channelId: execution.channelId,
+        content: execution.matchedContent ?? execution.content,
+        messageUrl: execution.messageId
+          ? `https://discord.com/channels/${execution.guild.id}/${execution.channelId}/${execution.messageId}`
+          : null,
+        observed: true,
+      });
+    if (!execution.alertSystemMessageId) return;
     const channel = execution.guild.channels.cache.get(settings.logChannel);
     await channel?.messages
       ?.delete(execution.alertSystemMessageId)

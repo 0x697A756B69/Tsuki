@@ -7,12 +7,13 @@ const {
 const { RULE_LABELS } = require("./automodWarnings");
 
 const BLOCKED_COLOR = 0xe5484d;
+const OBSERVED_COLOR = 0xf5a524;
 const EXCERPT_LENGTH = 200;
 const RETENTION = 30 * 24 * 60 * 60 * 1000;
 const PURGE_BATCH = 100;
 
-function logTitle(ruleKey) {
-  return `Message bloqué : ${RULE_LABELS[ruleKey]}`;
+function logTitle(ruleKey, observed = false) {
+  return `${observed ? "Message détecté" : "Message bloqué"} : ${RULE_LABELS[ruleKey]}`;
 }
 
 function excerpt(content) {
@@ -34,24 +35,25 @@ function buildLogMessage({
   ruleName,
   userId,
   channelId,
-  warningTotal,
+  warningTotal = 0,
   content,
   messageUrl = null,
+  observed = false,
   date = Date.now(),
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
   const quote = excerpt(content);
 
   const container = new ContainerBuilder()
-    .setAccentColor(BLOCKED_COLOR)
-    .addTextDisplayComponents(text(`## ${logTitle(ruleKey)}`))
+    .setAccentColor(observed ? OBSERVED_COLOR : BLOCKED_COLOR)
+    .addTextDisplayComponents(text(`## ${logTitle(ruleKey, observed)}`))
     .addTextDisplayComponents(
       text(`**Membre :** <@${userId}>\n**Salon :** <#${channelId}>`),
     )
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(
       text(
-        `**Règle :** ${ruleName}\n**Action :** bloqué, avertissement ajouté (${warningTotal} au total)`,
+        `**Règle :** ${ruleName}\n**Action :** ${observed ? "observation, aucune sanction" : `bloqué, avertissement ajouté (${warningTotal} au total)`}`,
       ),
     );
 
