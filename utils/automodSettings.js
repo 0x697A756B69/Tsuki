@@ -1,5 +1,7 @@
 const COLUMNS = {
   logChannel: "log_channel",
+  spamEnabled: "spam_enabled",
+  mentionsEnabled: "mentions_enabled",
   mentionLimit: "mention_limit",
   escalationWarns: "escalation_warns",
   escalationMinutes: "escalation_minutes",
@@ -8,6 +10,8 @@ const COLUMNS = {
 function toSettings(row) {
   return {
     logChannel: row.log_channel === null ? null : String(row.log_channel),
+    spamEnabled: Number(row.spam_enabled) === 1,
+    mentionsEnabled: Number(row.mentions_enabled) === 1,
     mentionLimit: Number(row.mention_limit),
     escalationWarns: Number(row.escalation_warns),
     escalationMinutes: Number(row.escalation_minutes),
@@ -44,7 +48,9 @@ function updateAutomodSettings(
     "updated_at = ?",
   ].join(", ");
   db.prepare(`UPDATE automod_settings SET ${assignments} WHERE guild = ?`).run(
-    ...entries.map(([, value]) => value),
+    ...entries.map(([key, value]) =>
+      typeof value === "boolean" ? Number(value) : value,
+    ),
     authorId,
     date,
     guildId,

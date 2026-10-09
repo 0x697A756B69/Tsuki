@@ -16,6 +16,8 @@ function createDatabase() {
 test("getAutomodSettings returns the defaults for a new guild", () => {
   assert.deepEqual(getAutomodSettings(createDatabase(), "g"), {
     logChannel: null,
+    spamEnabled: false,
+    mentionsEnabled: false,
     mentionLimit: 5,
     escalationWarns: 3,
     escalationMinutes: 60,
@@ -103,4 +105,20 @@ test("an escalation of zero warnings turns the escalation off", () => {
       .escalationWarns,
     0,
   );
+});
+
+test("updateAutomodSettings turns the spam and mention rules on and off", () => {
+  const db = createDatabase();
+  const on = updateAutomodSettings(
+    db,
+    "g",
+    { spamEnabled: true, mentionsEnabled: true },
+    "admin",
+  );
+  assert.equal(on.spamEnabled, true);
+  assert.equal(on.mentionsEnabled, true);
+
+  const off = updateAutomodSettings(db, "g", { spamEnabled: false }, "admin");
+  assert.equal(off.spamEnabled, false);
+  assert.equal(off.mentionsEnabled, true);
 });
