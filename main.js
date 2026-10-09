@@ -17,6 +17,7 @@ const bot = new Client({
     GatewayIntentBits.GuildVoiceStates,
     GatewayIntentBits.MessageContent,
     GatewayIntentBits.GuildPresences,
+    GatewayIntentBits.AutoModerationExecution,
   ],
 });
 
