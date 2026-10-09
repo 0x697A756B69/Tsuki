@@ -145,6 +145,16 @@ test("getRiskScore weighs the points by the frozen trust", () => {
   assert.equal(getRiskScore(db, SCORE), 4.5);
 });
 
+test("getRiskScore ignores an infraction whose points were taken off", () => {
+  const db = createDatabase();
+  infraction(db, { points: 2, trust: 1.5 });
+  infraction(db, { points: 3, trust: 1 });
+  db.prepare(
+    "UPDATE automod_logs SET points = NULL, trust = NULL WHERE points = 2",
+  ).run();
+  assert.equal(getRiskScore(db, SCORE), 3);
+});
+
 test("getRiskScore halves the points every half-life", () => {
   const db = createDatabase();
   infraction(db, { points: 8, date: NOW - 3 * DAY });

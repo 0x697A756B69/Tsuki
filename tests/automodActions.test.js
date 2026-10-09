@@ -455,6 +455,33 @@ test("accepting without a warning only settles the contest", async () => {
   assert.equal(getLog(db, REF).contestStatus, "accepted");
 });
 
+function giveRisk(db) {
+  db.prepare("UPDATE automod_logs SET points = 2, trust = 1.5").run();
+}
+
+test("accepting a contest takes the points off the log", async () => {
+  const { db, run } = setupContest();
+  giveRisk(db);
+  await run("accept", "u", "WARN-1");
+  assert.equal(getLog(db, REF).points, null);
+  assert.equal(getLog(db, REF).trust, null);
+});
+
+test("accepting without a warning still takes the points off", async () => {
+  const { db, run } = setupContest();
+  giveRisk(db);
+  await run("accept", "u", "-");
+  assert.equal(getLog(db, REF).points, null);
+});
+
+test("refusing a contest keeps the points", async () => {
+  const { db, run } = setupContest();
+  giveRisk(db);
+  await run("refuse", "u");
+  assert.equal(getLog(db, REF).points, 2);
+  assert.equal(getLog(db, REF).trust, 1.5);
+});
+
 test("refusing a contest keeps the warning", async () => {
   const { db, calls, timeouts, run } = setupContest({
     timeoutUntil: 7_000,

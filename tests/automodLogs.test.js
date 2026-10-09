@@ -20,6 +20,7 @@ const {
   addLog,
   getLog,
   setLogTimeout,
+  clearLogPoints,
   markContested,
   getExpiredLogs,
   deleteLog,
@@ -332,6 +333,18 @@ test("setLogTimeout notes when the timeout ends", () => {
   addLog(db, { ...ref, userId: "u" });
   setLogTimeout(db, ref, 123);
   assert.equal(getLog(db, ref).timeoutUntil, 123);
+});
+
+test("clearLogPoints empties the risk of one log only", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  const other = { ...ref, messageId: "n" };
+  addLog(db, { ...ref, userId: "u", points: 2, trust: 1.5 });
+  addLog(db, { ...other, userId: "u", points: 3, trust: 1 });
+  clearLogPoints(db, ref);
+  assert.equal(getLog(db, ref).points, null);
+  assert.equal(getLog(db, ref).trust, null);
+  assert.equal(getLog(db, other).points, 3);
 });
 
 test("markContested accepts one contest per log", () => {

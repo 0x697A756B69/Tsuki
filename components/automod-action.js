@@ -6,6 +6,7 @@ const {
   markResolved,
   getLog,
   setContestStatus,
+  clearLogPoints,
 } = require("../utils/automodLogs");
 const { NO_WARNING } = require("../utils/automodContest");
 const { getAutomodSettings } = require("../utils/automodSettings");
@@ -73,6 +74,7 @@ async function perform(bot, interaction, db, action, args, member) {
         null,
         `AutoMod : contestation acceptée par ${user.tag}`,
       );
+    if (accepted) clearLogPoints(db, ref);
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     const target = await bot.users.fetch(args[0]).catch(() => null);
     await target
