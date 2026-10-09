@@ -8,6 +8,7 @@ const {
   escalationNotice,
 } = require("../utils/automodWarnings");
 const { sendLog, setLogTimeout } = require("../utils/automodLogs");
+const { contestRow } = require("../utils/automodContest");
 
 module.exports = async (bot, execution) => {
   const rule =
@@ -90,10 +91,25 @@ module.exports = async (bot, execution) => {
     );
 
   const user = await bot.users.fetch(execution.userId).catch(() => null);
+  const canContest = settings.contestHours > 0 && log !== null;
   await user
-    ?.send(
-      blockedNotice(execution.guild.name, ruleKey, warning.total, settings),
-    )
+    ?.send({
+      content: blockedNotice(
+        execution.guild.name,
+        ruleKey,
+        warning.total,
+        settings,
+      ),
+      components: canContest
+        ? [
+            contestRow({
+              guildId: execution.guild.id,
+              channelId: settings.logChannel,
+              messageId: log.id,
+            }),
+          ]
+        : [],
+    })
     .catch(() => {});
   if (timedOut)
     await user
