@@ -2,6 +2,7 @@ const {
   ActionRowBuilder,
   ButtonBuilder,
   ButtonStyle,
+  ComponentType,
   ContainerBuilder,
   MessageFlags,
   SeparatorBuilder,
@@ -145,6 +146,33 @@ function buildLogMessage({
   };
 }
 
+function markResolved(container, resolved) {
+  const parts = container.components.filter(
+    (part) => part.type !== ComponentType.ActionRow,
+  );
+  const last = parts.length - 1;
+  return {
+    components: [
+      {
+        ...container,
+        accent_color: RESOLVED_COLOR,
+        components: parts.map((part, index) =>
+          index === last
+            ? {
+                ...part,
+                content: `-# ${resolvedNotice(resolved)} · ${part.content.slice(3)}`,
+              }
+            : part,
+        ),
+      },
+    ],
+    flags: /** @type {MessageFlags.IsComponentsV2} */ (
+      MessageFlags.IsComponentsV2
+    ),
+    allowedMentions: { parse: [] },
+  };
+}
+
 function addLog(db, { guildId, channelId, messageId, date = Date.now() }) {
   db.prepare(
     "INSERT INTO automod_logs (guild, channel, message, created_at) VALUES (?, ?, ?, ?)",
@@ -204,6 +232,7 @@ module.exports = {
   logTitle,
   excerpt,
   buildLogMessage,
+  markResolved,
   addLog,
   getExpiredLogs,
   deleteLog,

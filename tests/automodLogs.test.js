@@ -16,6 +16,7 @@ const {
   logTitle,
   excerpt,
   buildLogMessage,
+  markResolved,
   addLog,
   getExpiredLogs,
   deleteLog,
@@ -221,6 +222,16 @@ test("a handled log loses its buttons and shows who handled it", () => {
   assert.match(json, /Traité par <@mod> : avertissement retiré, le <t:2000:f>/);
   assert.match(json, /Supprimé de ce salon le/);
   assert.match(json, new RegExp(String(0x8e8e93)));
+});
+
+test("markResolved turns a live panel into the handled one", () => {
+  const resolved = { moderatorId: "mod", label: "classé", date: 2_000_000 };
+  const live = buildLogMessage(data({ warningId: "WARN-1" })).components[0];
+  const handled = markResolved(live.toJSON(), resolved);
+  const expected = buildLogMessage(data({ resolved }));
+  assert.equal(handled.flags, MessageFlags.IsComponentsV2);
+  assert.deepEqual(handled.allowedMentions, { parse: [] });
+  assert.deepEqual(handled.components[0], expected.components[0].toJSON());
 });
 
 test("a blocked message log carries the warning for its buttons", async () => {
