@@ -7,10 +7,9 @@ const {
   getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
+const { sendLog } = require("../utils/automodLogs");
 
 module.exports = async (bot, execution) => {
-  if (execution.action.type !== AutoModerationActionType.BlockMessage) return;
-
   const rule =
     execution.autoModerationRule ??
     (await execution.guild.autoModerationRules
@@ -20,6 +19,19 @@ module.exports = async (bot, execution) => {
     rule?.creatorId === bot.user.id ? getRuleKey(rule.name) : null;
   if (ruleKey === null) return;
 
+  const settings = getAutomodSettings(bot.db, execution.guild.id);
+
+  if (execution.action.type === AutoModerationActionType.SendAlertMessage) {
+    if (settings.logChannel === null || !execution.alertSystemMessageId) return;
+    const channel = execution.guild.channels.cache.get(settings.logChannel);
+    await channel?.messages
+      ?.delete(execution.alertSystemMessageId)
+      .catch(() => {});
+    return;
+  }
+
+  if (execution.action.type !== AutoModerationActionType.BlockMessage) return;
+
   const warning = addAutomodWarning(bot.db, {
     id: await bot.utils.createId("WARN"),
     guildId: execution.guild.id,
@@ -28,10 +40,19 @@ module.exports = async (bot, execution) => {
     ruleKey,
   });
 
-  const escalation = getEscalation(
-    getAutomodSettings(bot.db, execution.guild.id),
-    warning.total,
-  );
+  await sendLog(bot, execution.guild, settings.logChannel, {
+    ruleKey,
+    ruleName: rule.name,
+    userId: execution.userId,
+    channelId: execution.channelId,
+    warningTotal: warning.total,
+    content: execution.matchedContent ?? execution.content,
+    messageUrl: execution.messageId
+      ? `https://discord.com/channels/${execution.guild.id}/${execution.channelId}/${execution.messageId}`
+      : null,
+  });
+
+  const escalation = getEscalation(settings, warning.total);
   const member = escalation
     ? await execution.guild.members.fetch(execution.userId).catch(() => null)
     : null;

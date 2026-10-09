@@ -56,6 +56,7 @@ function escalationNotice(guildName, minutes) {
 }
 
 module.exports = {
+  RULE_LABELS,
   getEscalation,
   escalationNotice,
   getRuleKey,
