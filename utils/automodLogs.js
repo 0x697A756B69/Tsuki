@@ -173,10 +173,56 @@ function markResolved(container, resolved) {
   };
 }
 
-function addLog(db, { guildId, channelId, messageId, date = Date.now() }) {
+function addLog(
+  db,
+  {
+    guildId,
+    channelId,
+    messageId,
+    userId = null,
+    timeoutUntil = null,
+    date = Date.now(),
+  },
+) {
   db.prepare(
-    "INSERT INTO automod_logs (guild, channel, message, created_at) VALUES (?, ?, ?, ?)",
-  ).run(guildId, channelId, messageId, date);
+    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id, timeout_until) VALUES (?, ?, ?, ?, ?, ?)",
+  ).run(guildId, channelId, messageId, date, userId, timeoutUntil);
+}
+
+function getLog(db, { guildId, channelId, messageId }) {
+  const row = db
+    .prepare(
+      "SELECT * FROM automod_logs WHERE guild = ? AND channel = ? AND message = ?",
+    )
+    .get(guildId, channelId, messageId);
+  if (!row) return null;
+  return {
+    userId: row.user_id === null ? null : String(row.user_id),
+    createdAt: Number(row.created_at),
+    contestedAt: row.contested_at === null ? null : Number(row.contested_at),
+    contestStatus:
+      row.contest_status === null ? null : String(row.contest_status),
+    timeoutUntil: row.timeout_until === null ? null : Number(row.timeout_until),
+  };
+}
+
+function setLogTimeout(db, { guildId, channelId, messageId }, timeoutUntil) {
+  db.prepare(
+    "UPDATE automod_logs SET timeout_until = ? WHERE guild = ? AND channel = ? AND message = ?",
+  ).run(timeoutUntil, guildId, channelId, messageId);
+}
+
+function markContested(
+  db,
+  { guildId, channelId, messageId },
+  date = Date.now(),
+) {
+  const result = db
+    .prepare(
+      "UPDATE automod_logs SET contested_at = ?, contest_status = 'pending' WHERE guild = ? AND channel = ? AND message = ? AND contested_at IS NULL",
+    )
+    .run(date, guildId, channelId, messageId);
+  return Number(result.changes) > 0;
 }
 
 function getExpiredLogs(db, now = Date.now(), limit = PURGE_BATCH) {
@@ -210,6 +256,7 @@ async function sendLog(bot, guild, logChannelId, data) {
     guildId: guild.id,
     channelId: channel.id,
     messageId: message.id,
+    userId: data.userId,
     date: data.date,
   });
   return message;
@@ -234,6 +281,9 @@ module.exports = {
   buildLogMessage,
   markResolved,
   addLog,
+  getLog,
+  setLogTimeout,
+  markContested,
   getExpiredLogs,
   deleteLog,
   sendLog,

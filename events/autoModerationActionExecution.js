@@ -7,7 +7,7 @@ const {
   getEscalation,
   escalationNotice,
 } = require("../utils/automodWarnings");
-const { sendLog } = require("../utils/automodLogs");
+const { sendLog, setLogTimeout } = require("../utils/automodLogs");
 
 module.exports = async (bot, execution) => {
   const rule =
@@ -54,7 +54,7 @@ module.exports = async (bot, execution) => {
     ruleKey,
   });
 
-  await sendLog(bot, execution.guild, settings.logChannel, {
+  const log = await sendLog(bot, execution.guild, settings.logChannel, {
     ruleKey,
     ruleName: rule.name,
     userId: execution.userId,
@@ -71,12 +71,23 @@ module.exports = async (bot, execution) => {
   const member = escalation
     ? await execution.guild.members.fetch(execution.userId).catch(() => null)
     : null;
-  const timedOut =
-    member?.moderatable === true &&
-    (await member
-      .timeout(escalation.minutes * 60 * 1000, escalation.reason)
-      .then(() => true)
-      .catch(() => false));
+  const timedOutMember =
+    member?.moderatable === true
+      ? await member
+          .timeout(escalation.minutes * 60 * 1000, escalation.reason)
+          .catch(() => null)
+      : null;
+  const timedOut = timedOutMember !== null;
+  if (timedOut && log !== null)
+    setLogTimeout(
+      bot.db,
+      {
+        guildId: execution.guild.id,
+        channelId: settings.logChannel,
+        messageId: log.id,
+      },
+      timedOutMember?.communicationDisabledUntilTimestamp ?? null,
+    );
 
   const user = await bot.users.fetch(execution.userId).catch(() => null);
   await user

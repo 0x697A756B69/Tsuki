@@ -18,6 +18,9 @@ const {
   buildLogMessage,
   markResolved,
   addLog,
+  getLog,
+  setLogTimeout,
+  markContested,
   getExpiredLogs,
   deleteLog,
   sendLog,
@@ -79,6 +82,7 @@ function execution({
   matchedContent = "gros mot",
   messageId = "",
   alertSystemMessageId = "",
+  member = null,
 } = {}) {
   const rule = { creatorId: BOT, name: RULE_NAMES.words };
   return {
@@ -94,7 +98,7 @@ function execution({
     guild: {
       id: "g",
       name: "Serveur",
-      members: { fetch: async () => null },
+      members: { fetch: async () => member },
       channels: { cache: new Map([["log", channel]]) },
       autoModerationRules: { fetch: async () => rule },
     },
@@ -244,12 +248,76 @@ test("a blocked message log carries the warning for its buttons", async () => {
   assert.match(json, new RegExp(`${ACTION_ID}:remove:u:WARN-1`));
 });
 
-test("logs are stored with channel, message and date only", () => {
+test("logs are stored with identifiers and dates only", () => {
   const db = createDatabase();
-  addLog(db, { guildId: "g", channelId: "log", messageId: "m", date: 5 });
+  addLog(db, {
+    guildId: "g",
+    channelId: "log",
+    messageId: "m",
+    userId: "u",
+    date: 5,
+  });
   assert.deepEqual(
     { ...db.prepare("SELECT * FROM automod_logs").get() },
-    { guild: "g", channel: "log", message: "m", created_at: 5 },
+    {
+      guild: "g",
+      channel: "log",
+      message: "m",
+      created_at: 5,
+      user_id: "u",
+      contested_at: null,
+      contest_status: null,
+      timeout_until: null,
+    },
+  );
+});
+
+test("getLog reads the member and the contest state of a log", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u", timeoutUntil: 9, date: 5 });
+  assert.deepEqual(getLog(db, ref), {
+    userId: "u",
+    createdAt: 5,
+    contestedAt: null,
+    contestStatus: null,
+    timeoutUntil: 9,
+  });
+});
+
+test("getLog is null for an unknown log", () => {
+  assert.equal(
+    getLog(createDatabase(), { guildId: "g", channelId: "c", messageId: "x" }),
+    null,
+  );
+});
+
+test("setLogTimeout notes when the timeout ends", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u" });
+  setLogTimeout(db, ref, 123);
+  assert.equal(getLog(db, ref).timeoutUntil, 123);
+});
+
+test("markContested accepts one contest per log", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u" });
+  assert.equal(markContested(db, ref, 50), true);
+  assert.equal(markContested(db, ref, 60), false);
+  assert.equal(getLog(db, ref).contestedAt, 50);
+  assert.equal(getLog(db, ref).contestStatus, "pending");
+});
+
+test("markContested ignores an unknown log", () => {
+  assert.equal(
+    markContested(createDatabase(), {
+      guildId: "g",
+      channelId: "c",
+      messageId: "x",
+    }),
+    false,
   );
 });
 
@@ -301,7 +369,16 @@ test("sendLog posts the panel and remembers it", async () => {
   assert.equal(sent.length, 1);
   assert.deepEqual(
     { ...bot.db.prepare("SELECT * FROM automod_logs").get() },
-    { guild: "g", channel: "log", message: "M-1", created_at: 1_000_000 },
+    {
+      guild: "g",
+      channel: "log",
+      message: "M-1",
+      created_at: 1_000_000,
+      user_id: "u",
+      contested_at: null,
+      contest_status: null,
+      timeout_until: null,
+    },
   );
 });
 
@@ -475,4 +552,33 @@ test("outside observation the alert is deleted but nothing is logged", async () 
     }),
   );
   assert.equal(sent.length, 0);
+});
+
+test("a timeout is noted in the log with the exact end", async () => {
+  const channel = logChannel();
+  const bot = createBot(channel);
+  updateAutomodSettings(
+    bot.db,
+    "g",
+    { logChannel: "log", escalationWarns: 1 },
+    "admin",
+  );
+  const member = {
+    moderatable: true,
+    timeout: async () => ({ communicationDisabledUntilTimestamp: 777 }),
+  };
+  await autoModerationActionExecution(bot, execution({ channel, member }));
+  const ref = { guildId: "g", channelId: "log", messageId: "M-1" };
+  assert.equal(getLog(bot.db, ref).userId, "u");
+  assert.equal(getLog(bot.db, ref).timeoutUntil, 777);
+});
+
+test("a log notes no timeout when the member is only warned", async () => {
+  const channel = logChannel();
+  const bot = createBot(channel);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(bot, execution({ channel }));
+  const ref = { guildId: "g", channelId: "log", messageId: "M-1" };
+  assert.equal(getLog(bot.db, ref).userId, "u");
+  assert.equal(getLog(bot.db, ref).timeoutUntil, null);
 });
