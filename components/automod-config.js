@@ -11,6 +11,8 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderSensitivityModal,
+  renderPointsModal,
   renderContestModal,
 } = require("../utils/automodPanel");
 const {
@@ -19,6 +21,8 @@ const {
   parseMentionLimit,
   parseEscalation,
   parseContest,
+  parseSensitivity,
+  parsePoints,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -81,6 +85,10 @@ module.exports = defineComponent({
         return interaction.showModal(renderMentionLimitModal({ settings }));
       if (action === "escalation")
         return interaction.showModal(renderEscalationModal({ settings }));
+      if (action === "sensitivity")
+        return interaction.showModal(renderSensitivityModal({ settings }));
+      if (action === "points")
+        return interaction.showModal(renderPointsModal({ settings }));
       if (action === "contest")
         return interaction.showModal(renderContestModal({ settings }));
       if (action === "exemptions")
@@ -183,6 +191,27 @@ module.exports = defineComponent({
         });
         if (parsed.error) return refuse(interaction, parsed.error);
         updateAutomodSettings(db, guildId, parsed.escalation, author);
+        return interaction.update(main());
+      }
+
+      if (action === "save-sensitivity") {
+        const parsed = parseSensitivity({
+          threshold: interaction.fields.getTextInputValue("threshold"),
+          halfLife: interaction.fields.getTextInputValue("halfLife"),
+        });
+        if (parsed.error) return refuse(interaction, parsed.error);
+        updateAutomodSettings(db, guildId, parsed, author);
+        return interaction.update(main());
+      }
+
+      if (action === "save-points") {
+        const parsed = parsePoints({
+          words: interaction.fields.getTextInputValue("words"),
+          spam: interaction.fields.getTextInputValue("spam"),
+          mentions: interaction.fields.getTextInputValue("mentions"),
+        });
+        if (parsed.error) return refuse(interaction, parsed.error);
+        updateAutomodSettings(db, guildId, parsed, author);
         return interaction.update(main());
       }
 

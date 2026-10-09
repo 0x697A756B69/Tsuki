@@ -11,6 +11,9 @@ const MAX_MENTION_LIMIT = 50;
 const MAX_ESCALATION_WARNS = 20;
 const MAX_ESCALATION_MINUTES = 40320;
 const MAX_CONTEST_HOURS = 720;
+const MAX_SENSITIVITY = 100;
+const MAX_HALF_LIFE_DAYS = 30;
+const MAX_POINTS = 20;
 const EXEMPTION_KINDS = ["role", "channel"];
 
 function parseWords(value) {
@@ -76,6 +79,41 @@ function parseContest(value) {
       error: `La durée doit être un entier entre 0 et ${MAX_CONTEST_HOURS} heures.`,
     };
   return { contestHours: Number(hours) };
+}
+
+function parseSensitivity({ threshold, halfLife }) {
+  const limit = threshold.trim();
+  if (!/^\d+$/.test(limit) || Number(limit) > MAX_SENSITIVITY)
+    return {
+      error: `Le seuil doit être un entier entre 0 et ${MAX_SENSITIVITY} points.`,
+    };
+
+  const days = halfLife.trim();
+  if (
+    !/^\d+$/.test(days) ||
+    Number(days) < 1 ||
+    Number(days) > MAX_HALF_LIFE_DAYS
+  )
+    return {
+      error: `La demi-vie doit être un entier entre 1 et ${MAX_HALF_LIFE_DAYS} jours.`,
+    };
+
+  return { sensitivity: Number(limit), halfLifeDays: Number(days) };
+}
+
+function parsePoints({ words, spam, mentions }) {
+  const values = [words, spam, mentions].map((value) => value.trim());
+  if (
+    values.some(
+      (value) =>
+        !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > MAX_POINTS,
+    )
+  )
+    return {
+      error: `Les points doivent être des entiers entre 1 et ${MAX_POINTS}.`,
+    };
+  const [pointsWords, pointsSpam, pointsMentions] = values.map(Number);
+  return { pointsWords, pointsSpam, pointsMentions };
 }
 
 function getAutomodWords(db, guildId) {
@@ -172,10 +210,15 @@ module.exports = {
   MAX_ESCALATION_WARNS,
   MAX_ESCALATION_MINUTES,
   MAX_CONTEST_HOURS,
+  MAX_SENSITIVITY,
+  MAX_HALF_LIFE_DAYS,
+  MAX_POINTS,
   parseWords,
   parseMentionLimit,
   parseEscalation,
   parseContest,
+  parseSensitivity,
+  parsePoints,
   getAutomodWords,
   setAutomodWords,
   getExemptions,

@@ -7,6 +7,8 @@ const {
   parseMentionLimit,
   parseEscalation,
   parseContest,
+  parseSensitivity,
+  parsePoints,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -175,4 +177,52 @@ test("parseContest reads a window between 0 and 720 hours", () => {
 test("parseContest rejects anything else", () => {
   for (const value of ["", "721", "-1", "1.5", "abc"])
     assert.match(parseContest(value).error, /entre 0 et 720 heures/);
+});
+
+test("parseSensitivity reads a threshold and a half-life", () => {
+  assert.deepEqual(parseSensitivity({ threshold: " 10 ", halfLife: " 7 " }), {
+    sensitivity: 10,
+    halfLifeDays: 7,
+  });
+  assert.deepEqual(parseSensitivity({ threshold: "0", halfLife: "1" }), {
+    sensitivity: 0,
+    halfLifeDays: 1,
+  });
+  assert.deepEqual(parseSensitivity({ threshold: "100", halfLife: "30" }), {
+    sensitivity: 100,
+    halfLifeDays: 30,
+  });
+});
+
+test("parseSensitivity rejects a bad threshold", () => {
+  for (const threshold of ["", "101", "-1", "2.5", "abc"])
+    assert.match(
+      parseSensitivity({ threshold, halfLife: "3" }).error,
+      /entre 0 et 100 points/,
+    );
+});
+
+test("parseSensitivity rejects a bad half-life", () => {
+  for (const halfLife of ["", "0", "31", "-1", "1.5", "abc"])
+    assert.match(
+      parseSensitivity({ threshold: "6", halfLife }).error,
+      /entre 1 et 30 jours/,
+    );
+});
+
+test("parsePoints reads the points of the three rules", () => {
+  assert.deepEqual(parsePoints({ words: " 4 ", spam: "1", mentions: "20" }), {
+    pointsWords: 4,
+    pointsSpam: 1,
+    pointsMentions: 20,
+  });
+});
+
+test("parsePoints rejects any value outside 1 to 20", () => {
+  for (const bad of ["", "0", "21", "-1", "1.5", "abc"])
+    for (const key of ["words", "spam", "mentions"])
+      assert.match(
+        parsePoints({ words: "2", spam: "1", mentions: "3", [key]: bad }).error,
+        /entre 1 et 20/,
+      );
 });

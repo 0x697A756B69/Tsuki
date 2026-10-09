@@ -7,6 +7,11 @@ const COLUMNS = {
   contestHours: "contest_hours",
   escalationWarns: "escalation_warns",
   escalationMinutes: "escalation_minutes",
+  sensitivity: "sensitivity",
+  halfLifeDays: "half_life_days",
+  pointsWords: "points_words",
+  pointsSpam: "points_spam",
+  pointsMentions: "points_mentions",
 };
 
 function toSettings(row) {
@@ -19,6 +24,11 @@ function toSettings(row) {
     contestHours: Number(row.contest_hours),
     escalationWarns: Number(row.escalation_warns),
     escalationMinutes: Number(row.escalation_minutes),
+    sensitivity: Number(row.sensitivity),
+    halfLifeDays: Number(row.half_life_days),
+    pointsWords: Number(row.points_words),
+    pointsSpam: Number(row.points_spam),
+    pointsMentions: Number(row.points_mentions),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };

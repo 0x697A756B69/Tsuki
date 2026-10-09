@@ -78,6 +78,15 @@ function describeContest(settings) {
   return `Fenêtre de ${formatDuration(settings.contestHours * 60)}`;
 }
 
+function describeSensitivity(settings) {
+  if (settings.sensitivity === 0) return "Désactivée";
+  return `Sourdine à ${plural(settings.sensitivity, "point")} · points divisés par deux tous les ${plural(settings.halfLifeDays, "jour")}`;
+}
+
+function describePoints(settings) {
+  return `Mots ${settings.pointsWords} · Spam ${settings.pointsSpam} · Mentions ${settings.pointsMentions}`;
+}
+
 function describeHistory(settings) {
   if (settings.updatedBy === null)
     return "-# Réglages par défaut, jamais modifiés";
@@ -129,6 +138,16 @@ function renderMainView({ settings, words, exemptions, guild }) {
         "Escalade",
         describeEscalation(settings),
         button("escalation", "Modifier"),
+      ),
+      setting(
+        "Sensibilité",
+        describeSensitivity(settings),
+        button("sensitivity", "Modifier"),
+      ),
+      setting(
+        "Points par règle",
+        describePoints(settings),
+        button("points", "Modifier"),
       ),
       setting(
         "Contestation",
@@ -273,6 +292,49 @@ function renderEscalationModal({ settings }) {
     );
 }
 
+function renderSensitivityModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-sensitivity"))
+    .setTitle("Sensibilité")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Seuil de sourdine (points)")
+        .setDescription(
+          "Tranquille 10, Standard 6, Strict 3. 0 désactive la sourdine.",
+        )
+        .setTextInputComponent(
+          field("threshold", settings.sensitivity)
+            .setRequired(true)
+            .setMaxLength(3),
+        ),
+      new LabelBuilder()
+        .setLabel("Demi-vie des points (jours)")
+        .setDescription("Le score est divisé par deux tous les N jours.")
+        .setTextInputComponent(
+          field("halfLife", settings.halfLifeDays)
+            .setRequired(true)
+            .setMaxLength(2),
+        ),
+    );
+}
+
+function renderPointsModal({ settings }) {
+  const label = (title, fieldId, value) =>
+    new LabelBuilder()
+      .setLabel(title)
+      .setTextInputComponent(
+        field(fieldId, value).setRequired(true).setMaxLength(2),
+      );
+  return new ModalBuilder()
+    .setCustomId(id("save-points"))
+    .setTitle("Points par règle")
+    .addLabelComponents(
+      label("Mots interdits", "words", settings.pointsWords),
+      label("Spam", "spam", settings.pointsSpam),
+      label("Mentions de masse", "mentions", settings.pointsMentions),
+    );
+}
+
 function renderContestModal({ settings }) {
   return new ModalBuilder()
     .setCustomId(id("save-contest"))
@@ -298,5 +360,7 @@ module.exports = {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderSensitivityModal,
+  renderPointsModal,
   renderContestModal,
 };

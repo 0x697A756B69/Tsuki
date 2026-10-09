@@ -1,6 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
+const fs = require("node:fs");
+const path = require("node:path");
 const migrate = require("../loaders/migrate");
 const {
   getAutomodSettings,
@@ -23,6 +25,11 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     contestHours: 168,
     escalationWarns: 3,
     escalationMinutes: 60,
+    sensitivity: 6,
+    halfLifeDays: 3,
+    pointsWords: 2,
+    pointsSpam: 1,
+    pointsMentions: 3,
     updatedBy: null,
     updatedAt: null,
   });
@@ -92,6 +99,13 @@ test("the database rejects invalid values", () => {
     { escalationMinutes: 40321 },
     { contestHours: -1 },
     { contestHours: 721 },
+    { sensitivity: -1 },
+    { sensitivity: 101 },
+    { halfLifeDays: 0 },
+    { halfLifeDays: 31 },
+    { pointsWords: 0 },
+    { pointsSpam: 21 },
+    { pointsMentions: 0 },
   ])
     assert.throws(() => updateAutomodSettings(db, "g", changes, "admin"));
 
@@ -149,4 +163,57 @@ test("updateAutomodSettings changes the contest window and turns it off", () => 
     updateAutomodSettings(db, "g", { contestHours: 0 }, "admin").contestHours,
     0,
   );
+});
+
+test("updateAutomodSettings changes the risk score settings", () => {
+  const settings = updateAutomodSettings(
+    createDatabase(),
+    "g",
+    {
+      sensitivity: 10,
+      halfLifeDays: 7,
+      pointsWords: 4,
+      pointsSpam: 2,
+      pointsMentions: 5,
+    },
+    "admin",
+  );
+
+  assert.equal(settings.sensitivity, 10);
+  assert.equal(settings.halfLifeDays, 7);
+  assert.equal(settings.pointsWords, 4);
+  assert.equal(settings.pointsSpam, 2);
+  assert.equal(settings.pointsMentions, 5);
+});
+
+test("a sensitivity of zero turns the muting off", () => {
+  assert.equal(
+    updateAutomodSettings(createDatabase(), "g", { sensitivity: 0 }, "admin")
+      .sensitivity,
+    0,
+  );
+});
+
+test("migration 017 turns the old warning threshold into a sensitivity", () => {
+  const db = new DatabaseSync(":memory:");
+  const dir = path.join(__dirname, "../migrations");
+  for (const file of fs.readdirSync(dir).sort())
+    if (Number.parseInt(file, 10) <= 16)
+      db.exec(fs.readFileSync(path.join(dir, file), "utf8"));
+  db.exec("PRAGMA user_version = 16");
+
+  const insert = db.prepare(
+    "INSERT INTO automod_settings (guild, escalation_warns) VALUES (?, ?)",
+  );
+  const thresholds = [0, 1, 2, 3, 4, 5, 20];
+  for (const warns of thresholds) insert.run(`g${warns}`, warns);
+
+  migrate(db);
+
+  assert.deepEqual(
+    thresholds.map((warns) => getAutomodSettings(db, `g${warns}`).sensitivity),
+    [0, 3, 3, 6, 6, 10, 10],
+  );
+  assert.equal(getAutomodSettings(db, "g3").halfLifeDays, 3);
+  assert.equal(getAutomodSettings(db, "g3").escalationWarns, 3);
 });

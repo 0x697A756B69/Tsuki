@@ -8,6 +8,8 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderEscalationModal,
+  renderSensitivityModal,
+  renderPointsModal,
   renderContestModal,
 } = require("../utils/automodPanel");
 
@@ -20,6 +22,11 @@ const defaults = {
   contestHours: 168,
   escalationWarns: 3,
   escalationMinutes: 60,
+  sensitivity: 6,
+  halfLifeDays: 3,
+  pointsWords: 2,
+  pointsSpam: 1,
+  pointsMentions: 3,
   updatedBy: null,
   updatedAt: null,
 };
@@ -63,6 +70,8 @@ test("main view shows every setting with a button", () => {
     "Limite de mentions",
     "Exemptions",
     "Escalade",
+    "Sensibilité",
+    "Points par règle",
     "Contestation",
     "Logs",
     "Mode observation",
@@ -77,6 +86,8 @@ test("main view shows every setting with a button", () => {
       "automod-config:mention-limit",
       "automod-config:exemptions",
       "automod-config:escalation",
+      "automod-config:sensitivity",
+      "automod-config:points",
       "automod-config:contest",
       "automod-config:logs",
       "automod-config:observation-toggle",
@@ -93,6 +104,11 @@ test("main view describes the defaults", () => {
   assert.match(view.text, /Aucune exemption/);
   assert.match(view.text, /Timeout de 1 h à 3 avertissements/);
   assert.match(view.text, /Fenêtre de 7 j/);
+  assert.match(
+    view.text,
+    /Sourdine à 6 points · points divisés par deux tous les 3 jours/,
+  );
+  assert.match(view.text, /Mots 2 · Spam 1 · Mentions 3/);
   assert.match(view.text, /Aucun salon/);
   assert.match(view.text, /jamais modifiés/);
 });
@@ -213,6 +229,8 @@ test("the modals post to the automod component", () => {
     [renderWordsModal({ words: [] }), "save-words"],
     [renderMentionLimitModal({ settings: defaults }), "save-mention-limit"],
     [renderEscalationModal({ settings: defaults }), "save-escalation"],
+    [renderSensitivityModal({ settings: defaults }), "save-sensitivity"],
+    [renderPointsModal({ settings: defaults }), "save-points"],
     [renderContestModal({ settings: defaults }), "save-contest"],
   ])
     assert.equal(render(modal).all[0].custom_id, `automod-config:${action}`);
@@ -252,5 +270,51 @@ test("the contest modal asks for the window in hours", () => {
   assert.deepEqual(
     fields.map((i) => [i.custom_id, i.value]),
     [["hours", "168"]],
+  );
+});
+
+test("main view describes the sensitivity", () => {
+  assert.match(
+    main({ ...defaults, sensitivity: 1, halfLifeDays: 1 }).text,
+    /Sensibilité\*\*\nSourdine à 1 point · points divisés par deux tous les 1 jour\b/,
+  );
+  assert.match(
+    main({ ...defaults, sensitivity: 0 }).text,
+    /Sensibilité\*\*\nDésactivée/,
+  );
+});
+
+test("main view lists the points of every rule", () => {
+  assert.match(
+    main({ ...defaults, pointsWords: 5, pointsSpam: 4, pointsMentions: 9 })
+      .text,
+    /Points par règle\*\*\nMots 5 · Spam 4 · Mentions 9/,
+  );
+});
+
+test("the sensitivity modal asks for the threshold and the half-life", () => {
+  const fields = render(renderSensitivityModal({ settings: defaults })).of(
+    ComponentType.TextInput,
+  );
+  assert.deepEqual(
+    fields.map((i) => [i.custom_id, i.value]),
+    [
+      ["threshold", "6"],
+      ["halfLife", "3"],
+    ],
+  );
+});
+
+test("the points modal asks for the points of every rule", () => {
+  const fields = render(renderPointsModal({ settings: defaults })).of(
+    ComponentType.TextInput,
+  );
+  assert.deepEqual(
+    fields.map((i) => [i.custom_id, i.value]),
+    [
+      ["words", "2"],
+      ["spam", "1"],
+      ["mentions", "3"],
+    ],
   );
 });
