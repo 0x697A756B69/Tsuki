@@ -15,6 +15,7 @@ const {
   reviewTarget,
   reviewRow,
   contestCheck,
+  contestClosed,
   renderContestModal,
   parseReason,
   contestedPayload,
@@ -119,6 +120,41 @@ test("contestCheck refuses once the window is over", () => {
       now: 1_001 + 2 * HOUR,
     }),
     /délai/,
+  );
+});
+
+test("contestClosed stays open inside the window", () => {
+  assert.equal(
+    contestClosed({ log: log(), settings: SETTINGS, now: 2_000 }),
+    false,
+  );
+});
+
+test("contestClosed closes when contesting is off or the log is gone", () => {
+  assert.equal(
+    contestClosed({ log: log(), settings: { contestHours: 0 }, now: 2_000 }),
+    true,
+  );
+  assert.equal(contestClosed({ log: null, settings: SETTINGS }), true);
+});
+
+test("contestClosed closes after a contest or once the window is over", () => {
+  assert.equal(
+    contestClosed({
+      log: log({ contestedAt: 1_500 }),
+      settings: SETTINGS,
+      now: 2_000,
+    }),
+    true,
+  );
+  const settings = { contestHours: 2 };
+  assert.equal(
+    contestClosed({ log: log(), settings, now: 1_000 + 2 * HOUR }),
+    false,
+  );
+  assert.equal(
+    contestClosed({ log: log(), settings, now: 1_001 + 2 * HOUR }),
+    true,
   );
 });
 

@@ -43,6 +43,14 @@ function contestCheck({ log, settings, userId, now = Date.now() }) {
   return null;
 }
 
+function contestClosed({ log, settings, now = Date.now() }) {
+  if (!log || settings.contestHours === 0) return true;
+  return (
+    log.contestedAt !== null ||
+    now > log.createdAt + settings.contestHours * HOUR
+  );
+}
+
 function renderContestModal(ref) {
   return new ModalBuilder()
     .setCustomId(
@@ -165,6 +173,7 @@ module.exports = {
   reviewTarget,
   reviewRow,
   contestCheck,
+  contestClosed,
   renderContestModal,
   parseReason,
   contestedPayload,
