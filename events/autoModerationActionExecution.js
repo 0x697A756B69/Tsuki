@@ -33,6 +33,7 @@ module.exports = async (bot, execution) => {
         messageUrl: execution.messageId
           ? `https://discord.com/channels/${execution.guild.id}/${execution.channelId}/${execution.messageId}`
           : null,
+        messageId: execution.messageId,
         observed: true,
       });
     if (!execution.alertSystemMessageId) return;
@@ -59,6 +60,7 @@ module.exports = async (bot, execution) => {
     userId: execution.userId,
     channelId: execution.channelId,
     warningTotal: warning.total,
+    warningId: warning.id,
     content: execution.matchedContent ?? execution.content,
     messageUrl: execution.messageId
       ? `https://discord.com/channels/${execution.guild.id}/${execution.channelId}/${execution.messageId}`

@@ -1,11 +1,16 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
-const { AutoModerationActionType, MessageFlags } = require("discord.js");
+const {
+  AutoModerationActionType,
+  ButtonStyle,
+  MessageFlags,
+} = require("discord.js");
 const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const {
+  ACTION_ID,
   EXCERPT_LENGTH,
   RETENTION,
   logTitle,
@@ -153,6 +158,79 @@ test("buildLogMessage skips the quote when there is no text", () => {
 test("buildLogMessage announces the purge date 30 days later", () => {
   const expected = Math.floor((1_000_000 + RETENTION) / 1000);
   assert.match(render(), new RegExp(`<t:${expected}:D>`));
+});
+
+function buttons(changes) {
+  const container = buildLogMessage(data(changes)).components[0].toJSON();
+  const row = container.components.find((part) => part.type === 1);
+  return row ? /** @type {any[]} */ (row.components) : [];
+}
+
+test("a blocked log offers remove, timeout, ban and close", () => {
+  const row = buttons({ warningId: "WARN-1" });
+  assert.deepEqual(
+    row.map((button) => button.custom_id),
+    [
+      `${ACTION_ID}:remove:u:WARN-1`,
+      `${ACTION_ID}:timeout:u`,
+      `${ACTION_ID}:ban:u`,
+      `${ACTION_ID}:close`,
+    ],
+  );
+  assert.deepEqual(
+    row.map((button) => button.label),
+    ["Retirer l'avertissement", "Mettre en sourdine", "Bannir", "Classer"],
+  );
+  assert.equal(row[2].style, ButtonStyle.Danger);
+});
+
+test("a blocked log without a warning cannot remove one", () => {
+  const ids = buttons().map((button) => button.custom_id);
+  assert.equal(
+    ids.some((id) => id.includes(":remove:")),
+    false,
+  );
+  assert.equal(ids.length, 3);
+});
+
+test("an observed log offers delete, warn and close", () => {
+  const row = buttons({ observed: true, messageId: "m" });
+  assert.deepEqual(
+    row.map((button) => button.custom_id),
+    [`${ACTION_ID}:delete:c:m`, `${ACTION_ID}:warn:u`, `${ACTION_ID}:close`],
+  );
+  assert.deepEqual(
+    row.map((button) => button.label),
+    ["Supprimer le message", "Avertir", "Classer"],
+  );
+});
+
+test("an observed log without a message cannot delete it", () => {
+  const ids = buttons({ observed: true }).map((button) => button.custom_id);
+  assert.deepEqual(ids, [`${ACTION_ID}:warn:u`, `${ACTION_ID}:close`]);
+});
+
+test("a handled log loses its buttons and shows who handled it", () => {
+  const resolved = {
+    moderatorId: "mod",
+    label: "avertissement retiré",
+    date: 2_000_000,
+  };
+  assert.deepEqual(buttons({ resolved }), []);
+  const json = render({ resolved });
+  assert.match(json, /Traité par <@mod> : avertissement retiré, le <t:2000:f>/);
+  assert.match(json, /Supprimé de ce salon le/);
+  assert.match(json, new RegExp(String(0x8e8e93)));
+});
+
+test("a blocked message log carries the warning for its buttons", async () => {
+  const sent = [];
+  const channel = logChannel(sent);
+  const bot = createBot(channel);
+  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
+  await autoModerationActionExecution(bot, execution({ channel }));
+  const json = JSON.stringify(sent[0].components[0].toJSON());
+  assert.match(json, new RegExp(`${ACTION_ID}:remove:u:WARN-1`));
 });
 
 test("logs are stored with channel, message and date only", () => {
