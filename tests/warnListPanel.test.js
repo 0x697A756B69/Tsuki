@@ -355,6 +355,7 @@ function setupRemoval({
   moderator = person("mod", [PermissionFlagsBits.ManageMessages], 5),
   dmOpen = true,
   values = ["0"],
+  logs = null,
 } = {}) {
   const db = new DatabaseSync(":memory:");
   migrate(db);
@@ -400,6 +401,7 @@ function setupRemoval({
       id: "g",
       name: "Serveur",
       members: { fetch: async () => member },
+      channels: { cache: new Map(logs === null ? [] : [["log", logs]]) },
     },
     values,
     isStringSelectMenu: () => true,
@@ -599,4 +601,40 @@ test("confirming a purge respects the hierarchy", async () => {
   await run("purgeok", "u", "0", "mod", "0", "2");
   assert.equal(countWarns(db), 2);
   assert.match(calls.replies[0].content, /ne peux pas modérer/);
+});
+
+const { updateAutomodSettings } = require("../utils/automodSettings");
+
+function logChannel(sent) {
+  return { isTextBased: () => true, send: async (m) => sent.push(m) };
+}
+
+test("removing warnings writes a line in the AutoMod log channel", async () => {
+  const sent = [];
+  const { db, run } = setupRemoval({ logs: logChannel(sent) });
+  updateAutomodSettings(db, "g", { logChannel: "log" }, "mod");
+  await run("ok", "u", "0", "mod", "3", "2");
+  assert.equal(sent.length, 1);
+  const text = JSON.stringify(sent[0]);
+  assert.match(text, /Avertissements retirés/);
+  assert.match(text, /WARN-1, WARN-2/);
+});
+
+test("a purge is logged as a purge", async () => {
+  const sent = [];
+  const { db, run } = setupRemoval({
+    moderator: ADMIN(),
+    logs: logChannel(sent),
+  });
+  updateAutomodSettings(db, "g", { logChannel: "log" }, "mod");
+  await run("purgeok", "u", "0", "mod", "0", "2");
+  assert.match(JSON.stringify(sent[0]), /Avertissements purgés/);
+});
+
+test("nothing is logged when no warning was removed", async () => {
+  const sent = [];
+  const { db, run } = setupRemoval({ logs: logChannel(sent) });
+  updateAutomodSettings(db, "g", { logChannel: "log" }, "mod");
+  await run("ok", "u", "0", "mod", "1", "5");
+  assert.equal(sent.length, 0);
 });

@@ -3,6 +3,7 @@ const defineComponent = require("../utils/defineComponent");
 const { canModerate } = require("../utils/hierarchy");
 const { getAutomodSettings } = require("../utils/automodSettings");
 const { unwarnNotice, sendNotice } = require("../utils/moderationNotice");
+const { sendRemovalLog } = require("../utils/warnRemovalLog");
 const { listWarnings, retractWarning } = require("../utils/warnSanctions");
 const {
   maskOf,
@@ -41,7 +42,7 @@ module.exports = defineComponent({
     if (!user) return refuse(interaction, "Ce membre est introuvable.");
 
     const { guild, guildId } = interaction;
-    const { warnValidDays } = getAutomodSettings(db, guildId);
+    const { warnValidDays, logChannel } = getAutomodSettings(db, guildId);
     const warnings = listWarnings(db, guildId, userId, warnValidDays);
     const pageNumber = Number(page);
 
@@ -128,6 +129,12 @@ module.exports = defineComponent({
       if (result.lifted) lifted.push(result.lifted);
     }
     const removed = removedWarnings.length;
+    await sendRemovalLog(guild, logChannel, {
+      moderatorId: interaction.user.id,
+      userId,
+      ids: removedWarnings.map((warning) => warning.id),
+      purge: purging,
+    });
     const delivered =
       removed > 0 &&
       (await sendNotice(
