@@ -8,9 +8,13 @@ const {
   PAGE_SIZE,
   pageCount,
   clampPage,
+  maskOf,
+  pickWarnings,
   sanctionText,
   warningText,
   warnlistView,
+  removalView,
+  removedView,
 } = require("../utils/warnlistPanel");
 const component = require("../components/warnlist");
 
@@ -47,8 +51,16 @@ function texts(view) {
     .map((part) => part.content);
 }
 
+function rows(view) {
+  return json(view).components.filter((part) => part.type === 1);
+}
+
 function buttons(view) {
-  return json(view).components.find((part) => part.type === 1).components;
+  return rows(view).find((row) => row.components[0].type === 2).components;
+}
+
+function selectMenu(view) {
+  return rows(view).find((row) => row.components[0].type === 3).components[0];
 }
 
 test("pageCount always has at least one page", () => {
@@ -118,7 +130,7 @@ test("warnlistView has no pager for a single page", () => {
     authorId: "mod",
   });
   assert.equal(
-    json(view).components.some((part) => part.type === 1),
+    rows(view).some((row) => row.components[0].type === 2),
     false,
   );
 });
@@ -221,4 +233,244 @@ test("warnlist component refuses a member that cannot be fetched", async () => {
   await run("page", "u", "0", "mod");
   assert.equal(calls.updates.length, 0);
   assert.match(calls.replies[0].content, /introuvable/);
+});
+
+const { PermissionsBitField, PermissionFlagsBits } = require("discord.js");
+
+const FUTURE = Date.now() + DAY;
+
+test("warnlistView offers the warnings of the page in a multiple select", () => {
+  const view = warnlistView({
+    user: USER,
+    warnings: many(12),
+    page: 1,
+    authorId: "mod",
+  });
+  const menu = selectMenu(view);
+  assert.equal(menu.custom_id, "warnlist:select:u:1:mod");
+  assert.equal(menu.min_values, 1);
+  assert.equal(menu.max_values, 2);
+  assert.deepEqual(
+    menu.options.map((option) => [option.label, option.value]),
+    [
+      ["WARN-10", "0"],
+      ["WARN-11", "1"],
+    ],
+  );
+});
+
+test("warnlistView has no select when there is nothing to remove", () => {
+  const view = warnlistView({
+    user: USER,
+    warnings: [],
+    page: 0,
+    authorId: "mod",
+  });
+  assert.equal(
+    rows(view).some((row) => row.components[0].type === 3),
+    false,
+  );
+});
+
+test("maskOf and pickWarnings find the chosen warnings of a page", () => {
+  assert.equal(maskOf(["0", "2"]), 5);
+  assert.deepEqual(
+    pickWarnings(many(12), 0, 5).map((item) => item.id),
+    ["WARN-0", "WARN-2"],
+  );
+  assert.deepEqual(
+    pickWarnings(many(12), 1, 2).map((item) => item.id),
+    ["WARN-11"],
+  );
+  assert.deepEqual(pickWarnings(many(3), 0, 0), []);
+});
+
+test("removalView names what will be removed and carries the choice", () => {
+  const view = removalView({
+    user: USER,
+    selected: [warning(), warning({ id: "WARN-2" })],
+    page: 0,
+    mask: 5,
+    total: 3,
+    authorId: "mod",
+  });
+  assert.equal(view.flags, MessageFlags.IsComponentsV2);
+  assert.equal(
+    texts(view)[0],
+    "## Retirer 2 avertissements ?\n-# WARN-1, WARN-2",
+  );
+  const [confirm, cancel] = buttons(view);
+  assert.equal(confirm.custom_id, "warnlist:ok:u:0:mod:5:3");
+  assert.equal(cancel.custom_id, "warnlist:page:u:0:mod");
+});
+
+test("removedView says what was lifted and warns about closed messages", () => {
+  const done = removedView({
+    user: USER,
+    count: 1,
+    lifted: ["timeout", "timeout"],
+    delivered: true,
+    page: 0,
+    authorId: "mod",
+  });
+  assert.equal(
+    texts(done)[0],
+    "## 1 avertissement retiré\nPour kyo.\nSourdine levée.",
+  );
+  const closed = removedView({
+    user: USER,
+    count: 2,
+    lifted: [],
+    delivered: false,
+    page: 0,
+    authorId: "mod",
+  });
+  assert.match(texts(closed)[0], /^## 2 avertissements retirés/);
+  assert.match(texts(closed)[0], /Messages privés fermés/);
+  assert.equal(buttons(closed)[0].custom_id, "warnlist:page:u:0:mod");
+});
+
+function person(id, flags = [], position = 1, extra = {}) {
+  return {
+    id,
+    guild: { ownerId: "owner" },
+    permissions: new PermissionsBitField(flags),
+    roles: {
+      highest: {
+        position,
+        comparePositionTo(other) {
+          return this.position - other.position;
+        },
+      },
+    },
+    communicationDisabledUntilTimestamp: FUTURE,
+    ...extra,
+  };
+}
+
+function setupRemoval({
+  target = null,
+  moderator = person("mod", [PermissionFlagsBits.ManageMessages], 5),
+  dmOpen = true,
+  values = ["0"],
+} = {}) {
+  const db = new DatabaseSync(":memory:");
+  migrate(db);
+  insertWarning(db, {
+    id: "WARN-1",
+    guildId: "g",
+    userId: "u",
+    authorId: "mod",
+    reason: "Spam",
+    date: Date.now() - DAY,
+  });
+  noteSanction(db, "WARN-1", "timeout", FUTURE);
+  insertWarning(db, {
+    id: "WARN-2",
+    guildId: "g",
+    userId: "u",
+    authorId: "mod",
+    reason: "Insultes",
+    date: Date.now() - 2 * DAY,
+  });
+  const calls = { replies: [], updates: [], dms: [], timeouts: [] };
+  const member =
+    target ??
+    person("u", [], 1, {
+      timeout: async (...args) => calls.timeouts.push(args),
+    });
+  const bot = /** @type {any} */ ({
+    users: {
+      fetch: async () => ({
+        ...USER,
+        send: async (payload) => {
+          if (!dmOpen) throw new Error("closed");
+          calls.dms.push(JSON.stringify(payload));
+        },
+      }),
+    },
+  });
+  const interaction = /** @type {any} */ ({
+    user: { id: "mod", tag: "mod#0" },
+    member: moderator,
+    guildId: "g",
+    guild: {
+      id: "g",
+      name: "Serveur",
+      members: { fetch: async () => member },
+    },
+    values,
+    isStringSelectMenu: () => true,
+    reply: async (payload) => calls.replies.push(payload),
+    deferUpdate: async () => {},
+    editReply: async (payload) => calls.updates.push(JSON.stringify(payload)),
+  });
+  return {
+    db,
+    calls,
+    run: (...params) => component.run(bot, interaction, params, db),
+  };
+}
+
+function countWarns(db) {
+  return db.prepare("SELECT COUNT(*) AS n FROM warns").get().n;
+}
+
+test("choosing warnings asks for a confirmation and removes nothing", async () => {
+  const { db, calls, run } = setupRemoval({ values: ["0", "1"] });
+  await run("select", "u", "0", "mod");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.updates[0], /Retirer 2 avertissements/);
+  assert.match(calls.updates[0], /warnlist:ok:u:0:mod:3:2/);
+});
+
+test("choosing nothing that exists is refused", async () => {
+  const { calls, run } = setupRemoval({ values: [] });
+  await run("select", "u", "0", "mod");
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /existent plus/);
+});
+
+test("confirming removes the warning, lifts the timeout and tells the member", async () => {
+  const { db, calls, run } = setupRemoval();
+  await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 1);
+  assert.deepEqual(calls.timeouts[0][0], null);
+  assert.match(calls.dms[0], /Avertissement retiré sur Serveur/);
+  assert.match(calls.dms[0], /Ta sourdine est levée/);
+  assert.match(calls.updates[0], /1 avertissement retiré/);
+  assert.match(calls.updates[0], /Sourdine levée/);
+});
+
+test("confirming two warnings removes both with one message", async () => {
+  const { db, calls, run } = setupRemoval();
+  await run("ok", "u", "0", "mod", "3", "2");
+  assert.equal(countWarns(db), 0);
+  assert.equal(calls.dms.length, 1);
+  assert.match(calls.dms[0], /Avertissements retirés sur Serveur/);
+  assert.match(calls.updates[0], /2 avertissements retirés/);
+});
+
+test("confirming keeps the removal when messages are closed", async () => {
+  const { db, calls, run } = setupRemoval({ dmOpen: false });
+  await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 1);
+  assert.match(calls.updates[0], /Messages privés fermés/);
+});
+
+test("confirming refuses a list that changed since the choice", async () => {
+  const { db, calls, run } = setupRemoval();
+  await run("ok", "u", "0", "mod", "1", "5");
+  assert.equal(countWarns(db), 2);
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /La liste a changé/);
+});
+
+test("confirming refuses a member the moderator cannot moderate", async () => {
+  const { db, calls, run } = setupRemoval({
+    target: person("u", [PermissionFlagsBits.Administrator], 9),
+  });
+  await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.replies[0].content, /ne peux pas modérer/);
 });

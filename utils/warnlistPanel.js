@@ -5,14 +5,21 @@ const {
   ContainerBuilder,
   MessageFlags,
   SeparatorBuilder,
+  StringSelectMenuBuilder,
   TextDisplayBuilder,
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
+const { closedDmLine } = require("./moderationNotice");
 
 const ACCENT_COLOR = 0x7f77dd;
 const PAGE_SIZE = 10;
 const MAX_REASON = 100;
 const COMPONENT_ID = "warnlist";
+
+const LIFTED_TEXT = {
+  timeout: "Sourdine levée.",
+  ban: "Bannissement levé.",
+};
 
 function text(content) {
   return new TextDisplayBuilder().setContent(content);
@@ -34,6 +41,19 @@ function truncate(reason) {
   return reason.length > MAX_REASON
     ? `${reason.slice(0, MAX_REASON - 1)}…`
     : reason;
+}
+
+function pageItems(warnings, page) {
+  const start = clampPage(page, warnings.length) * PAGE_SIZE;
+  return warnings.slice(start, start + PAGE_SIZE);
+}
+
+function maskOf(indexes) {
+  return indexes.reduce((mask, index) => mask | (1 << Number(index)), 0);
+}
+
+function pickWarnings(warnings, page, mask) {
+  return pageItems(warnings, page).filter((_, index) => (mask >> index) & 1);
 }
 
 function sanctionText(warning) {
@@ -81,14 +101,42 @@ function pagerRow(userId, page, pages, authorId) {
   );
 }
 
+function removeRow(userId, page, authorId, shown) {
+  return /** @type {ActionRowBuilder<StringSelectMenuBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(
+        buildCustomId(COMPONENT_ID, "select", userId, page, authorId),
+      )
+      .setPlaceholder("Retirer des avertissements…")
+      .setMinValues(1)
+      .setMaxValues(shown.length)
+      .addOptions(
+        shown.map((warning, index) => ({
+          label: warning.id,
+          description: truncate(warning.reason),
+          value: String(index),
+        })),
+      ),
+  );
+}
+
+function payload(container) {
+  return {
+    components: [container],
+    flags: /** @type {MessageFlags.IsComponentsV2} */ (
+      MessageFlags.IsComponentsV2
+    ),
+    allowedMentions: { parse: [] },
+  };
+}
+
 function warnlistView({ user, warnings, page, authorId }) {
   const current = clampPage(page, warnings.length);
   const pages = pageCount(warnings.length);
   const active = warnings.filter((warning) => warning.active).length;
-  const shown = warnings.slice(
-    current * PAGE_SIZE,
-    current * PAGE_SIZE + PAGE_SIZE,
-  );
+  const shown = pageItems(warnings, current);
 
   const container = new ContainerBuilder().setAccentColor(ACCENT_COLOR);
   container.addTextDisplayComponents(
@@ -100,18 +148,69 @@ function warnlistView({ user, warnings, page, authorId }) {
     container
       .addSeparatorComponents(new SeparatorBuilder())
       .addTextDisplayComponents(text(warningText(warning)));
-  if (pages > 1)
+  if (shown.length > 0)
     container
       .addSeparatorComponents(new SeparatorBuilder())
-      .addActionRowComponents(pagerRow(user.id, current, pages, authorId));
+      .addActionRowComponents(removeRow(user.id, current, authorId, shown));
+  if (pages > 1)
+    container.addActionRowComponents(
+      pagerRow(user.id, current, pages, authorId),
+    );
 
-  return {
-    components: [container],
-    flags: /** @type {MessageFlags.IsComponentsV2} */ (
-      MessageFlags.IsComponentsV2
-    ),
-    allowedMentions: { parse: [] },
-  };
+  return payload(container);
+}
+
+function removalView({ user, selected, page, mask, total, authorId }) {
+  const count = selected.length;
+  const confirm = new ButtonBuilder()
+    .setCustomId(
+      buildCustomId(COMPONENT_ID, "ok", user.id, page, authorId, mask, total),
+    )
+    .setLabel("Confirmer")
+    .setStyle(ButtonStyle.Danger);
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## Retirer ${count} avertissement${count > 1 ? "s" : ""} ?\n-# ${selected.map((warning) => warning.id).join(", ")}`,
+      ),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(
+      text(
+        "Les sanctions posées par Tsuki sont levées si elles sont encore en cours. Les paliers sont recalculés.",
+      ),
+    )
+    .addActionRowComponents(
+      /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+        new ActionRowBuilder()
+      ).addComponents(
+        confirm,
+        pageButton("Annuler", user.id, page, authorId, false),
+      ),
+    );
+  return payload(container);
+}
+
+function removedView({ user, count, lifted, delivered, page, authorId }) {
+  const lines = [...new Set(lifted)]
+    .filter((target) => LIFTED_TEXT[target])
+    .map((target) => LIFTED_TEXT[target]);
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## ${count} avertissement${count > 1 ? "s" : ""} retiré${count > 1 ? "s" : ""}\n${[`Pour ${user.tag}.`, ...lines].join("\n")}${closedDmLine(delivered)}`,
+      ),
+    )
+    .addActionRowComponents(
+      /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+        new ActionRowBuilder()
+      ).addComponents(
+        pageButton("Retour à la liste", user.id, page, authorId, false),
+      ),
+    );
+  return payload(container);
 }
 
 module.exports = {
@@ -120,7 +219,11 @@ module.exports = {
   COMPONENT_ID,
   pageCount,
   clampPage,
+  maskOf,
+  pickWarnings,
   sanctionText,
   warningText,
   warnlistView,
+  removalView,
+  removedView,
 };

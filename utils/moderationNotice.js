@@ -157,6 +157,23 @@ function verdictNotice({ guildName, accepted, lifted = null }) {
   });
 }
 
+function unwarnNotice({ guildName, moderator, count, lifted = [] }) {
+  const lines = [
+    count === 1
+      ? "Un de tes avertissements est retiré."
+      : `${count} de tes avertissements sont retirés.`,
+  ];
+  for (const target of new Set(lifted))
+    if (LIFTED_LINES[target]) lines.push(LIFTED_LINES[target]);
+  return noticeEmbed({
+    color: COLORS.lifted,
+    title: `${count === 1 ? "Avertissement retiré" : "Avertissements retirés"} sur ${guildName}`,
+    guildName,
+    fields: [{ name: "Modérateur", value: moderator, inline: true }],
+    lines,
+  });
+}
+
 function closedDmLine(delivered) {
   return delivered
     ? ""
@@ -217,6 +234,7 @@ module.exports = {
   timeoutNotice,
   untimeoutNotice,
   verdictNotice,
+  unwarnNotice,
   sendNotice,
   closedDmLine,
   closedNotice,

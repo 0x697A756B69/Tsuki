@@ -292,3 +292,30 @@ test("closedDmLine only speaks when the member was not reached", () => {
     "\n-# Messages privés fermés : le membre n'a pas été prévenu.",
   );
 });
+
+test("unwarnNotice is green and says what was lifted", () => {
+  const { unwarnNotice } = require("../utils/moderationNotice");
+  const one = unwarnNotice({
+    guildName: "Serveur",
+    moderator: "Izuki",
+    count: 1,
+    lifted: ["timeout", "timeout"],
+  }).embeds[0].toJSON();
+  assert.equal(one.title, "Avertissement retiré sur Serveur");
+  assert.equal(one.color, COLORS.lifted);
+  assert.deepEqual(
+    one.fields.map((field) => [field.name, field.value]),
+    [["Modérateur", "Izuki"]],
+  );
+  assert.equal(
+    one.description,
+    "Un de tes avertissements est retiré.\nTa sourdine est levée.",
+  );
+  const many = unwarnNotice({
+    guildName: "Serveur",
+    moderator: "Izuki",
+    count: 3,
+  }).embeds[0].toJSON();
+  assert.equal(many.title, "Avertissements retirés sur Serveur");
+  assert.equal(many.description, "3 de tes avertissements sont retirés.");
+});
