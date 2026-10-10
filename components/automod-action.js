@@ -6,7 +6,6 @@ const {
   markResolved,
   getLog,
   setContestStatus,
-  clearLogPoints,
 } = require("../utils/automodLogs");
 const { NO_WARNING } = require("../utils/automodContest");
 const { getAutomodSettings } = require("../utils/automodSettings");
@@ -14,12 +13,10 @@ const {
   ACTIONS,
   parseAction,
   missingPermission,
-  removeWarning,
-  addModeratorWarning,
-  canLiftTimeout,
   contestVerdict,
   banConfirmation,
 } = require("../utils/automodActions");
+const { issueWarning, retractWarning } = require("../utils/warnSanctions");
 
 const MEMBER_ACTIONS = [
   "remove",
@@ -51,13 +48,25 @@ function isHandled(message) {
 
 async function perform(bot, interaction, db, action, args, member) {
   const { guild, user } = interaction;
-  if (action === "remove") removeWarning(db, guild.id, args[0], args[1]);
-  else if (action === "warn")
-    addModeratorWarning(db, {
-      id: await bot.utils.createId("WARN"),
-      guildId: guild.id,
+  if (action === "remove")
+    await retractWarning({
+      db,
+      guild,
       userId: args[0],
-      moderatorId: user.id,
+      warningId: args[1],
+      member,
+      reason: `AutoMod : avertissement retiré par ${user.tag}`,
+    });
+  else if (action === "warn")
+    await issueWarning({
+      db,
+      guild,
+      user: await bot.users.fetch(args[0]),
+      member,
+      userId: args[0],
+      id: await bot.utils.createId("WARN"),
+      authorId: user.id,
+      reason: "AutoMod : message détecté",
     });
   else if (action === "accept" || action === "refuse") {
     const ref = {
@@ -66,19 +75,21 @@ async function perform(bot, interaction, db, action, args, member) {
       messageId: interaction.message.id,
     };
     const accepted = action === "accept";
-    const lift = accepted && canLiftTimeout(getLog(db, ref), member);
-    if (accepted && args[1] !== NO_WARNING)
-      removeWarning(db, guild.id, args[0], args[1]);
-    if (lift)
-      await member.timeout(
-        null,
-        `AutoMod : contestation acceptée par ${user.tag}`,
-      );
-    if (accepted) clearLogPoints(db, ref);
+    const retracted =
+      accepted && args[1] !== NO_WARNING
+        ? await retractWarning({
+            db,
+            guild,
+            userId: args[0],
+            warningId: args[1],
+            member,
+            reason: `AutoMod : contestation acceptée par ${user.tag}`,
+          })
+        : { lifted: null };
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     const target = await bot.users.fetch(args[0]).catch(() => null);
     await target
-      ?.send(contestVerdict(guild.name, accepted, lift))
+      ?.send(contestVerdict(guild.name, accepted, retracted.lifted))
       .catch(() => {});
   } else if (action === "delete") {
     const channel = await guild.channels.fetch(args[0]);
