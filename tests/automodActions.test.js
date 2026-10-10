@@ -17,7 +17,6 @@ const {
   ACTIONS,
   parseAction,
   missingPermission,
-  contestVerdict,
   banConfirmation,
 } = require("../utils/automodActions");
 const { buildContestMessage } = require("../utils/automodJustice");
@@ -110,7 +109,9 @@ function setup({
   const bot = /** @type {any} */ ({
     utils: { createId: async (prefix) => `${prefix}-9` },
     users: {
-      fetch: async () => ({ send: async (text) => calls.dms.push(text) }),
+      fetch: async () => ({
+        send: async (text) => calls.dms.push(JSON.stringify(text)),
+      }),
     },
   });
   const interaction = /** @type {any} */ ({
@@ -366,25 +367,6 @@ function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
   markContested(context.db, REF, 2_000);
   return { ...context, timeouts };
 }
-
-test("contestVerdict tells the member the outcome", () => {
-  assert.equal(
-    contestVerdict("Serveur", false),
-    "Ta contestation sur Serveur a été refusée : l'avertissement est maintenu.",
-  );
-  assert.equal(
-    contestVerdict("Serveur", true),
-    "Ta contestation sur Serveur a été acceptée : ton avertissement est retiré.",
-  );
-  assert.match(
-    contestVerdict("Serveur", true, "timeout"),
-    /et ta sourdine est levée/,
-  );
-  assert.match(
-    contestVerdict("Serveur", true, "ban"),
-    /et ton bannissement est levé/,
-  );
-});
 
 test("accepting a contest removes the warning and tells the member", async () => {
   const { db, calls, run } = setupContest();

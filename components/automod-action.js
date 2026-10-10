@@ -20,10 +20,10 @@ const {
   ACTIONS,
   parseAction,
   missingPermission,
-  contestVerdict,
   banConfirmation,
 } = require("../utils/automodActions");
 const { issueWarning, retractWarning } = require("../utils/warnSanctions");
+const { verdictNotice, sendNotice } = require("../utils/moderationNotice");
 
 const MEMBER_ACTIONS = [
   "remove",
@@ -97,9 +97,14 @@ async function perform(bot, interaction, db, action, args, member, ref) {
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);
-    await target
-      ?.send(contestVerdict(guild.name, accepted, retracted.lifted))
-      .catch(() => {});
+    await sendNotice(
+      target,
+      verdictNotice({
+        guildName: guild.name,
+        accepted,
+        lifted: retracted.lifted,
+      }),
+    );
   } else if (action === "delete") {
     const channel = await guild.channels.fetch(args[0]);
     await channel.messages.delete(args[1]);

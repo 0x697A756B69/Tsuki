@@ -60,17 +60,6 @@ function missingPermission(action, permissions) {
   return `Il faut la permission « ${PERMISSION_NAMES.get(permission)} » pour faire ça.`;
 }
 
-const LIFTED = {
-  timeout: " et ta sourdine est levée",
-  ban: " et ton bannissement est levé",
-};
-
-function contestVerdict(guildName, accepted, lifted = null) {
-  if (!accepted)
-    return `Ta contestation sur ${guildName} a été refusée : l'avertissement est maintenu.`;
-  return `Ta contestation sur ${guildName} a été acceptée : ton avertissement est retiré${LIFTED[lifted] ?? ""}.`;
-}
-
 function banConfirmation(userId, messageId) {
   const row = /** @type {ActionRowBuilder<ButtonBuilder>} */ (
     new ActionRowBuilder()
@@ -96,6 +85,5 @@ module.exports = {
   ACTIONS,
   parseAction,
   missingPermission,
-  contestVerdict,
   banConfirmation,
 };
