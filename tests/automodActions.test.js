@@ -208,6 +208,8 @@ test("addModeratorWarning writes the warning with the moderator as author", () =
       author: "mod",
       reason: "AutoMod : message détecté",
       date: 7,
+      sanction: null,
+      timeout_until: null,
     },
   );
 });

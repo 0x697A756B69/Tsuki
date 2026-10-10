@@ -29,6 +29,10 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     pointsWords: 2,
     pointsSpam: 1,
     pointsMentions: 3,
+    reasonWords: "Insultes",
+    reasonSpam: "Spam",
+    reasonMentions: "Mentions de masse",
+    warnValidDays: 30,
     updatedBy: null,
     updatedAt: null,
   });
@@ -202,4 +206,17 @@ test("migration 017 turns the old warning threshold into a sensitivity", () => {
     [0, 3, 3, 6, 6, 10, 10],
   );
   assert.equal(getAutomodSettings(db, "g3").halfLifeDays, 3);
+});
+
+test("updateAutomodSettings saves the reasons and the warning validity", () => {
+  const settings = updateAutomodSettings(
+    createDatabase(),
+    "g",
+    { reasonWords: "Toxicité", warnValidDays: 0 },
+    "admin",
+  );
+
+  assert.equal(settings.reasonWords, "Toxicité");
+  assert.equal(settings.warnValidDays, 0);
+  assert.equal(settings.reasonSpam, "Spam");
 });

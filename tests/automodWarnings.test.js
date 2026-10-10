@@ -112,6 +112,8 @@ test("addAutomodWarning writes the warning with the bot as author", () => {
       author: BOT,
       reason: "AutoMod : spam",
       date: 1000,
+      sanction: null,
+      timeout_until: null,
     },
   );
 });

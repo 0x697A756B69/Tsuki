@@ -11,6 +11,10 @@ const COLUMNS = {
   pointsWords: "points_words",
   pointsSpam: "points_spam",
   pointsMentions: "points_mentions",
+  reasonWords: "reason_words",
+  reasonSpam: "reason_spam",
+  reasonMentions: "reason_mentions",
+  warnValidDays: "warn_valid_days",
 };
 
 function toSettings(row) {
@@ -27,6 +31,10 @@ function toSettings(row) {
     pointsWords: Number(row.points_words),
     pointsSpam: Number(row.points_spam),
     pointsMentions: Number(row.points_mentions),
+    reasonWords: String(row.reason_words),
+    reasonSpam: String(row.reason_spam),
+    reasonMentions: String(row.reason_mentions),
+    warnValidDays: Number(row.warn_valid_days),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };
