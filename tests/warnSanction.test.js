@@ -17,6 +17,7 @@ const {
   enforceWarning,
   issueWarning,
   retractWarning,
+  warningSanction,
 } = require("../utils/warnSanctions");
 
 const DAY = 24 * 60 * 60 * 1000;
@@ -121,6 +122,27 @@ test("listWarnings keeps guilds and members apart", () => {
   insertWarning(db, warning());
   assert.equal(listWarnings(db, "h", "u", 30).length, 0);
   assert.equal(listWarnings(db, "g", "someone", 30).length, 0);
+});
+
+test("warningSanction reads the sanction without removing the warning", () => {
+  const db = createDatabase();
+  insertWarning(db, warning());
+  assert.equal(warningSanction(db, "g", "u", "WARN-1"), null);
+  noteSanction(db, "WARN-1", "timeout", 9_000);
+  assert.deepEqual(warningSanction(db, "g", "u", "WARN-1"), {
+    sanction: "timeout",
+    timeoutUntil: 9_000,
+  });
+  assert.equal(listWarnings(db, "g", "u", 30).length, 1);
+});
+
+test("warningSanction ignores other guilds, members and ids", () => {
+  const db = createDatabase();
+  insertWarning(db, warning());
+  noteSanction(db, "WARN-1", "ban");
+  assert.equal(warningSanction(db, "h", "u", "WARN-1"), null);
+  assert.equal(warningSanction(db, "g", "someone", "WARN-1"), null);
+  assert.equal(warningSanction(db, "g", "u", "nope"), null);
 });
 
 test("removeWarning gives back the sanction it carried", () => {

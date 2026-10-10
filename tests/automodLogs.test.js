@@ -20,6 +20,7 @@ const {
   addLog,
   getLog,
   markContested,
+  setContestChannel,
   getExpiredLogs,
   deleteLog,
   sendLog,
@@ -283,7 +284,17 @@ test("getLog reads the member and the contest state of a log", () => {
     createdAt: 5,
     contestedAt: null,
     contestStatus: null,
+    contestChannel: null,
   });
+});
+
+test("setContestChannel remembers the private channel of a contest", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u" });
+  assert.equal(getLog(db, ref).contestChannel, null);
+  setContestChannel(db, ref, "room");
+  assert.equal(getLog(db, ref).contestChannel, "room");
 });
 
 test("getLog is null for an unknown log", () => {

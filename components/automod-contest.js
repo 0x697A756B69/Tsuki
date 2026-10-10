@@ -1,6 +1,11 @@
+const { ChannelType } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { getAutomodSettings } = require("../utils/automodSettings");
-const { getLog, markContested } = require("../utils/automodLogs");
+const {
+  getLog,
+  markContested,
+  setContestChannel,
+} = require("../utils/automodLogs");
 const {
   CONTEST_ID,
   contestCheck,
@@ -8,7 +13,50 @@ const {
   renderContestModal,
   parseReason,
   contestedPayload,
+  reviewTarget,
 } = require("../utils/automodContest");
+const {
+  contestChannelName,
+  moderatorRoleIds,
+  contestOverwrites,
+  canOpenContestChannel,
+  sanctionLabel,
+  logSummary,
+  buildContestMessage,
+} = require("../utils/automodJustice");
+const { warningSanction } = require("../utils/warnSanctions");
+
+async function openContestChannel(bot, guild, settings, details) {
+  if (settings.justiceCategory === null) return null;
+  const category = await guild.channels
+    .fetch(settings.justiceCategory)
+    .catch(() => null);
+  if (!canOpenContestChannel(category, guild.members.me.permissions))
+    return null;
+
+  const member = await guild.members.fetch(details.userId).catch(() => null);
+  const channel = await guild.channels
+    .create({
+      name: contestChannelName(member?.user.username),
+      type: ChannelType.GuildText,
+      parent: category.id,
+      permissionOverwrites: contestOverwrites({
+        guildId: guild.id,
+        memberId: details.userId,
+        botId: bot.user.id,
+        moderatorIds: moderatorRoleIds(guild.roles.cache.values(), guild.id),
+      }),
+      reason: "AutoMod : contestation",
+    })
+    .catch(() => null);
+  if (channel === null) return null;
+
+  const message = await channel
+    .send(buildContestMessage(details))
+    .catch(() => null);
+  await message?.pin().catch(() => {});
+  return channel;
+}
 
 module.exports = defineComponent({
   id: CONTEST_ID,
@@ -48,17 +96,35 @@ module.exports = defineComponent({
     if (!markContested(db, ref))
       return interaction.reply({ content: "Tu as déjà contesté ce blocage." });
 
+    const container = logMessage.components[0].toJSON();
+    const reason = parseReason(interaction.fields.getTextInputValue("reason"));
+    const { warningId } = reviewTarget(container);
+    const { rule, blocked } = logSummary(container);
+    const sanction = warningSanction(db, guildId, log.userId, warningId);
+
+    const contestChannel = await openContestChannel(bot, guild, settings, {
+      userId: log.userId,
+      rule,
+      warningId,
+      sanction: sanctionLabel(sanction?.sanction, sanction?.timeoutUntil),
+      reason,
+      blocked,
+    });
+    if (contestChannel !== null) setContestChannel(db, ref, contestChannel.id);
+
     await logMessage.edit(
-      contestedPayload(logMessage.components[0].toJSON(), {
-        reason: parseReason(interaction.fields.getTextInputValue("reason")),
+      contestedPayload(container, {
+        reason,
+        channelId: contestChannel?.id ?? null,
       }),
     );
 
+    const done =
+      contestChannel === null
+        ? "Contestation envoyée. Les modérateurs vont l'examiner."
+        : `Contestation envoyée. Rendez-vous dans <#${contestChannel.id}>.`;
     if (interaction.isFromMessage())
-      return interaction.update({
-        content: "Contestation envoyée. Les modérateurs vont l'examiner.",
-        components: [],
-      });
-    return interaction.reply({ content: "Contestation envoyée." });
+      return interaction.update({ content: done, components: [] });
+    return interaction.reply({ content: done });
   },
 });

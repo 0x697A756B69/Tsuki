@@ -59,6 +59,19 @@ function removeWarning(db, guildId, userId, warningId) {
   };
 }
 
+function warningSanction(db, guildId, userId, warningId) {
+  const row = db
+    .prepare(
+      "SELECT sanction, timeout_until FROM warns WHERE id = ? AND guild = ? AND user = ?",
+    )
+    .get(warningId, guildId, userId);
+  if (!row || row.sanction === null) return null;
+  return {
+    sanction: String(row.sanction),
+    timeoutUntil: row.timeout_until === null ? null : Number(row.timeout_until),
+  };
+}
+
 function registerWarning(
   db,
   { id, guildId, userId, authorId, reason, date = Date.now() },
@@ -233,4 +246,5 @@ module.exports = {
   enforceWarning,
   issueWarning,
   retractWarning,
+  warningSanction,
 };

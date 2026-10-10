@@ -195,6 +195,8 @@ function getLog(db, { guildId, channelId, messageId }) {
     contestedAt: row.contested_at === null ? null : Number(row.contested_at),
     contestStatus:
       row.contest_status === null ? null : String(row.contest_status),
+    contestChannel:
+      row.contest_channel === null ? null : String(row.contest_channel),
   };
 }
 
@@ -218,6 +220,16 @@ function markContested(
     )
     .run(date, guildId, channelId, messageId);
   return Number(result.changes) > 0;
+}
+
+function setContestChannel(
+  db,
+  { guildId, channelId, messageId },
+  contestChannelId,
+) {
+  db.prepare(
+    "UPDATE automod_logs SET contest_channel = ? WHERE guild = ? AND channel = ? AND message = ?",
+  ).run(contestChannelId, guildId, channelId, messageId);
 }
 
 function getExpiredLogs(db, now = Date.now(), limit = PURGE_BATCH) {
@@ -279,6 +291,7 @@ module.exports = {
   getLog,
   markContested,
   setContestStatus,
+  setContestChannel,
   getExpiredLogs,
   deleteLog,
   sendLog,

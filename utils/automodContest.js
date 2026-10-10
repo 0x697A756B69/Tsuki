@@ -118,7 +118,10 @@ function reviewRow({ userId, warningId }) {
   );
 }
 
-function contestedPayload(container, { reason, date = Date.now() }) {
+function contestedPayload(
+  container,
+  { reason, date = Date.now(), channelId = null },
+) {
   const target = reviewTarget(container);
   const parts = container.components.filter(
     (part) => part.type !== ComponentType.ActionRow,
@@ -131,6 +134,7 @@ function contestedPayload(container, { reason, date = Date.now() }) {
     content: parts[title].content.replace("Message bloqué", "Blocage contesté"),
   };
 
+  const place = channelId === null ? "" : `\n**Salon :** <#${channelId}>`;
   const footer = parts
     .map((part) => part.type)
     .lastIndexOf(ComponentType.TextDisplay);
@@ -146,7 +150,7 @@ function contestedPayload(container, { reason, date = Date.now() }) {
     0,
     new TextDisplayBuilder()
       .setContent(
-        `**Contesté le :** <t:${Math.floor(date / 1000)}:f>\n**Motif :**\n${quote}`,
+        `**Contesté le :** <t:${Math.floor(date / 1000)}:f>${place}\n**Motif :**\n${quote}`,
       )
       .toJSON(),
     new SeparatorBuilder().toJSON(),
