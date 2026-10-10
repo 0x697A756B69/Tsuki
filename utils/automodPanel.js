@@ -72,8 +72,7 @@ function describeExemptions({ roles, channels }) {
 }
 
 function describeEscalation(settings) {
-  if (settings.escalationWarns === 0) return "Désactivée";
-  return `Timeout de ${formatDuration(settings.escalationMinutes)} à ${plural(settings.escalationWarns, "avertissement")}`;
+  return `Sourdine de ${formatDuration(settings.escalationMinutes)} quand le score atteint le seuil`;
 }
 
 function describeContest(settings) {
@@ -304,15 +303,7 @@ function renderEscalationModal({ settings }) {
     .setTitle("Escalade")
     .addLabelComponents(
       new LabelBuilder()
-        .setLabel("Avertissements avant le timeout")
-        .setDescription("0 désactive l'escalade.")
-        .setTextInputComponent(
-          field("warns", settings.escalationWarns)
-            .setRequired(true)
-            .setMaxLength(2),
-        ),
-      new LabelBuilder()
-        .setLabel("Durée du timeout (minutes)")
+        .setLabel("Durée de la sourdine (minutes)")
         .setDescription("Jusqu'à 40320 minutes (28 jours).")
         .setTextInputComponent(
           field("minutes", settings.escalationMinutes)

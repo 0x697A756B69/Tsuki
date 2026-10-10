@@ -54,26 +54,18 @@ test("parseMentionLimit rejects anything else", () => {
     assert.match(parseMentionLimit(value).error, /entre 1 et 50/);
 });
 
-test("parseEscalation reads the warnings and the duration", () => {
-  assert.deepEqual(parseEscalation({ warns: " 3 ", minutes: "60" }), {
-    escalation: { escalationWarns: 3, escalationMinutes: 60 },
+test("parseEscalation reads the duration", () => {
+  assert.deepEqual(parseEscalation({ minutes: " 60 " }), {
+    escalation: { escalationMinutes: 60 },
   });
-  assert.deepEqual(parseEscalation({ warns: "0", minutes: "40320" }), {
-    escalation: { escalationWarns: 0, escalationMinutes: 40320 },
+  assert.deepEqual(parseEscalation({ minutes: "40320" }), {
+    escalation: { escalationMinutes: 40320 },
   });
-});
-
-test("parseEscalation rejects invalid warnings", () => {
-  for (const warns of ["", "-1", "21", "1.5", "abc"])
-    assert.match(
-      parseEscalation({ warns, minutes: "60" }).error,
-      /avertissements/,
-    );
 });
 
 test("parseEscalation rejects an invalid duration", () => {
   for (const minutes of ["", "0", "40321", "1.5", "abc"])
-    assert.match(parseEscalation({ warns: "3", minutes }).error, /durée/);
+    assert.match(parseEscalation({ minutes }).error, /durée/);
 });
 
 test("setAutomodWords replaces the whole list", () => {

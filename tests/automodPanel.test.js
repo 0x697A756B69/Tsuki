@@ -20,7 +20,6 @@ const defaults = {
   mentionLimit: 5,
   observation: false,
   contestHours: 168,
-  escalationWarns: 3,
   escalationMinutes: 60,
   sensitivity: 6,
   halfLifeDays: 3,
@@ -102,7 +101,7 @@ test("main view describes the defaults", () => {
   assert.match(view.text, /Désactivé/);
   assert.match(view.text, /5 mentions par message/);
   assert.match(view.text, /Aucune exemption/);
-  assert.match(view.text, /Timeout de 1 h à 3 avertissements/);
+  assert.match(view.text, /Sourdine de 1 h quand le score atteint le seuil/);
   assert.match(view.text, /Fenêtre de 7 j/);
   assert.match(
     view.text,
@@ -128,7 +127,6 @@ test("main view reflects the toggles, the exemptions and the logs", () => {
       ...defaults,
       spamEnabled: true,
       mentionsEnabled: true,
-      escalationWarns: 0,
       logChannel: "42",
     },
     [],
@@ -138,7 +136,6 @@ test("main view reflects the toggles, the exemptions and the logs", () => {
   assert.match(view.text, /Activé/);
   assert.match(view.text, /Activées/);
   assert.match(view.text, /2 rôles, 1 salon/);
-  assert.match(view.text, /Désactivée/);
   assert.match(view.text, /<#42>/);
   const labels = view.of(ComponentType.Button).map((b) => b.label);
   assert.equal(labels.filter((label) => label === "Désactiver").length, 2);
@@ -217,10 +214,7 @@ test("the modals start with the current values", () => {
   );
   assert.deepEqual(
     escalation.map((i) => [i.custom_id, i.value]),
-    [
-      ["warns", "3"],
-      ["minutes", "60"],
-    ],
+    [["minutes", "60"]],
   );
 });
 

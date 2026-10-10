@@ -23,7 +23,6 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     mentionLimit: 5,
     observation: false,
     contestHours: 168,
-    escalationWarns: 3,
     escalationMinutes: 60,
     sensitivity: 6,
     halfLifeDays: 3,
@@ -46,7 +45,6 @@ test("updateAutomodSettings only changes the given settings", () => {
 
   assert.equal(settings.logChannel, "123");
   assert.equal(settings.mentionLimit, 8);
-  assert.equal(settings.escalationWarns, 3);
 });
 
 test("updateAutomodSettings records who changed the settings and when", () => {
@@ -94,7 +92,6 @@ test("the database rejects invalid values", () => {
   for (const changes of [
     { mentionLimit: 0 },
     { mentionLimit: 51 },
-    { escalationWarns: -1 },
     { escalationMinutes: 0 },
     { escalationMinutes: 40321 },
     { contestHours: -1 },
@@ -113,16 +110,6 @@ test("the database rejects invalid values", () => {
   assert.equal(settings.mentionLimit, 5);
   assert.equal(settings.escalationMinutes, 60);
   assert.equal(settings.updatedBy, null);
-});
-
-test("an escalation of zero warnings turns the escalation off", () => {
-  const db = createDatabase();
-
-  assert.equal(
-    updateAutomodSettings(db, "g", { escalationWarns: 0 }, "admin")
-      .escalationWarns,
-    0,
-  );
 });
 
 test("updateAutomodSettings turns the spam and mention rules on and off", () => {
@@ -215,5 +202,4 @@ test("migration 017 turns the old warning threshold into a sensitivity", () => {
     [0, 3, 3, 6, 6, 10, 10],
   );
   assert.equal(getAutomodSettings(db, "g3").halfLifeDays, 3);
-  assert.equal(getAutomodSettings(db, "g3").escalationWarns, 3);
 });

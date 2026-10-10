@@ -194,7 +194,6 @@ module.exports = defineComponent({
 
       if (action === "save-escalation") {
         const parsed = parseEscalation({
-          warns: interaction.fields.getTextInputValue("warns"),
           minutes: interaction.fields.getTextInputValue("minutes"),
         });
         if (parsed.error) return refuse(interaction, parsed.error);

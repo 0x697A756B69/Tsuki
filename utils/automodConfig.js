@@ -8,7 +8,6 @@ const { renderMainView } = require("./automodPanel");
 const MAX_WORDS = 1000;
 const MAX_WORD_LENGTH = 60;
 const MAX_MENTION_LIMIT = 50;
-const MAX_ESCALATION_WARNS = 20;
 const MAX_ESCALATION_MINUTES = 40320;
 const MAX_CONTEST_HOURS = 720;
 const MAX_SENSITIVITY = 100;
@@ -47,13 +46,7 @@ function parseMentionLimit(value) {
   return { limit: Number(trimmed) };
 }
 
-function parseEscalation({ warns, minutes }) {
-  const count = warns.trim();
-  if (!/^\d+$/.test(count) || Number(count) > MAX_ESCALATION_WARNS)
-    return {
-      error: `Le nombre d'avertissements doit être un entier entre 0 et ${MAX_ESCALATION_WARNS}.`,
-    };
-
+function parseEscalation({ minutes }) {
   const duration = minutes.trim();
   if (
     !/^\d+$/.test(duration) ||
@@ -64,12 +57,7 @@ function parseEscalation({ warns, minutes }) {
       error: `La durée doit être un entier entre 1 et ${MAX_ESCALATION_MINUTES} minutes.`,
     };
 
-  return {
-    escalation: {
-      escalationWarns: Number(count),
-      escalationMinutes: Number(duration),
-    },
-  };
+  return { escalation: { escalationMinutes: Number(duration) } };
 }
 
 function parseContest(value) {
@@ -207,7 +195,6 @@ module.exports = {
   MAX_WORDS,
   MAX_WORD_LENGTH,
   MAX_MENTION_LIMIT,
-  MAX_ESCALATION_WARNS,
   MAX_ESCALATION_MINUTES,
   MAX_CONTEST_HOURS,
   MAX_SENSITIVITY,
