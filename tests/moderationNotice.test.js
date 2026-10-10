@@ -5,6 +5,12 @@ const {
   describeFuture,
   warnLines,
   warnNotice,
+  banNotice,
+  kickNotice,
+  timeoutNotice,
+  untimeoutNotice,
+  verdictNotice,
+  COLORS,
   sendNotice,
   closedNotice,
   announceClosedDm,
@@ -170,4 +176,110 @@ test("announceClosedDm carries the contest buttons it is given", async () => {
 test("announceClosedDm keeps the contest notice longer", () => {
   assert.equal(CLOSED_DELETE_DELAY, 8000);
   assert.ok(CONTEST_DELETE_DELAY >= 60 * 1000);
+});
+
+const BASE = { guildName: "Serveur", reason: "Spam", moderator: "Izuki" };
+
+function pairs(embed) {
+  return embed.fields.map((field) => [field.name, field.value]);
+}
+
+test("banNotice is red and names the reason and the moderator", () => {
+  const embed = banNotice(BASE).embeds[0].toJSON();
+  assert.equal(embed.title, "Bannissement de Serveur");
+  assert.equal(embed.color, COLORS.ban);
+  assert.deepEqual(pairs(embed), [
+    ["Raison", "Spam"],
+    ["Modérateur", "Izuki"],
+  ]);
+  assert.equal(embed.description, "Tu ne peux plus rejoindre ce serveur.");
+  assert.equal(embed.footer.text, "Serveur");
+});
+
+test("kickNotice is darker orange than a timeout", () => {
+  const embed = kickNotice(BASE).embeds[0].toJSON();
+  assert.equal(embed.title, "Expulsion de Serveur");
+  assert.equal(embed.color, COLORS.kick);
+  assert.notEqual(COLORS.kick, COLORS.timeout);
+  assert.equal(
+    embed.description,
+    "Tu peux revenir avec une nouvelle invitation.",
+  );
+});
+
+test("timeoutNotice puts the end between the reason and the moderator", () => {
+  const embed = timeoutNotice({ ...BASE, until: 120_000 }).embeds[0].toJSON();
+  assert.equal(embed.title, "Sourdine sur Serveur");
+  assert.equal(embed.color, COLORS.timeout);
+  assert.deepEqual(pairs(embed), [
+    ["Raison", "Spam"],
+    ["Fin", "<t:120:f>"],
+    ["Modérateur", "Izuki"],
+  ]);
+  assert.equal(
+    embed.fields.every((field) => field.inline),
+    true,
+  );
+});
+
+test("untimeoutNotice is green", () => {
+  const embed = untimeoutNotice(BASE).embeds[0].toJSON();
+  assert.equal(embed.title, "Sourdine levée sur Serveur");
+  assert.equal(embed.color, COLORS.lifted);
+  assert.equal(embed.description, "Tu peux de nouveau écrire et parler.");
+});
+
+test("verdictNotice accepted lists what was lifted, one per line", () => {
+  const plain = verdictNotice({ guildName: "Serveur", accepted: true });
+  assert.equal(
+    plain.embeds[0].toJSON().title,
+    "Contestation acceptée sur Serveur",
+  );
+  assert.equal(plain.embeds[0].toJSON().color, COLORS.accepted);
+  assert.equal(
+    plain.embeds[0].toJSON().description,
+    "Ton avertissement est retiré.",
+  );
+  const timeout = verdictNotice({
+    guildName: "Serveur",
+    accepted: true,
+    lifted: "timeout",
+  });
+  assert.equal(
+    timeout.embeds[0].toJSON().description,
+    "Ton avertissement est retiré.\nTa sourdine est levée.",
+  );
+  const ban = verdictNotice({
+    guildName: "Serveur",
+    accepted: true,
+    lifted: "ban",
+  });
+  assert.match(
+    ban.embeds[0].toJSON().description,
+    /\nTon bannissement est levé.$/,
+  );
+});
+
+test("verdictNotice refused is gray and keeps the warning", () => {
+  const embed = verdictNotice({
+    guildName: "Serveur",
+    accepted: false,
+    lifted: "timeout",
+  }).embeds[0].toJSON();
+  assert.equal(embed.title, "Contestation refusée sur Serveur");
+  assert.equal(embed.color, COLORS.refused);
+  assert.equal(embed.description, "L'avertissement est maintenu.");
+  assert.equal((embed.fields ?? []).length, 0);
+});
+
+test("warnNotice carries the server name in its footer", () => {
+  const embed = warnNotice({
+    guildName: "Serveur",
+    reason: "Spam",
+    count: 1,
+    step: null,
+    next: null,
+    validDays: 0,
+  }).embeds[0].toJSON();
+  assert.equal(embed.footer.text, "Serveur");
 });
