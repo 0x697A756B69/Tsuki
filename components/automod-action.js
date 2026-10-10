@@ -5,9 +5,13 @@ const {
   ACTION_ID,
   markResolved,
   getLog,
+  getLogByContestChannel,
   setContestStatus,
+  setJudged,
+  clearContestChannel,
 } = require("../utils/automodLogs");
 const { NO_WARNING } = require("../utils/automodContest");
+const { verdictPayload } = require("../utils/automodJustice");
 const { getAutomodSettings } = require("../utils/automodSettings");
 const {
   ACTIONS,
@@ -46,7 +50,13 @@ function isHandled(message) {
     .components.every((part) => part.type !== 1);
 }
 
-async function perform(bot, interaction, db, action, args, member) {
+async function fetchLogMessage(guild, ref) {
+  const channel = await guild.channels.fetch(ref.channelId).catch(() => null);
+  if (!channel?.isTextBased()) return null;
+  return channel.messages.fetch(ref.messageId).catch(() => null);
+}
+
+async function perform(bot, interaction, db, action, args, member, ref) {
   const { guild, user } = interaction;
   if (action === "remove")
     await retractWarning({
@@ -69,11 +79,6 @@ async function perform(bot, interaction, db, action, args, member) {
       reason: "AutoMod : message détecté",
     });
   else if (action === "accept" || action === "refuse") {
-    const ref = {
-      guildId: guild.id,
-      channelId: interaction.channelId,
-      messageId: interaction.message.id,
-    };
     const accepted = action === "accept";
     const retracted =
       accepted && args[1] !== NO_WARNING
@@ -87,6 +92,7 @@ async function perform(bot, interaction, db, action, args, member) {
           })
         : { lifted: null };
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
+    setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);
     await target
       ?.send(contestVerdict(guild.name, accepted, retracted.lifted))
@@ -125,6 +131,28 @@ module.exports = defineComponent({
         components: [],
       });
 
+    const room = getLogByContestChannel(
+      db,
+      interaction.guildId,
+      interaction.channelId,
+    );
+    const ref = room?.ref ?? {
+      guildId: interaction.guildId,
+      channelId: interaction.channelId,
+      messageId: interaction.message.id,
+    };
+
+    if (action === "closeroom") {
+      if (!room) return refuse(interaction, "Ce salon n'est plus actif.");
+      if (room.judgedAt === null)
+        return refuse(interaction, "La contestation n'est pas encore jugée.");
+      await interaction.deferUpdate();
+      clearContestChannel(db, room.ref);
+      return interaction.channel
+        .delete(`AutoMod : salon clos par ${interaction.user.tag}`)
+        .catch(() => {});
+    }
+
     const member = MEMBER_ACTIONS.includes(action)
       ? await interaction.guild.members.fetch(args[0]).catch(() => null)
       : null;
@@ -141,11 +169,7 @@ module.exports = defineComponent({
       return refuse(interaction, "Je ne peux pas bannir ce membre !");
 
     if (action === "accept" || action === "refuse") {
-      const log = getLog(db, {
-        guildId: interaction.guildId,
-        channelId: interaction.channelId,
-        messageId: interaction.message.id,
-      });
+      const log = room ?? getLog(db, ref);
       if (log?.contestStatus !== "pending")
         return refuse(interaction, "Cette contestation a déjà été traitée.");
     }
@@ -156,30 +180,68 @@ module.exports = defineComponent({
       );
 
     if (action === "banok") {
-      const log = await interaction.channel.messages
+      const target = await interaction.channel.messages
         .fetch(args[1])
         .catch(() => null);
-      if (!log || isHandled(log))
+      if (!target || isHandled(target))
         return interaction.update({
           content: "Ce message a déjà été traité.",
           components: [],
         });
       await interaction.deferUpdate();
-      await log.edit(resolvedPayload(log, interaction.user.id, action));
-      const done = await perform(bot, interaction, db, action, args, member)
-        .then(() => `<@${args[0]}> a été banni(e).`)
-        .catch(() => "Le bannissement a échoué.");
+      const logMessage = room
+        ? await fetchLogMessage(interaction.guild, ref)
+        : target;
+      if (logMessage && !isHandled(logMessage))
+        await logMessage.edit(
+          resolvedPayload(logMessage, interaction.user.id, action),
+        );
+      if (room) setJudged(db, ref, interaction.user.id);
+      const banned = await perform(
+        bot,
+        interaction,
+        db,
+        action,
+        args,
+        member,
+        ref,
+      )
+        .then(() => true)
+        .catch(() => false);
+      if (banned && room) {
+        clearContestChannel(db, ref);
+        return interaction.channel
+          .delete(`AutoMod : membre banni par ${interaction.user.tag}`)
+          .catch(() => {});
+      }
       return interaction.editReply({
-        content: done,
+        content: banned
+          ? `<@${args[0]}> a été banni(e).`
+          : "Le bannissement a échoué.",
         components: [],
         allowedMentions: { parse: [] },
       });
     }
 
-    await interaction.update(
-      resolvedPayload(interaction.message, interaction.user.id, action),
-    );
-    await perform(bot, interaction, db, action, args, member).catch(() =>
+    const settled = action === "accept" || action === "refuse";
+    if (room && settled) {
+      const logMessage = await fetchLogMessage(interaction.guild, ref);
+      await interaction.update(
+        verdictPayload(interaction.message.components[0].toJSON(), {
+          moderatorId: interaction.user.id,
+          label: ACTIONS[action].label,
+          date: Date.now(),
+        }),
+      );
+      if (logMessage)
+        await logMessage.edit(
+          resolvedPayload(logMessage, interaction.user.id, action),
+        );
+    } else
+      await interaction.update(
+        resolvedPayload(interaction.message, interaction.user.id, action),
+      );
+    await perform(bot, interaction, db, action, args, member, ref).catch(() =>
       interaction.followUp({
         content: "L'action a échoué, le message est classé quand même.",
         flags: MessageFlags.Ephemeral,

@@ -197,7 +197,44 @@ function getLog(db, { guildId, channelId, messageId }) {
       row.contest_status === null ? null : String(row.contest_status),
     contestChannel:
       row.contest_channel === null ? null : String(row.contest_channel),
+    judgedBy: row.judged_by === null ? null : String(row.judged_by),
+    judgedAt: row.judged_at === null ? null : Number(row.judged_at),
   };
+}
+
+function getLogByContestChannel(db, guildId, contestChannelId) {
+  const row = db
+    .prepare(
+      "SELECT channel, message FROM automod_logs WHERE guild = ? AND contest_channel = ?",
+    )
+    .get(guildId, contestChannelId);
+  if (!row) return null;
+  const ref = {
+    guildId,
+    channelId: String(row.channel),
+    messageId: String(row.message),
+  };
+  return { ref, ...getLog(db, ref) };
+}
+
+function setJudged(
+  db,
+  { guildId, channelId, messageId },
+  moderatorId,
+  date = Date.now(),
+) {
+  const result = db
+    .prepare(
+      "UPDATE automod_logs SET judged_by = ?, judged_at = ? WHERE guild = ? AND channel = ? AND message = ? AND judged_at IS NULL",
+    )
+    .run(moderatorId, date, guildId, channelId, messageId);
+  return Number(result.changes) > 0;
+}
+
+function clearContestChannel(db, { guildId, channelId, messageId }) {
+  db.prepare(
+    "UPDATE automod_logs SET contest_channel = NULL WHERE guild = ? AND channel = ? AND message = ?",
+  ).run(guildId, channelId, messageId);
 }
 
 function setContestStatus(db, { guildId, channelId, messageId }, status) {
@@ -292,6 +329,10 @@ module.exports = {
   markContested,
   setContestStatus,
   setContestChannel,
+  getLogByContestChannel,
+  setJudged,
+  clearContestChannel,
+  resolvedNotice,
   getExpiredLogs,
   deleteLog,
   sendLog,

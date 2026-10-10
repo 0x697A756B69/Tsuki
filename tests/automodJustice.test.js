@@ -7,7 +7,7 @@ const {
   PermissionsBitField,
 } = require("discord.js");
 const { RULE_NAMES } = require("../utils/automodRules");
-const { buildLogMessage } = require("../utils/automodLogs");
+const { ACTION_ID, buildLogMessage } = require("../utils/automodLogs");
 const { CONTEST_COLOR, contestedPayload } = require("../utils/automodContest");
 const {
   contestChannelName,
@@ -17,6 +17,8 @@ const {
   sanctionLabel,
   logSummary,
   buildContestMessage,
+  closeRow,
+  verdictPayload,
 } = require("../utils/automodJustice");
 
 const DETAILS = {
@@ -166,4 +168,53 @@ test("contestedPayload links the private channel when there is one", () => {
   assert.match(withChannel, /\*\*Salon :\*\* <#room>/);
   const without = JSON.stringify(contestedPayload(panel(), { reason: "x" }));
   assert.doesNotMatch(without, /Salon :\*\* <#room>/);
+});
+
+function buttons(container) {
+  return container.components
+    .filter((part) => part.type === ComponentType.ActionRow)
+    .flatMap((row) => row.components)
+    .map((button) => button.custom_id);
+}
+
+test("buildContestMessage ends with the review buttons", () => {
+  const container = buildContestMessage(DETAILS).components[0].toJSON();
+  assert.deepEqual(buttons(container), [
+    `${ACTION_ID}:accept:u:WARN-1`,
+    `${ACTION_ID}:refuse:u`,
+    `${ACTION_ID}:ban:u`,
+  ]);
+  const footer = /** @type {any} */ (container.components.at(-2));
+  assert.match(footer.content, /En attente/);
+});
+
+test("closeRow offers one button to close the room", () => {
+  const json = JSON.parse(JSON.stringify(closeRow()));
+  assert.equal(json.components.length, 1);
+  assert.equal(json.components[0].custom_id, `${ACTION_ID}:closeroom`);
+  assert.equal(json.components[0].label, "Clore le salon");
+});
+
+test("verdictPayload swaps the review buttons for the close button", () => {
+  const container = buildContestMessage(DETAILS).components[0].toJSON();
+  const payload = verdictPayload(container, {
+    moderatorId: "mod",
+    label: "contestation acceptée",
+    date: 1_000_000,
+  });
+  const verdict = payload.components[0];
+  assert.deepEqual(buttons(verdict), [`${ACTION_ID}:closeroom`]);
+  assert.notEqual(verdict.accent_color, CONTEST_COLOR);
+  const footer = verdict.components.at(-2).content;
+  assert.match(footer, /Traité par <@mod> : contestation acceptée/);
+  assert.doesNotMatch(footer, /En attente/);
+  assert.deepEqual(payload.allowedMentions, { parse: [] });
+});
+
+test("contestedPayload drops the review buttons once a room exists", () => {
+  const plain = contestedPayload(panel(), { reason: "x" }).components[0];
+  assert.equal(buttons(plain).length, 3);
+  const room = contestedPayload(panel(), { reason: "x", channelId: "room" })
+    .components[0];
+  assert.equal(buttons(room).length, 0);
 });

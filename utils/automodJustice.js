@@ -1,16 +1,22 @@
 const {
+  ActionRowBuilder,
+  ButtonBuilder,
+  ButtonStyle,
   ChannelType,
+  ComponentType,
   ContainerBuilder,
   MessageFlags,
   PermissionFlagsBits,
   SeparatorBuilder,
   TextDisplayBuilder,
 } = require("discord.js");
-const { CONTEST_COLOR } = require("./automodContest");
-const { excerpt } = require("./automodLogs");
+const { CONTEST_COLOR, reviewRow } = require("./automodContest");
+const { ACTION_ID, excerpt, resolvedNotice } = require("./automodLogs");
+const { buildCustomId } = require("./customId");
 
 const NAME_PREFIX = "contestation-";
 const NAME_LENGTH = 40;
+const VERDICT_COLOR = 0x8e8e93;
 const SANCTION_LABELS = {
   timeout: "Mise en sourdine",
   kick: "Expulsion",
@@ -125,7 +131,10 @@ function buildContestMessage({
     .addTextDisplayComponents(
       text(`**Message bloqué :**\n${blockedQuote}`),
       text(`**Explication du membre :**\n${memberQuote}`),
-    );
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(text("-# En attente d'un modérateur"))
+    .addActionRowComponents(reviewRow({ userId, warningId }));
 
   return {
     components: [container],
@@ -134,8 +143,43 @@ function buildContestMessage({
   };
 }
 
+function closeRow() {
+  return /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(ACTION_ID, "closeroom"))
+      .setLabel("Clore le salon")
+      .setStyle(ButtonStyle.Secondary),
+  );
+}
+
+function verdictPayload(container, resolved) {
+  const parts = container.components.filter(
+    (part) => part.type !== ComponentType.ActionRow,
+  );
+  const last = parts.length - 1;
+  parts[last] = {
+    ...parts[last],
+    content: `-# ${resolvedNotice(resolved)}`,
+  };
+  parts.push(closeRow().toJSON());
+  return {
+    components: [
+      { ...container, accent_color: VERDICT_COLOR, components: parts },
+    ],
+    flags: /** @type {MessageFlags.IsComponentsV2} */ (
+      MessageFlags.IsComponentsV2
+    ),
+    allowedMentions: { parse: [] },
+  };
+}
+
 module.exports = {
   NAME_PREFIX,
+  VERDICT_COLOR,
+  closeRow,
+  verdictPayload,
   contestChannelName,
   moderatorRoleIds,
   contestOverwrites,

@@ -155,7 +155,8 @@ function contestedPayload(
       .toJSON(),
     new SeparatorBuilder().toJSON(),
   );
-  if (target.userId !== null) parts.push(reviewRow(target).toJSON());
+  if (target.userId !== null && channelId === null)
+    parts.push(reviewRow(target).toJSON());
 
   return {
     components: [

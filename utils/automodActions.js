@@ -34,6 +34,10 @@ const ACTIONS = {
     permission: PermissionFlagsBits.ManageMessages,
     label: "contestation refusée",
   },
+  closeroom: {
+    permission: PermissionFlagsBits.ManageMessages,
+    label: "salon clos",
+  },
   ban: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   banok: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   bancancel: { permission: null, label: "annulé" },
