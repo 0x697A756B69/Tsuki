@@ -17,12 +17,59 @@ const {
 } = require("discord.js");
 const { buildCustomId } = require("./customId");
 const { formatDuration } = require("./estimate");
-const { PROFILES, currentProfile, profileLabel } = require("./automodProfiles");
+const { describeStep } = require("./warnLadder");
 
 const ACCENT_COLOR = 0xe5484d;
 const MAX_EXEMPT_ROLES = 20;
 const MAX_EXEMPT_CHANNELS = 25;
 const WORDS_PREVIEW = 5;
+const WIKI = [
+  "**Blocage** : un message qui enfreint une règle est bloqué, et son auteur reçoit un avertissement.",
+  "**Paliers** : plus un membre a d'avertissements actifs, plus la sanction est lourde.",
+  "**Contestation** : un membre bloqué peut contester ; un avertissement retiré retire aussi sa sanction.",
+].join("\n");
+const HOME_SECTIONS = [
+  {
+    label: "Règles",
+    value: "rules",
+    description: "Mots interdits, spam, mentions",
+  },
+  {
+    label: "Raisons",
+    value: "reasons",
+    description: "Motifs proposés et motif de chaque règle",
+  },
+  {
+    label: "Paliers",
+    value: "ladder",
+    description: "Sanction selon le nombre d'avertissements",
+  },
+  {
+    label: "Durée",
+    value: "validity",
+    description: "Combien de temps compte un avertissement",
+  },
+  {
+    label: "Contestation",
+    value: "contest",
+    description: "Fenêtre pour contester un blocage",
+  },
+  {
+    label: "Logs",
+    value: "logs",
+    description: "Salon où les blocages sont signalés",
+  },
+  {
+    label: "Mode observation",
+    value: "observation",
+    description: "Signaler sans bloquer",
+  },
+  {
+    label: "Exemptions",
+    value: "exemptions",
+    description: "Rôles et salons jamais bloqués",
+  },
+];
 
 function id(...params) {
   return buildCustomId("automod-config", ...params);
@@ -66,27 +113,9 @@ function describeWords(words) {
     : `${plural(words.length, "mot")} · ${shown}`;
 }
 
-function describeExemptions({ roles, channels }) {
-  if (roles.length + channels.length === 0) return "Aucune exemption";
-  return `${plural(roles.length, "rôle")}, ${plural(channels.length, "salon")}`;
-}
-
-function describeEscalation(settings) {
-  return `Sourdine de ${formatDuration(settings.escalationMinutes)} quand le score atteint le seuil`;
-}
-
 function describeContest(settings) {
   if (settings.contestHours === 0) return "Désactivée";
   return `Fenêtre de ${formatDuration(settings.contestHours * 60)}`;
-}
-
-function describeSensitivity(settings) {
-  if (settings.sensitivity === 0) return "Désactivée";
-  return `Sourdine à ${plural(settings.sensitivity, "point")} · points divisés par deux tous les ${plural(settings.halfLifeDays, "jour")}`;
-}
-
-function describePoints(settings) {
-  return `Mots ${settings.pointsWords} · Spam ${settings.pointsSpam} · Mentions ${settings.pointsMentions}`;
 }
 
 function describeHistory(settings) {
@@ -96,25 +125,6 @@ function describeHistory(settings) {
   return `-# Dernière modification par <@${settings.updatedBy}> <t:${when}:R>`;
 }
 
-function profileRow(settings) {
-  const current = currentProfile(settings);
-  return /** @type {ActionRowBuilder<StringSelectMenuBuilder>} */ (
-    new ActionRowBuilder()
-  ).addComponents(
-    new StringSelectMenuBuilder()
-      .setCustomId(id("profile"))
-      .setPlaceholder(`Profil : ${profileLabel(settings)}`)
-      .addOptions(
-        Object.entries(PROFILES).map(([key, profile]) => ({
-          label: profile.label,
-          description: profile.description,
-          value: key,
-          default: key === current,
-        })),
-      ),
-  );
-}
-
 function panel(container) {
   return {
     components: [container],
@@ -122,14 +132,70 @@ function panel(container) {
   };
 }
 
-function renderMainView({ settings, words, exemptions, guild }) {
+function describeValidity(settings) {
+  if (settings.warnValidDays === 0)
+    return "Les avertissements n'expirent jamais";
+  return `Un avertissement compte pendant ${formatDuration(settings.warnValidDays * 1440)}`;
+}
+
+function describeLadder(ladder) {
+  return ladder
+    .map((step, index) => {
+      const label =
+        index === ladder.length - 1
+          ? `${plural(step.warns, "avertissement")} et plus`
+          : plural(step.warns, "avertissement");
+      return `${label} : ${describeStep(step)}`;
+    })
+    .join("\n");
+}
+
+function homeSelect() {
+  return /** @type {ActionRowBuilder<StringSelectMenuBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(id("goto"))
+      .setPlaceholder("Aller à un réglage…")
+      .addOptions(HOME_SECTIONS),
+  );
+}
+
+function section(title, intro) {
+  return new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(text(`## ${title}\n${intro}`));
+}
+
+function buttons(...items) {
+  return (row) => row.addComponents(...items);
+}
+
+function backButton() {
+  return button("back", "Retour à l'accueil");
+}
+
+function renderMainView({ settings, guild }) {
   const container = new ContainerBuilder()
     .setAccentColor(ACCENT_COLOR)
     .addTextDisplayComponents(
       text(`## AutoMod — réglages\nServeur ${guild.name}`),
     )
     .addSeparatorComponents(new SeparatorBuilder())
-    .addActionRowComponents(profileRow(settings))
+    .addTextDisplayComponents(text(WIKI))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(homeSelect())
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(text(describeHistory(settings)));
+
+  return panel(container);
+}
+
+function renderRulesView({ settings, words }) {
+  const container = section(
+    "Règles",
+    "Un message qui enfreint une règle est bloqué et son auteur reçoit un avertissement.",
+  )
     .addSectionComponents(
       setting(
         "Mots interdits",
@@ -151,46 +217,113 @@ function renderMainView({ settings, words, exemptions, guild }) {
         `${plural(settings.mentionLimit, "mention")} par message`,
         button("mention-limit", "Modifier"),
       ),
-      setting(
-        "Exemptions",
-        describeExemptions(exemptions),
-        button("exemptions", "Modifier"),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(buttons(backButton()));
+
+  return panel(container);
+}
+
+function reasonSelect(key, title, current, reasons) {
+  return /** @type {ActionRowBuilder<StringSelectMenuBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new StringSelectMenuBuilder()
+      .setCustomId(id(`reason-${key}`))
+      .setPlaceholder(`${title} : ${current}`)
+      .addOptions(
+        reasons.map((reason) => ({
+          label: reason,
+          value: reason,
+          default: reason === current,
+        })),
       ),
-      setting(
-        "Escalade",
-        describeEscalation(settings),
-        button("escalation", "Modifier"),
-      ),
-      setting(
-        "Sensibilité",
-        describeSensitivity(settings),
-        button("sensitivity", "Modifier"),
-      ),
-      setting(
-        "Points par règle",
-        describePoints(settings),
-        button("points", "Modifier"),
-      ),
-      setting(
-        "Contestation",
-        describeContest(settings),
-        button("contest", "Modifier"),
-      ),
-      setting(
-        "Logs",
-        settings.logChannel ? `<#${settings.logChannel}>` : "Aucun salon",
-        button("logs", "Modifier"),
-      ),
-      setting(
-        "Mode observation",
-        settings.observation
-          ? "Activé : rien n'est bloqué ni sanctionné, les messages sont seulement signalés dans les logs"
-          : "Désactivé",
-        toggle("observation-toggle", settings.observation),
+  );
+}
+
+function renderReasonsView({ settings, reasons }) {
+  const container = section(
+    "Raisons",
+    `Les raisons proposées par \`/warn\`, avec « Autre » pour une raison libre. Chaque règle a la sienne.\n${reasons.join(" · ")}`,
+  )
+    .addActionRowComponents(
+      reasonSelect("words", "Mots interdits", settings.reasonWords, reasons),
+    )
+    .addActionRowComponents(
+      reasonSelect("spam", "Spam", settings.reasonSpam, reasons),
+    )
+    .addActionRowComponents(
+      reasonSelect(
+        "mentions",
+        "Mentions de masse",
+        settings.reasonMentions,
+        reasons,
       ),
     )
     .addSeparatorComponents(new SeparatorBuilder())
-    .addTextDisplayComponents(text(describeHistory(settings)));
+    .addActionRowComponents(
+      buttons(
+        button("reasons-edit", "Modifier la liste"),
+        button("reasons-reset", "Réinitialiser"),
+        backButton(),
+      ),
+    );
+
+  return panel(container);
+}
+
+function renderLadderView({ ladder }) {
+  const container = section(
+    "Paliers",
+    `La sanction dépend du nombre d'avertissements actifs du membre.\n${describeLadder(ladder)}`,
+  )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(
+      buttons(
+        button("ladder-edit", "Modifier"),
+        button("ladder-reset", "Réinitialiser"),
+        backButton(),
+      ),
+    );
+
+  return panel(container);
+}
+
+function renderValidityView({ settings }) {
+  const container = section(
+    "Durée",
+    `${describeValidity(settings)}.\nUn avertissement expiré ne compte plus pour les paliers, mais reste visible dans \`/warnlist\`.`,
+  )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(
+      buttons(button("validity", "Modifier"), backButton()),
+    );
+
+  return panel(container);
+}
+
+function renderContestView({ settings }) {
+  const container = section(
+    "Contestation",
+    `${describeContest(settings)}.\nUn membre bloqué peut contester pendant ce temps ; un avertissement retiré retire aussi sa sanction.`,
+  )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(
+      buttons(button("contest", "Modifier"), backButton()),
+    );
+
+  return panel(container);
+}
+
+function renderObservationView({ settings }) {
+  const container = section(
+    "Mode observation",
+    `${settings.observation ? "Activé" : "Désactivé"}.\nEn observation, rien n'est bloqué ni sanctionné : les messages sont seulement signalés dans les logs.`,
+  )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(
+      buttons(toggle("observation-toggle", settings.observation), backButton()),
+    );
 
   return panel(container);
 }
@@ -219,9 +352,7 @@ function renderExemptionsView({ exemptions }) {
     .addActionRowComponents((row) => row.addComponents(roles))
     .addActionRowComponents((row) => row.addComponents(channels))
     .addSeparatorComponents(new SeparatorBuilder())
-    .addActionRowComponents((row) =>
-      row.addComponents(button("back", "Retour")),
-    );
+    .addActionRowComponents((row) => row.addComponents(backButton()));
 
   return panel(container);
 }
@@ -244,9 +375,7 @@ function renderLogsView({ settings }) {
     )
     .addActionRowComponents((row) => row.addComponents(channel))
     .addSeparatorComponents(new SeparatorBuilder())
-    .addActionRowComponents((row) =>
-      row.addComponents(clear, button("back", "Retour")),
-    );
+    .addActionRowComponents((row) => row.addComponents(clear, backButton()));
 
   return panel(container);
 }
@@ -290,65 +419,6 @@ function renderMentionLimitModal({ settings }) {
     );
 }
 
-function renderEscalationModal({ settings }) {
-  return new ModalBuilder()
-    .setCustomId(id("save-escalation"))
-    .setTitle("Escalade")
-    .addLabelComponents(
-      new LabelBuilder()
-        .setLabel("Durée de la sourdine (minutes)")
-        .setDescription("Jusqu'à 40320 minutes (28 jours).")
-        .setTextInputComponent(
-          field("minutes", settings.escalationMinutes)
-            .setRequired(true)
-            .setMaxLength(5),
-        ),
-    );
-}
-
-function renderSensitivityModal({ settings }) {
-  return new ModalBuilder()
-    .setCustomId(id("save-sensitivity"))
-    .setTitle("Sensibilité")
-    .addLabelComponents(
-      new LabelBuilder()
-        .setLabel("Seuil de sourdine (points)")
-        .setDescription(
-          "Tranquille 10, Standard 6, Strict 3. 0 désactive la sourdine.",
-        )
-        .setTextInputComponent(
-          field("threshold", settings.sensitivity)
-            .setRequired(true)
-            .setMaxLength(3),
-        ),
-      new LabelBuilder()
-        .setLabel("Demi-vie des points (jours)")
-        .setDescription("Le score est divisé par deux tous les N jours.")
-        .setTextInputComponent(
-          field("halfLife", settings.halfLifeDays)
-            .setRequired(true)
-            .setMaxLength(2),
-        ),
-    );
-}
-
-function renderPointsModal({ settings }) {
-  const label = (title, fieldId, value) =>
-    new LabelBuilder()
-      .setLabel(title)
-      .setTextInputComponent(
-        field(fieldId, value).setRequired(true).setMaxLength(2),
-      );
-  return new ModalBuilder()
-    .setCustomId(id("save-points"))
-    .setTitle("Points par règle")
-    .addLabelComponents(
-      label("Mots interdits", "words", settings.pointsWords),
-      label("Spam", "spam", settings.pointsSpam),
-      label("Mentions de masse", "mentions", settings.pointsMentions),
-    );
-}
-
 function renderContestModal({ settings }) {
   return new ModalBuilder()
     .setCustomId(id("save-contest"))
@@ -367,14 +437,72 @@ function renderContestModal({ settings }) {
     );
 }
 
+function renderReasonsModal({ reasons }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-reasons"))
+    .setTitle("Raisons")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Raisons")
+        .setDescription("Une raison par ligne, 24 au maximum.")
+        .setTextInputComponent(
+          field("reasons", reasons.join("\n"), TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setMaxLength(1300),
+        ),
+    );
+}
+
+function renderLadderModal({ lines }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-ladder"))
+    .setTitle("Paliers")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Une ligne par avertissement")
+        .setDescription(
+          "aucune, sourdine 10 min, 1 h, 2 j, expulsion, bannissement. La dernière ligne vaut aussi au-delà.",
+        )
+        .setTextInputComponent(
+          field("ladder", lines, TextInputStyle.Paragraph)
+            .setRequired(true)
+            .setMaxLength(500),
+        ),
+    );
+}
+
+function renderValidityModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-validity"))
+    .setTitle("Durée")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Durée d'un avertissement (jours)")
+        .setDescription("0 : un avertissement n'expire jamais. Jusqu'à 365.")
+        .setTextInputComponent(
+          field("days", settings.warnValidDays)
+            .setRequired(true)
+            .setMaxLength(3),
+        ),
+    );
+}
+
 module.exports = {
+  HOME_SECTIONS,
+  describeLadder,
   renderMainView,
+  renderRulesView,
+  renderReasonsView,
+  renderLadderView,
+  renderValidityView,
+  renderContestView,
+  renderObservationView,
   renderExemptionsView,
   renderLogsView,
   renderWordsModal,
   renderMentionLimitModal,
-  renderEscalationModal,
-  renderSensitivityModal,
-  renderPointsModal,
   renderContestModal,
+  renderReasonsModal,
+  renderLadderModal,
+  renderValidityModal,
 };

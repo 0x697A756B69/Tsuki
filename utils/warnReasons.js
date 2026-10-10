@@ -55,6 +55,7 @@ function resetReasons(db, guildId) {
 module.exports = {
   DEFAULT_REASONS,
   MAX_REASONS,
+  MAX_LENGTH,
   cleanReasons,
   getReasons,
   setReasons,

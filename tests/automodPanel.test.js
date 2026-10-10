@@ -1,16 +1,26 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { ComponentType } = require("discord.js");
+const { DEFAULT_LADDER } = require("../utils/warnLadder");
+const { DEFAULT_REASONS } = require("../utils/warnReasons");
 const {
+  HOME_SECTIONS,
+  describeLadder,
   renderMainView,
+  renderRulesView,
+  renderReasonsView,
+  renderLadderView,
+  renderValidityView,
+  renderContestView,
+  renderObservationView,
   renderExemptionsView,
   renderLogsView,
   renderWordsModal,
   renderMentionLimitModal,
-  renderEscalationModal,
-  renderSensitivityModal,
-  renderPointsModal,
   renderContestModal,
+  renderReasonsModal,
+  renderLadderModal,
+  renderValidityModal,
 } = require("../utils/automodPanel");
 
 const defaults = {
@@ -26,6 +36,10 @@ const defaults = {
   pointsWords: 2,
   pointsSpam: 1,
   pointsMentions: 3,
+  reasonWords: "Insultes",
+  reasonSpam: "Spam",
+  reasonMentions: "Mentions de masse",
+  warnValidDays: 30,
   updatedBy: null,
   updatedAt: null,
 };
@@ -55,96 +69,235 @@ function render(view) {
   };
 }
 
-function main(settings = defaults, words = [], exemptions = noExemptions) {
-  return render(renderMainView({ settings, words, exemptions, guild }));
+function main(settings = defaults) {
+  return render(renderMainView({ settings, guild }));
 }
 
-test("main view shows every setting with a button", () => {
+function rules(settings = defaults, words = []) {
+  return render(renderRulesView({ settings, words }));
+}
+
+const buttonIds = (view) =>
+  view.of(ComponentType.Button).map((b) => b.custom_id);
+
+test("main view is a welcome page with a three-sentence wiki", () => {
   const view = main();
 
-  for (const title of [
-    "Mots interdits",
-    "Spam",
-    "Mentions de masse",
-    "Limite de mentions",
-    "Exemptions",
-    "Escalade",
-    "Sensibilité",
-    "Points par règle",
-    "Contestation",
-    "Logs",
-    "Mode observation",
-  ])
-    assert.match(view.text, new RegExp(title));
-  assert.deepEqual(
-    view.of(ComponentType.Button).map((b) => b.custom_id),
-    [
-      "automod-config:words",
-      "automod-config:spam-toggle",
-      "automod-config:mentions-toggle",
-      "automod-config:mention-limit",
-      "automod-config:exemptions",
-      "automod-config:escalation",
-      "automod-config:sensitivity",
-      "automod-config:points",
-      "automod-config:contest",
-      "automod-config:logs",
-      "automod-config:observation-toggle",
-    ],
-  );
-});
-
-test("main view describes the defaults", () => {
-  const view = main();
-
-  assert.match(view.text, /Aucun mot interdit/);
-  assert.match(view.text, /Désactivé/);
-  assert.match(view.text, /5 mentions par message/);
-  assert.match(view.text, /Aucune exemption/);
-  assert.match(view.text, /Sourdine de 1 h quand le score atteint le seuil/);
-  assert.match(view.text, /Fenêtre de 7 j/);
-  assert.match(
-    view.text,
-    /Sourdine à 6 points · points divisés par deux tous les 3 jours/,
-  );
-  assert.match(view.text, /Mots 2 · Spam 1 · Mentions 3/);
-  assert.match(view.text, /Aucun salon/);
+  assert.match(view.text, /AutoMod — réglages\nServeur Tsuki/);
+  assert.match(view.text, /\*\*Blocage\*\*/);
+  assert.match(view.text, /\*\*Paliers\*\*/);
+  assert.match(view.text, /\*\*Contestation\*\*/);
   assert.match(view.text, /jamais modifiés/);
 });
 
-test("main view summarises the words, with a preview", () => {
-  assert.match(main(defaults, ["a", "b"]).text, /2 mots · a, b/);
-  assert.match(main(defaults, ["a"]).text, /1 mot · a/);
-  assert.match(
-    main(defaults, ["a", "b", "c", "d", "e", "f", "g"]).text,
-    /7 mots · a, b, c, d, e et 2 autres/,
+test("main view offers one menu to go to every setting", () => {
+  const view = main();
+  const [select] = view.of(ComponentType.StringSelect);
+
+  assert.equal(view.of(ComponentType.StringSelect).length, 1);
+  assert.equal(select.custom_id, "automod-config:goto");
+  assert.equal(select.placeholder, "Aller à un réglage…");
+  assert.deepEqual(
+    select.options.map((option) => option.value),
+    [
+      "rules",
+      "reasons",
+      "ladder",
+      "validity",
+      "contest",
+      "logs",
+      "observation",
+      "exemptions",
+    ],
   );
+  assert.deepEqual(
+    HOME_SECTIONS,
+    select.options.map(({ label, value, description }) => ({
+      label,
+      value,
+      description,
+    })),
+  );
+  assert.equal(view.of(ComponentType.Button).length, 0);
 });
 
-test("main view reflects the toggles, the exemptions and the logs", () => {
-  const view = main(
-    {
-      ...defaults,
-      spamEnabled: true,
-      mentionsEnabled: true,
-      logChannel: "42",
-    },
-    [],
-    { roles: ["r1", "r2"], channels: ["c1"] },
-  );
+test("main view drops the profile, the escalation and the score settings", () => {
+  const view = main();
 
-  assert.match(view.text, /Activé/);
-  assert.match(view.text, /Activées/);
-  assert.match(view.text, /2 rôles, 1 salon/);
-  assert.match(view.text, /<#42>/);
-  const labels = view.of(ComponentType.Button).map((b) => b.label);
-  assert.equal(labels.filter((label) => label === "Désactiver").length, 2);
+  for (const word of ["Profil", "Escalade", "Sensibilité", "Points par règle"])
+    assert.doesNotMatch(view.text, new RegExp(word));
+  assert.ok(
+    !view
+      .of(ComponentType.StringSelect)
+      .some((select) => select.custom_id.endsWith(":profile")),
+  );
 });
 
 test("main view shows who changed the settings last", () => {
   const view = main({ ...defaults, updatedBy: "7", updatedAt: 1700000000000 });
 
   assert.match(view.text, /<@7> <t:1700000000:R>/);
+});
+
+test("rules view shows every rule with a button", () => {
+  const view = rules();
+
+  for (const title of [
+    "Mots interdits",
+    "Spam",
+    "Mentions de masse",
+    "Limite de mentions",
+  ])
+    assert.match(view.text, new RegExp(title));
+  assert.deepEqual(buttonIds(view), [
+    "automod-config:words",
+    "automod-config:spam-toggle",
+    "automod-config:mentions-toggle",
+    "automod-config:mention-limit",
+    "automod-config:back",
+  ]);
+});
+
+test("rules view describes the defaults", () => {
+  const view = rules();
+
+  assert.match(view.text, /Aucun mot interdit/);
+  assert.match(view.text, /Désactivé/);
+  assert.match(view.text, /5 mentions par message/);
+});
+
+test("rules view summarises the words, with a preview", () => {
+  assert.match(rules(defaults, ["a", "b"]).text, /2 mots · a, b/);
+  assert.match(rules(defaults, ["a"]).text, /1 mot · a/);
+  assert.match(
+    rules(defaults, ["a", "b", "c", "d", "e", "f", "g"]).text,
+    /7 mots · a, b, c, d, e et 2 autres/,
+  );
+});
+
+test("rules view reflects the toggles", () => {
+  const view = rules({ ...defaults, spamEnabled: true, mentionsEnabled: true });
+
+  assert.match(view.text, /Activé/);
+  assert.match(view.text, /Activées/);
+  const labels = view.of(ComponentType.Button).map((b) => b.label);
+  assert.equal(labels.filter((label) => label === "Désactiver").length, 2);
+});
+
+test("reasons view lists the reasons and one menu per rule", () => {
+  const view = render(
+    renderReasonsView({ settings: defaults, reasons: DEFAULT_REASONS }),
+  );
+  const selects = view.of(ComponentType.StringSelect);
+
+  assert.match(view.text, /Insultes · Spam · Publicité/);
+  assert.deepEqual(
+    selects.map((select) => select.custom_id),
+    [
+      "automod-config:reason-words",
+      "automod-config:reason-spam",
+      "automod-config:reason-mentions",
+    ],
+  );
+  assert.deepEqual(
+    selects.map((select) => select.placeholder),
+    [
+      "Mots interdits : Insultes",
+      "Spam : Spam",
+      "Mentions de masse : Mentions de masse",
+    ],
+  );
+  assert.deepEqual(
+    selects[0].options.map((option) => option.value),
+    DEFAULT_REASONS,
+  );
+  assert.deepEqual(
+    selects[1].options.filter((option) => option.default).map((o) => o.value),
+    ["Spam"],
+  );
+  assert.deepEqual(buttonIds(view), [
+    "automod-config:reasons-edit",
+    "automod-config:reasons-reset",
+    "automod-config:back",
+  ]);
+});
+
+test("reasons view stays valid with 24 long reasons", () => {
+  const reasons = Array.from({ length: 24 }, (_, i) =>
+    `Raison ${i} `.padEnd(50, "x"),
+  );
+  const view = render(renderReasonsView({ settings: defaults, reasons }));
+
+  assert.ok(view.all.length <= 40);
+  assert.equal(view.of(ComponentType.StringSelect)[0].options.length, 24);
+});
+
+test("describeLadder lists the steps and marks the last as open-ended", () => {
+  assert.equal(
+    describeLadder(DEFAULT_LADDER),
+    [
+      "1 avertissement : aucune sanction",
+      "2 avertissements : sourdine de 10 min",
+      "3 avertissements : sourdine de 1 h",
+      "4 avertissements et plus : sourdine de 1 j",
+    ].join("\n"),
+  );
+  assert.equal(
+    describeLadder([{ warns: 1, sanction: "ban", minutes: null }]),
+    "1 avertissement et plus : bannissement",
+  );
+});
+
+test("ladder view shows the ladder with edit and reset buttons", () => {
+  const view = render(renderLadderView({ ladder: DEFAULT_LADDER }));
+
+  assert.match(view.text, /## Paliers/);
+  assert.match(view.text, /2 avertissements : sourdine de 10 min/);
+  assert.deepEqual(buttonIds(view), [
+    "automod-config:ladder-edit",
+    "automod-config:ladder-reset",
+    "automod-config:back",
+  ]);
+});
+
+test("validity view says how long a warning counts", () => {
+  const view = render(renderValidityView({ settings: defaults }));
+  assert.match(view.text, /compte pendant 30 j/);
+  assert.deepEqual(buttonIds(view), [
+    "automod-config:validity",
+    "automod-config:back",
+  ]);
+
+  const never = render(
+    renderValidityView({ settings: { ...defaults, warnValidDays: 0 } }),
+  );
+  assert.match(never.text, /n'expirent jamais/);
+});
+
+test("contest view describes the window", () => {
+  const view = (contestHours) =>
+    render(renderContestView({ settings: { ...defaults, contestHours } }));
+
+  assert.match(view(12).text, /Fenêtre de 12 h/);
+  assert.match(view(0).text, /Désactivée/);
+  assert.deepEqual(buttonIds(view(12)), [
+    "automod-config:contest",
+    "automod-config:back",
+  ]);
+});
+
+test("observation view toggles the mode", () => {
+  const view = (observation) =>
+    render(renderObservationView({ settings: { ...defaults, observation } }));
+  const toggle = (rendered) =>
+    rendered
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === "automod-config:observation-toggle");
+
+  assert.match(view(false).text, /Désactivé/);
+  assert.equal(toggle(view(false)).label, "Activer");
+  assert.match(view(true).text, /Activé/);
+  assert.equal(toggle(view(true)).label, "Désactiver");
 });
 
 test("exemptions view preselects the current exemptions", () => {
@@ -193,28 +346,50 @@ test("logs view lets you pick a text channel or remove it", () => {
 });
 
 test("the modals start with the current values", () => {
-  const words = render(renderWordsModal({ words: ["foo", "bar"] })).of(
-    ComponentType.TextInput,
-  );
+  const input = (modal) => render(modal).of(ComponentType.TextInput);
+
   assert.deepEqual(
-    words.map((i) => [i.custom_id, i.value, i.required]),
+    input(renderWordsModal({ words: ["foo", "bar"] })).map((i) => [
+      i.custom_id,
+      i.value,
+      i.required,
+    ]),
     [["words", "foo\nbar", false]],
   );
-
-  const limit = render(renderMentionLimitModal({ settings: defaults })).of(
-    ComponentType.TextInput,
-  );
   assert.deepEqual(
-    limit.map((i) => [i.custom_id, i.value]),
+    input(renderMentionLimitModal({ settings: defaults })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
     [["limit", "5"]],
   );
-
-  const escalation = render(renderEscalationModal({ settings: defaults })).of(
-    ComponentType.TextInput,
+  assert.deepEqual(
+    input(renderContestModal({ settings: defaults })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
+    [["hours", "168"]],
   );
   assert.deepEqual(
-    escalation.map((i) => [i.custom_id, i.value]),
-    [["minutes", "60"]],
+    input(renderValidityModal({ settings: defaults })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
+    [["days", "30"]],
+  );
+  assert.deepEqual(
+    input(renderReasonsModal({ reasons: ["Spam", "Pub"] })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
+    [["reasons", "Spam\nPub"]],
+  );
+  assert.deepEqual(
+    input(renderLadderModal({ lines: "aucune\nsourdine 10 min" })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
+    [["ladder", "aucune\nsourdine 10 min"]],
   );
 });
 
@@ -222,133 +397,48 @@ test("the modals post to the automod component", () => {
   for (const [modal, action] of [
     [renderWordsModal({ words: [] }), "save-words"],
     [renderMentionLimitModal({ settings: defaults }), "save-mention-limit"],
-    [renderEscalationModal({ settings: defaults }), "save-escalation"],
-    [renderSensitivityModal({ settings: defaults }), "save-sensitivity"],
-    [renderPointsModal({ settings: defaults }), "save-points"],
     [renderContestModal({ settings: defaults }), "save-contest"],
+    [renderValidityModal({ settings: defaults }), "save-validity"],
+    [renderReasonsModal({ reasons: ["Spam"] }), "save-reasons"],
+    [renderLadderModal({ lines: "aucune" }), "save-ladder"],
   ])
     assert.equal(render(modal).all[0].custom_id, `automod-config:${action}`);
 });
 
-test("main view shows the observation mode", () => {
-  const off = main({ ...defaults, logChannel: "42" });
-  assert.match(off.text, /Mode observation\*\*\nDésactivé/);
-  const on = main({ ...defaults, logChannel: "42", observation: true });
-  assert.match(
-    on.text,
-    /Mode observation\*\*\nActivé : rien n'est bloqué ni sanctionné/,
-  );
-  const toggle = (view) =>
-    view
+test("every view stays within the 40 components Discord allows", () => {
+  const words = ["a", "b", "c", "d", "e", "f", "g"];
+  const busy = { ...defaults, spamEnabled: true, logChannel: "42" };
+  const views = [
+    main(busy),
+    rules(busy, words),
+    render(renderReasonsView({ settings: busy, reasons: DEFAULT_REASONS })),
+    render(renderLadderView({ ladder: DEFAULT_LADDER })),
+    render(renderValidityView({ settings: busy })),
+    render(renderContestView({ settings: busy })),
+    render(renderObservationView({ settings: busy })),
+    render(
+      renderExemptionsView({ exemptions: { roles: ["r"], channels: ["c"] } }),
+    ),
+    render(renderLogsView({ settings: busy })),
+  ];
+  for (const view of views) assert.ok(view.all.length <= 40);
+});
+
+test("every section view brings back to the welcome page", () => {
+  const views = [
+    rules(),
+    render(renderReasonsView({ settings: defaults, reasons: DEFAULT_REASONS })),
+    render(renderLadderView({ ladder: DEFAULT_LADDER })),
+    render(renderValidityView({ settings: defaults })),
+    render(renderContestView({ settings: defaults })),
+    render(renderObservationView({ settings: defaults })),
+    render(renderExemptionsView({ exemptions: noExemptions })),
+    render(renderLogsView({ settings: defaults })),
+  ];
+  for (const view of views) {
+    const back = view
       .of(ComponentType.Button)
-      .find((b) => b.custom_id === "automod-config:observation-toggle");
-  assert.equal(toggle(off).label, "Activer");
-  assert.equal(toggle(on).label, "Désactiver");
-});
-
-test("main view describes the contest window", () => {
-  assert.match(
-    main({ ...defaults, contestHours: 12 }).text,
-    /Contestation\*\*\nFenêtre de 12 h/,
-  );
-  assert.match(
-    main({ ...defaults, contestHours: 0 }).text,
-    /Contestation\*\*\nDésactivée/,
-  );
-});
-
-test("the contest modal asks for the window in hours", () => {
-  const fields = render(renderContestModal({ settings: defaults })).of(
-    ComponentType.TextInput,
-  );
-  assert.deepEqual(
-    fields.map((i) => [i.custom_id, i.value]),
-    [["hours", "168"]],
-  );
-});
-
-test("main view describes the sensitivity", () => {
-  assert.match(
-    main({ ...defaults, sensitivity: 1, halfLifeDays: 1 }).text,
-    /Sensibilité\*\*\nSourdine à 1 point · points divisés par deux tous les 1 jour\b/,
-  );
-  assert.match(
-    main({ ...defaults, sensitivity: 0 }).text,
-    /Sensibilité\*\*\nDésactivée/,
-  );
-});
-
-test("main view lists the points of every rule", () => {
-  assert.match(
-    main({ ...defaults, pointsWords: 5, pointsSpam: 4, pointsMentions: 9 })
-      .text,
-    /Points par règle\*\*\nMots 5 · Spam 4 · Mentions 9/,
-  );
-});
-
-test("the sensitivity modal asks for the threshold and the half-life", () => {
-  const fields = render(renderSensitivityModal({ settings: defaults })).of(
-    ComponentType.TextInput,
-  );
-  assert.deepEqual(
-    fields.map((i) => [i.custom_id, i.value]),
-    [
-      ["threshold", "6"],
-      ["halfLife", "3"],
-    ],
-  );
-});
-
-test("the points modal asks for the points of every rule", () => {
-  const fields = render(renderPointsModal({ settings: defaults })).of(
-    ComponentType.TextInput,
-  );
-  assert.deepEqual(
-    fields.map((i) => [i.custom_id, i.value]),
-    [
-      ["words", "2"],
-      ["spam", "1"],
-      ["mentions", "3"],
-    ],
-  );
-});
-
-test("main view offers the three profiles in a select", () => {
-  const selects = main().of(ComponentType.StringSelect);
-  assert.equal(selects.length, 1);
-  assert.equal(selects[0].custom_id, "automod-config:profile");
-  assert.deepEqual(
-    selects[0].options.map((option) => option.value),
-    ["calm", "standard", "strict"],
-  );
-});
-
-test("main view marks the profile matching the settings", () => {
-  const view = main();
-  const [select] = view.of(ComponentType.StringSelect);
-  assert.match(select.placeholder, /Standard/);
-  assert.deepEqual(
-    select.options.filter((option) => option.default).map((o) => o.value),
-    ["standard"],
-  );
-});
-
-test("main view says Personnalisé when no profile matches", () => {
-  const view = main({ ...defaults, sensitivity: 8 });
-  const [select] = view.of(ComponentType.StringSelect);
-  assert.match(select.placeholder, /Personnalisé/);
-  assert.equal(
-    select.options.some((option) => option.default),
-    false,
-  );
-});
-
-test("main view stays within the 40 components Discord allows", () => {
-  assert.ok(main().all.length <= 40);
-  assert.ok(
-    main({ ...defaults, logChannel: "42", observation: true }, ["a", "b"], {
-      roles: ["r"],
-      channels: ["c"],
-    }).all.length <= 40,
-  );
+      .find((b) => b.custom_id === "automod-config:back");
+    assert.equal(back.label, "Retour à l'accueil");
+  }
 });

@@ -5,10 +5,12 @@ const migrate = require("../loaders/migrate");
 const {
   parseWords,
   parseMentionLimit,
-  parseEscalation,
   parseContest,
-  parseSensitivity,
-  parsePoints,
+  parseValidity,
+  parseReasons,
+  parseLadder,
+  ladderLines,
+  sectionView,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -52,20 +54,6 @@ test("parseMentionLimit reads a limit between 1 and 50", () => {
 test("parseMentionLimit rejects anything else", () => {
   for (const value of ["", "0", "51", "-2", "2.5", "abc"])
     assert.match(parseMentionLimit(value).error, /entre 1 et 50/);
-});
-
-test("parseEscalation reads the duration", () => {
-  assert.deepEqual(parseEscalation({ minutes: " 60 " }), {
-    escalation: { escalationMinutes: 60 },
-  });
-  assert.deepEqual(parseEscalation({ minutes: "40320" }), {
-    escalation: { escalationMinutes: 40320 },
-  });
-});
-
-test("parseEscalation rejects an invalid duration", () => {
-  for (const minutes of ["", "0", "40321", "1.5", "abc"])
-    assert.match(parseEscalation({ minutes }).error, /durée/);
 });
 
 test("setAutomodWords replaces the whole list", () => {
@@ -144,6 +132,7 @@ test("syncErrorMessage explains the usual Discord refusals", () => {
   assert.match(syncErrorMessage({ code: 50013 }), /Gérer le serveur/);
   assert.match(syncErrorMessage({ code: 30032 }), /limite/);
   assert.match(syncErrorMessage(new Error("boom")), /refusé/);
+  assert.match(syncErrorMessage(new Error("boom")), /Détail : boom/);
 });
 
 test("toggleObservation needs a log channel to start", () => {
@@ -171,50 +160,97 @@ test("parseContest rejects anything else", () => {
     assert.match(parseContest(value).error, /entre 0 et 720 heures/);
 });
 
-test("parseSensitivity reads a threshold and a half-life", () => {
-  assert.deepEqual(parseSensitivity({ threshold: " 10 ", halfLife: " 7 " }), {
-    sensitivity: 10,
-    halfLifeDays: 7,
-  });
-  assert.deepEqual(parseSensitivity({ threshold: "0", halfLife: "1" }), {
-    sensitivity: 0,
-    halfLifeDays: 1,
-  });
-  assert.deepEqual(parseSensitivity({ threshold: "100", halfLife: "30" }), {
-    sensitivity: 100,
-    halfLifeDays: 30,
-  });
+test("parseValidity reads a number of days between 0 and 365", () => {
+  assert.deepEqual(parseValidity(" 30 "), { warnValidDays: 30 });
+  assert.deepEqual(parseValidity("0"), { warnValidDays: 0 });
+  assert.deepEqual(parseValidity("365"), { warnValidDays: 365 });
 });
 
-test("parseSensitivity rejects a bad threshold", () => {
-  for (const threshold of ["", "101", "-1", "2.5", "abc"])
-    assert.match(
-      parseSensitivity({ threshold, halfLife: "3" }).error,
-      /entre 0 et 100 points/,
-    );
+test("parseValidity rejects anything else", () => {
+  for (const value of ["", "366", "-1", "1.5", "abc"])
+    assert.match(parseValidity(value).error, /entre 0 et 365 jours/);
 });
 
-test("parseSensitivity rejects a bad half-life", () => {
-  for (const halfLife of ["", "0", "31", "-1", "1.5", "abc"])
-    assert.match(
-      parseSensitivity({ threshold: "6", halfLife }).error,
-      /entre 1 et 30 jours/,
-    );
-});
-
-test("parsePoints reads the points of the three rules", () => {
-  assert.deepEqual(parsePoints({ words: " 4 ", spam: "1", mentions: "20" }), {
-    pointsWords: 4,
-    pointsSpam: 1,
-    pointsMentions: 20,
+test("parseReasons keeps one reason per line", () => {
+  assert.deepEqual(parseReasons(" Spam \n\nPub\nspam"), {
+    reasons: ["Spam", "Pub"],
   });
 });
 
-test("parsePoints rejects any value outside 1 to 20", () => {
-  for (const bad of ["", "0", "21", "-1", "1.5", "abc"])
-    for (const key of ["words", "spam", "mentions"])
-      assert.match(
-        parsePoints({ words: "2", spam: "1", mentions: "3", [key]: bad }).error,
-        /entre 1 et 20/,
-      );
+test("parseReasons refuses an empty, too long or too big list", () => {
+  assert.match(parseReasons(" \n ").error, /au moins une raison/);
+  assert.match(parseReasons("x".repeat(51)).error, /50 caractères/);
+  const many = Array.from({ length: 25 }, (_, i) => `Raison ${i}`).join("\n");
+  assert.match(parseReasons(many).error, /24 au maximum/);
+});
+
+test("parseLadder reads one sanction per line, in order", () => {
+  assert.deepEqual(
+    parseLadder(
+      "aucune\nSourdine 10 min\nsourdine 1 h\nsourdine 2 j\nexpulsion\nbannissement",
+    ).ladder,
+    [
+      { warns: 1, sanction: null, minutes: null },
+      { warns: 2, sanction: "timeout", minutes: 10 },
+      { warns: 3, sanction: "timeout", minutes: 60 },
+      { warns: 4, sanction: "timeout", minutes: 2880 },
+      { warns: 5, sanction: "kick", minutes: null },
+      { warns: 6, sanction: "ban", minutes: null },
+    ],
+  );
+});
+
+test("parseLadder skips blank lines and accepts short units", () => {
+  assert.deepEqual(parseLadder("rien\n\nsourdine 5m\n").ladder, [
+    { warns: 1, sanction: null, minutes: null },
+    { warns: 2, sanction: "timeout", minutes: 5 },
+  ]);
+});
+
+test("parseLadder names the line it does not understand", () => {
+  assert.match(parseLadder("aucune\nmute 5 min").error, /Ligne 2/);
+  assert.match(parseLadder("sourdine dix minutes").error, /Ligne 1/);
+});
+
+test("parseLadder refuses an empty ladder and a bad timeout", () => {
+  assert.match(parseLadder("  \n").error, /entre 1 et 10 lignes/);
+  assert.match(
+    parseLadder("aucune\n".repeat(11)).error,
+    /entre 1 et 10 lignes/,
+  );
+  assert.match(parseLadder("sourdine 0 min").error, /1 minute à 28 jours/);
+  assert.match(parseLadder("sourdine 29 j").error, /1 minute à 28 jours/);
+});
+
+test("ladderLines writes what parseLadder reads back", () => {
+  const ladder = [
+    { warns: 1, sanction: null, minutes: null },
+    { warns: 2, sanction: "timeout", minutes: 10 },
+    { warns: 3, sanction: "timeout", minutes: 60 },
+    { warns: 4, sanction: "timeout", minutes: 1440 },
+    { warns: 5, sanction: "kick", minutes: null },
+    { warns: 6, sanction: "ban", minutes: null },
+  ];
+  assert.equal(
+    ladderLines(ladder),
+    "aucune\nsourdine 10 min\nsourdine 1 h\nsourdine 1 j\nexpulsion\nbannissement",
+  );
+  assert.deepEqual(parseLadder(ladderLines(ladder)).ladder, ladder);
+});
+
+test("sectionView builds each section and refuses an unknown one", () => {
+  const db = createDatabase();
+  const interaction = { guildId: "g", guild: { name: "Tsuki" } };
+  for (const name of [
+    "rules",
+    "reasons",
+    "ladder",
+    "validity",
+    "contest",
+    "logs",
+    "observation",
+    "exemptions",
+  ])
+    assert.ok(sectionView(name, interaction, db).components, name);
+  assert.equal(sectionView("profile", interaction, db), null);
 });

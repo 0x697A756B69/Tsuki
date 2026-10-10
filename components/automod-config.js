@@ -4,34 +4,44 @@ const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("../utils/automodSettings");
-const { profileSettings } = require("../utils/automodProfiles");
 const { syncRules } = require("../utils/automodRules");
 const {
-  renderExemptionsView,
-  renderLogsView,
   renderWordsModal,
   renderMentionLimitModal,
-  renderEscalationModal,
-  renderSensitivityModal,
-  renderPointsModal,
   renderContestModal,
+  renderReasonsModal,
+  renderLadderModal,
+  renderValidityModal,
 } = require("../utils/automodPanel");
 const {
   mainView,
+  sectionView,
   parseWords,
   parseMentionLimit,
-  parseEscalation,
   parseContest,
-  parseSensitivity,
-  parsePoints,
+  parseValidity,
+  parseReasons,
+  parseLadder,
+  ladderLines,
   getAutomodWords,
   setAutomodWords,
-  getExemptions,
   setExemptions,
   getAutomodConfig,
   toggleObservation,
   syncErrorMessage,
 } = require("../utils/automodConfig");
+const {
+  getReasons,
+  setReasons,
+  resetReasons,
+} = require("../utils/warnReasons");
+const { getLadder, setLadder, resetLadder } = require("../utils/warnLadder");
+
+const REASON_COLUMNS = {
+  "reason-words": "reasonWords",
+  "reason-spam": "reasonSpam",
+  "reason-mentions": "reasonMentions",
+};
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -74,30 +84,37 @@ module.exports = defineComponent({
     const { guildId } = interaction;
     const author = interaction.user.id;
     const settings = getAutomodSettings(db, guildId);
-    const main = () => mainView(interaction, db);
+    const home = () => mainView(interaction, db);
+    const section = (name) => () => sectionView(name, interaction, db);
 
     if (interaction.isButton()) {
-      if (action === "back") return interaction.update(main());
+      if (action === "back") return interaction.update(home());
       if (action === "words")
         return interaction.showModal(
           renderWordsModal({ words: getAutomodWords(db, guildId) }),
         );
       if (action === "mention-limit")
         return interaction.showModal(renderMentionLimitModal({ settings }));
-      if (action === "escalation")
-        return interaction.showModal(renderEscalationModal({ settings }));
-      if (action === "sensitivity")
-        return interaction.showModal(renderSensitivityModal({ settings }));
-      if (action === "points")
-        return interaction.showModal(renderPointsModal({ settings }));
       if (action === "contest")
         return interaction.showModal(renderContestModal({ settings }));
-      if (action === "exemptions")
-        return interaction.update(
-          renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
+      if (action === "validity")
+        return interaction.showModal(renderValidityModal({ settings }));
+      if (action === "reasons-edit")
+        return interaction.showModal(
+          renderReasonsModal({ reasons: getReasons(db, guildId) }),
         );
-      if (action === "logs")
-        return interaction.update(renderLogsView({ settings }));
+      if (action === "ladder-edit")
+        return interaction.showModal(
+          renderLadderModal({ lines: ladderLines(getLadder(db, guildId)) }),
+        );
+      if (action === "reasons-reset") {
+        resetReasons(db, guildId);
+        return interaction.update(section("reasons")());
+      }
+      if (action === "ladder-reset") {
+        resetLadder(db, guildId);
+        return interaction.update(section("ladder")());
+      }
       if (action === "spam-toggle") {
         updateAutomodSettings(
           db,
@@ -105,7 +122,7 @@ module.exports = defineComponent({
           { spamEnabled: !settings.spamEnabled },
           author,
         );
-        return finish(interaction, db, main);
+        return finish(interaction, db, section("rules"));
       }
       if (action === "mentions-toggle") {
         updateAutomodSettings(
@@ -114,58 +131,63 @@ module.exports = defineComponent({
           { mentionsEnabled: !settings.mentionsEnabled },
           author,
         );
-        return finish(interaction, db, main);
+        return finish(interaction, db, section("rules"));
       }
       if (action === "observation-toggle") {
         const result = toggleObservation(settings);
         if (result.error) return refuse(interaction, result.error);
         updateAutomodSettings(db, guildId, result, author);
-        return finish(interaction, db, main);
+        return finish(interaction, db, section("observation"));
       }
       if (action === "logs-clear") {
-        const updated = updateAutomodSettings(
+        updateAutomodSettings(
           db,
           guildId,
           { logChannel: null, observation: false },
           author,
         );
-        return finish(interaction, db, () =>
-          renderLogsView({ settings: updated }),
-        );
+        return finish(interaction, db, section("logs"));
       }
     }
 
-    if (interaction.isStringSelectMenu() && action === "profile") {
-      const profile = profileSettings(interaction.values[0]);
-      if (!profile) return refuse(interaction, "Ce profil n'existe pas.");
-      updateAutomodSettings(db, guildId, profile, author);
-      return interaction.update(main());
+    if (interaction.isStringSelectMenu()) {
+      if (action === "goto") {
+        const view = sectionView(interaction.values[0], interaction, db);
+        if (!view) return refuse(interaction, "Ce réglage n'existe pas.");
+        return interaction.update(view);
+      }
+      if (action in REASON_COLUMNS) {
+        const [reason] = interaction.values;
+        if (!getReasons(db, guildId).includes(reason))
+          return refuse(interaction, "Cette raison n'existe plus.");
+        updateAutomodSettings(
+          db,
+          guildId,
+          { [REASON_COLUMNS[action]]: reason },
+          author,
+        );
+        return interaction.update(section("reasons")());
+      }
     }
 
     if (interaction.isRoleSelectMenu() && action === "exempt-roles") {
       setExemptions(db, guildId, "role", interaction.values, author);
-      return finish(interaction, db, () =>
-        renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
-      );
+      return finish(interaction, db, section("exemptions"));
     }
 
     if (interaction.isChannelSelectMenu() && action === "exempt-channels") {
       setExemptions(db, guildId, "channel", interaction.values, author);
-      return finish(interaction, db, () =>
-        renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
-      );
+      return finish(interaction, db, section("exemptions"));
     }
 
     if (interaction.isChannelSelectMenu() && action === "log-channel") {
-      const updated = updateAutomodSettings(
+      updateAutomodSettings(
         db,
         guildId,
         { logChannel: interaction.values[0] },
         author,
       );
-      return finish(interaction, db, () =>
-        renderLogsView({ settings: updated }),
-      );
+      return finish(interaction, db, section("logs"));
     }
 
     if (interaction.isModalSubmit() && interaction.isFromMessage()) {
@@ -175,7 +197,7 @@ module.exports = defineComponent({
         );
         if (parsed.error) return refuse(interaction, parsed.error);
         setAutomodWords(db, guildId, parsed.words, author);
-        return finish(interaction, db, main);
+        return finish(interaction, db, section("rules"));
       }
 
       if (action === "save-mention-limit") {
@@ -189,37 +211,7 @@ module.exports = defineComponent({
           { mentionLimit: parsed.limit },
           author,
         );
-        return finish(interaction, db, main);
-      }
-
-      if (action === "save-escalation") {
-        const parsed = parseEscalation({
-          minutes: interaction.fields.getTextInputValue("minutes"),
-        });
-        if (parsed.error) return refuse(interaction, parsed.error);
-        updateAutomodSettings(db, guildId, parsed.escalation, author);
-        return interaction.update(main());
-      }
-
-      if (action === "save-sensitivity") {
-        const parsed = parseSensitivity({
-          threshold: interaction.fields.getTextInputValue("threshold"),
-          halfLife: interaction.fields.getTextInputValue("halfLife"),
-        });
-        if (parsed.error) return refuse(interaction, parsed.error);
-        updateAutomodSettings(db, guildId, parsed, author);
-        return interaction.update(main());
-      }
-
-      if (action === "save-points") {
-        const parsed = parsePoints({
-          words: interaction.fields.getTextInputValue("words"),
-          spam: interaction.fields.getTextInputValue("spam"),
-          mentions: interaction.fields.getTextInputValue("mentions"),
-        });
-        if (parsed.error) return refuse(interaction, parsed.error);
-        updateAutomodSettings(db, guildId, parsed, author);
-        return interaction.update(main());
+        return finish(interaction, db, section("rules"));
       }
 
       if (action === "save-contest") {
@@ -228,7 +220,34 @@ module.exports = defineComponent({
         );
         if (parsed.error) return refuse(interaction, parsed.error);
         updateAutomodSettings(db, guildId, parsed, author);
-        return interaction.update(main());
+        return interaction.update(section("contest")());
+      }
+
+      if (action === "save-validity") {
+        const parsed = parseValidity(
+          interaction.fields.getTextInputValue("days"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        updateAutomodSettings(db, guildId, parsed, author);
+        return interaction.update(section("validity")());
+      }
+
+      if (action === "save-reasons") {
+        const parsed = parseReasons(
+          interaction.fields.getTextInputValue("reasons"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        setReasons(db, guildId, parsed.reasons);
+        return interaction.update(section("reasons")());
+      }
+
+      if (action === "save-ladder") {
+        const parsed = parseLadder(
+          interaction.fields.getTextInputValue("ladder"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        setLadder(db, guildId, parsed.ladder);
+        return interaction.update(section("ladder")());
       }
     }
   },

@@ -3,16 +3,22 @@ const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("./automodSettings");
-const { renderMainView } = require("./automodPanel");
+const { validateLadder, formatDuration } = require("./warnLadder");
+const {
+  cleanReasons,
+  getReasons,
+  MAX_REASONS,
+  MAX_LENGTH,
+} = require("./warnReasons");
+const { getLadder } = require("./warnLadder");
+const panel = require("./automodPanel");
 
 const MAX_WORDS = 1000;
 const MAX_WORD_LENGTH = 60;
 const MAX_MENTION_LIMIT = 50;
-const MAX_ESCALATION_MINUTES = 40320;
 const MAX_CONTEST_HOURS = 720;
-const MAX_SENSITIVITY = 100;
-const MAX_HALF_LIFE_DAYS = 30;
-const MAX_POINTS = 20;
+const MAX_VALID_DAYS = 365;
+const UNITS = { min: 1, m: 1, h: 60, j: 1440 };
 const EXEMPTION_KINDS = ["role", "channel"];
 
 function parseWords(value) {
@@ -46,20 +52,6 @@ function parseMentionLimit(value) {
   return { limit: Number(trimmed) };
 }
 
-function parseEscalation({ minutes }) {
-  const duration = minutes.trim();
-  if (
-    !/^\d+$/.test(duration) ||
-    Number(duration) < 1 ||
-    Number(duration) > MAX_ESCALATION_MINUTES
-  )
-    return {
-      error: `La durée doit être un entier entre 1 et ${MAX_ESCALATION_MINUTES} minutes.`,
-    };
-
-  return { escalation: { escalationMinutes: Number(duration) } };
-}
-
 function parseContest(value) {
   const hours = value.trim();
   if (!/^\d+$/.test(hours) || Number(hours) > MAX_CONTEST_HOURS)
@@ -69,39 +61,79 @@ function parseContest(value) {
   return { contestHours: Number(hours) };
 }
 
-function parseSensitivity({ threshold, halfLife }) {
-  const limit = threshold.trim();
-  if (!/^\d+$/.test(limit) || Number(limit) > MAX_SENSITIVITY)
+function parseValidity(value) {
+  const days = value.trim();
+  if (!/^\d+$/.test(days) || Number(days) > MAX_VALID_DAYS)
     return {
-      error: `Le seuil doit être un entier entre 0 et ${MAX_SENSITIVITY} points.`,
+      error: `La durée doit être un entier entre 0 et ${MAX_VALID_DAYS} jours.`,
     };
-
-  const days = halfLife.trim();
-  if (
-    !/^\d+$/.test(days) ||
-    Number(days) < 1 ||
-    Number(days) > MAX_HALF_LIFE_DAYS
-  )
-    return {
-      error: `La demi-vie doit être un entier entre 1 et ${MAX_HALF_LIFE_DAYS} jours.`,
-    };
-
-  return { sensitivity: Number(limit), halfLifeDays: Number(days) };
+  return { warnValidDays: Number(days) };
 }
 
-function parsePoints({ words, spam, mentions }) {
-  const values = [words, spam, mentions].map((value) => value.trim());
-  if (
-    values.some(
-      (value) =>
-        !/^\d+$/.test(value) || Number(value) < 1 || Number(value) > MAX_POINTS,
-    )
-  )
+function parseReasons(value) {
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  if (lines.some((line) => line.length > MAX_LENGTH))
     return {
-      error: `Les points doivent être des entiers entre 1 et ${MAX_POINTS}.`,
+      error: `Une raison ne peut pas dépasser ${MAX_LENGTH} caractères.`,
     };
-  const [pointsWords, pointsSpam, pointsMentions] = values.map(Number);
-  return { pointsWords, pointsSpam, pointsMentions };
+  const reasons = cleanReasons(lines);
+  if (reasons.length === 0) return { error: "Garde au moins une raison." };
+  if (new Set(lines.map((line) => line.toLowerCase())).size > MAX_REASONS)
+    return { error: `Il y a trop de raisons : ${MAX_REASONS} au maximum.` };
+  return { reasons };
+}
+
+function parseStep(line, warns) {
+  const text = line.trim().toLowerCase();
+  if (text === "aucune" || text === "rien" || text === "aucune sanction")
+    return { warns, sanction: null, minutes: null };
+  if (text === "expulsion" || text === "kick")
+    return { warns, sanction: "kick", minutes: null };
+  if (text === "bannissement" || text === "ban")
+    return { warns, sanction: "ban", minutes: null };
+  const match = /^sourdine\s+(\d+)\s*(min|m|h|j)$/.exec(text);
+  if (!match) return null;
+  return {
+    warns,
+    sanction: "timeout",
+    minutes: Number(match[1]) * UNITS[match[2]],
+  };
+}
+
+function parseLadder(value) {
+  const lines = value
+    .split("\n")
+    .map((line) => line.trim())
+    .filter(Boolean);
+  const steps = [];
+  for (const [index, line] of lines.entries()) {
+    const step = parseStep(line, index + 1);
+    if (!step)
+      return { error: `Ligne ${index + 1} : « ${line} » n'est pas reconnue.` };
+    steps.push(step);
+  }
+  try {
+    validateLadder(steps);
+  } catch (error) {
+    if (steps.length === 0 || steps.length > 10)
+      return { error: "Il faut entre 1 et 10 lignes." };
+    return { error: "Une sourdine dure de 1 minute à 28 jours." };
+  }
+  return { ladder: steps };
+}
+
+function ladderLines(ladder) {
+  return ladder
+    .map((step) => {
+      if (step.sanction === null) return "aucune";
+      if (step.sanction === "kick") return "expulsion";
+      if (step.sanction === "ban") return "bannissement";
+      return `sourdine ${formatDuration(step.minutes)}`;
+    })
+    .join("\n");
 }
 
 function getAutomodWords(db, guildId) {
@@ -179,33 +211,50 @@ function syncErrorMessage(error) {
     return "Il me manque la permission « Gérer le serveur » pour créer les règles AutoMod.";
   if (error?.code === 30032)
     return "Ce serveur a atteint la limite de règles AutoMod de Discord.";
-  return "Discord a refusé cette configuration, les règles n'ont pas été appliquées.";
+  const detail = error?.message
+    ? ` Détail : ${error.message}`.slice(0, 300)
+    : "";
+  return `Discord a refusé cette configuration, les règles n'ont pas été appliquées.${detail}`;
 }
 
 function mainView(interaction, db) {
-  return renderMainView({
+  return panel.renderMainView({
     settings: getAutomodSettings(db, interaction.guildId),
-    words: getAutomodWords(db, interaction.guildId),
-    exemptions: getExemptions(db, interaction.guildId),
     guild: interaction.guild,
   });
+}
+
+function sectionView(name, interaction, db) {
+  const { guildId } = interaction;
+  const settings = getAutomodSettings(db, guildId);
+  const views = {
+    rules: () =>
+      panel.renderRulesView({ settings, words: getAutomodWords(db, guildId) }),
+    reasons: () =>
+      panel.renderReasonsView({ settings, reasons: getReasons(db, guildId) }),
+    ladder: () => panel.renderLadderView({ ladder: getLadder(db, guildId) }),
+    validity: () => panel.renderValidityView({ settings }),
+    contest: () => panel.renderContestView({ settings }),
+    logs: () => panel.renderLogsView({ settings }),
+    observation: () => panel.renderObservationView({ settings }),
+    exemptions: () =>
+      panel.renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
+  };
+  return name in views ? views[name]() : null;
 }
 
 module.exports = {
   MAX_WORDS,
   MAX_WORD_LENGTH,
   MAX_MENTION_LIMIT,
-  MAX_ESCALATION_MINUTES,
   MAX_CONTEST_HOURS,
-  MAX_SENSITIVITY,
-  MAX_HALF_LIFE_DAYS,
-  MAX_POINTS,
   parseWords,
   parseMentionLimit,
-  parseEscalation,
   parseContest,
-  parseSensitivity,
-  parsePoints,
+  parseValidity,
+  parseReasons,
+  parseLadder,
+  ladderLines,
   getAutomodWords,
   setAutomodWords,
   getExemptions,
@@ -214,4 +263,5 @@ module.exports = {
   toggleObservation,
   syncErrorMessage,
   mainView,
+  sectionView,
 };
