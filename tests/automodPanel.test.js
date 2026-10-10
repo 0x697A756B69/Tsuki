@@ -326,7 +326,7 @@ test("main view offers the three profiles in a select", () => {
 test("main view marks the profile matching the settings", () => {
   const view = main();
   const [select] = view.of(ComponentType.StringSelect);
-  assert.match(view.text, /Standard/);
+  assert.match(select.placeholder, /Standard/);
   assert.deepEqual(
     select.options.filter((option) => option.default).map((o) => o.value),
     ["standard"],
@@ -336,9 +336,19 @@ test("main view marks the profile matching the settings", () => {
 test("main view says Personnalisé when no profile matches", () => {
   const view = main({ ...defaults, sensitivity: 8 });
   const [select] = view.of(ComponentType.StringSelect);
-  assert.match(view.text, /Personnalisé/);
+  assert.match(select.placeholder, /Personnalisé/);
   assert.equal(
     select.options.some((option) => option.default),
     false,
+  );
+});
+
+test("main view stays within the 40 components Discord allows", () => {
+  assert.ok(main().all.length <= 40);
+  assert.ok(
+    main({ ...defaults, logChannel: "42", observation: true }, ["a", "b"], {
+      roles: ["r"],
+      channels: ["c"],
+    }).all.length <= 40,
   );
 });

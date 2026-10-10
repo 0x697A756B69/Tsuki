@@ -129,14 +129,7 @@ function renderMainView({ settings, words, exemptions, guild }) {
       text(`## AutoMod — réglages\nServeur ${guild.name}`),
     )
     .addSeparatorComponents(new SeparatorBuilder())
-    .addTextDisplayComponents(
-      text(
-        `**Profil**
-${profileLabel(settings)} : règle la sensibilité, la durée de décroissance et les points par règle`,
-      ),
-    )
     .addActionRowComponents(profileRow(settings))
-    .addSeparatorComponents(new SeparatorBuilder())
     .addSectionComponents(
       setting(
         "Mots interdits",
