@@ -1,4 +1,7 @@
 const Discord = require("discord.js");
+const { getAutomodSettings } = require("../utils/automodSettings");
+const { listWarnings } = require("../utils/warnSanctions");
+const { warnlistView } = require("../utils/warnlistPanel");
 
 const defineCommand = require("../utils/defineCommand");
 
@@ -19,35 +22,24 @@ module.exports = defineCommand({
 
   async run(bot, message, args, db) {
     const user = args.getUser("membre");
-    const warns = db
-      .prepare(
-        "SELECT * FROM warns WHERE guild = ? AND user = ? ORDER BY date DESC",
-      )
-      .all(message.guildId, user.id);
+    const { warnValidDays } = getAutomodSettings(db, message.guildId);
+    const warnings = listWarnings(db, message.guildId, user.id, warnValidDays);
 
-    if (warns.length === 0)
+    if (warnings.length === 0)
       return message.reply({
         content: `${user} n'a aucun avertissement.`,
         flags: Discord.MessageFlags.Ephemeral,
       });
 
-    const embed = new Discord.EmbedBuilder()
-      .setColor(0xfff100)
-      .setTitle(`Avertissements de ${user.tag}`)
-      .setThumbnail(user.displayAvatarURL())
-      .setFooter({ text: `${warns.length} avertissement(s)` })
-      .setTimestamp()
-      .addFields(
-        warns.slice(0, 25).map((warn, i) => ({
-          name: `Warn n°${i + 1}`,
-          value:
-            `> **Auteur :** <@${warn.author}>\n` +
-            `> **ID :** \`${warn.id}\`\n` +
-            `> **Raison :** \`${warn.reason}\`\n` +
-            `> **Date :** <t:${Math.floor(Number(warn.date) / 1000)}:F>`,
-        })),
-      );
-
-    await message.reply({ embeds: [embed] });
+    await message.reply({
+      ...warnlistView({
+        user,
+        warnings,
+        page: 0,
+        authorId: message.user.id,
+      }),
+      flags:
+        Discord.MessageFlags.IsComponentsV2 | Discord.MessageFlags.Ephemeral,
+    });
   },
 });
