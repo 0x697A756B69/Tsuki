@@ -1,6 +1,6 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
-const { issueWarning } = require("../utils/warnSanction");
+const { issueWarning } = require("../utils/warnSanctions");
 const { describeStep } = require("../utils/warnLadder");
 
 const defineCommand = require("../utils/defineCommand");

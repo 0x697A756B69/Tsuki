@@ -3,7 +3,7 @@ const { getAutomodSettings } = require("../utils/automodSettings");
 const { getRuleKey, ruleReason } = require("../utils/automodWarnings");
 const { sendLog } = require("../utils/automodLogs");
 const { contestRow } = require("../utils/automodContest");
-const { registerWarning, enforceWarning } = require("../utils/warnSanction");
+const { registerWarning, enforceWarning } = require("../utils/warnSanctions");
 const { announceClosedDm } = require("../utils/moderationNotice");
 
 module.exports = async (bot, execution) => {

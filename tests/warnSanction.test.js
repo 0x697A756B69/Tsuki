@@ -17,7 +17,7 @@ const {
   enforceWarning,
   issueWarning,
   retractWarning,
-} = require("../utils/warnSanction");
+} = require("../utils/warnSanctions");
 
 const DAY = 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
