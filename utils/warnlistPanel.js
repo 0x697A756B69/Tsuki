@@ -122,6 +122,17 @@ function removeRow(userId, page, authorId, shown) {
   );
 }
 
+function purgeRow(userId, page, authorId) {
+  return /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(COMPONENT_ID, "purge", userId, page, authorId))
+      .setLabel("Tout purger")
+      .setStyle(ButtonStyle.Danger),
+  );
+}
+
 function payload(container) {
   return {
     components: [container],
@@ -156,6 +167,8 @@ function warnlistView({ user, warnings, page, authorId }) {
     container.addActionRowComponents(
       pagerRow(user.id, current, pages, authorId),
     );
+  if (warnings.length > 0)
+    container.addActionRowComponents(purgeRow(user.id, current, authorId));
 
   return payload(container);
 }
@@ -213,6 +226,64 @@ function removedView({ user, count, lifted, delivered, page, authorId }) {
   return payload(container);
 }
 
+function purgeView({ user, total, page, authorId }) {
+  const confirm = new ButtonBuilder()
+    .setCustomId(
+      buildCustomId(COMPONENT_ID, "purgeok", user.id, page, authorId, 0, total),
+    )
+    .setLabel("Tout purger")
+    .setStyle(ButtonStyle.Danger);
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## Purger les ${total} avertissement${total > 1 ? "s" : ""} ?\n-# ${user.tag}`,
+      ),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addTextDisplayComponents(
+      text(
+        "Tous les avertissements sont supprimés, expirés compris. Les sanctions posées par Tsuki sont levées si elles sont encore en cours. Une expulsion déjà exécutée ne s'annule pas.",
+      ),
+    )
+    .addActionRowComponents(
+      /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+        new ActionRowBuilder()
+      ).addComponents(
+        confirm,
+        pageButton("Annuler", user.id, page, authorId, false),
+      ),
+    );
+  return payload(container);
+}
+
+function purgedView({ user, purged, lifted, delivered, page, authorId }) {
+  const count = purged.length;
+  const kicks = purged.filter((warning) => warning.sanction === "kick").length;
+  const lines = [...new Set(lifted)]
+    .filter((target) => LIFTED_TEXT[target])
+    .map((target) => LIFTED_TEXT[target]);
+  if (kicks > 0)
+    lines.push(
+      `${kicks} expulsion${kicks > 1 ? "s" : ""} déjà exécutée${kicks > 1 ? "s" : ""}, non annulable${kicks > 1 ? "s" : ""}.`,
+    );
+  const container = new ContainerBuilder()
+    .setAccentColor(ACCENT_COLOR)
+    .addTextDisplayComponents(
+      text(
+        `## ${count} avertissement${count > 1 ? "s" : ""} purgé${count > 1 ? "s" : ""}\n${[`Pour ${user.tag}.`, ...lines].join("\n")}${closedDmLine(delivered)}`,
+      ),
+    )
+    .addActionRowComponents(
+      /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+        new ActionRowBuilder()
+      ).addComponents(
+        pageButton("Retour à la liste", user.id, page, authorId, false),
+      ),
+    );
+  return payload(container);
+}
+
 module.exports = {
   ACCENT_COLOR,
   PAGE_SIZE,
@@ -226,4 +297,6 @@ module.exports = {
   warnlistView,
   removalView,
   removedView,
+  purgeView,
+  purgedView,
 };

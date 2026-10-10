@@ -1,4 +1,4 @@
-const { MessageFlags } = require("discord.js");
+const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { canModerate } = require("../utils/hierarchy");
 const { getAutomodSettings } = require("../utils/automodSettings");
@@ -10,9 +10,11 @@ const {
   warnlistView,
   removalView,
   removedView,
+  purgeView,
+  purgedView,
 } = require("../utils/warnlistPanel");
 
-const ACTIONS = ["page", "select", "ok"];
+const ACTIONS = ["page", "select", "ok", "purge", "purgeok"];
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -70,12 +72,38 @@ module.exports = defineComponent({
       );
     }
 
+    const purging = action === "purge" || action === "purgeok";
+    if (
+      purging &&
+      !interaction.member.permissions.has(PermissionFlagsBits.Administrator)
+    )
+      return refuse(
+        interaction,
+        "Seul un administrateur peut purger les avertissements.",
+      );
+
+    if (action === "purge") {
+      if (warnings.length === 0)
+        return refuse(interaction, "Ces avertissements n'existent plus.");
+      await interaction.deferUpdate();
+      return interaction.editReply(
+        purgeView({
+          user,
+          total: warnings.length,
+          page: pageNumber,
+          authorId,
+        }),
+      );
+    }
+
     if (warnings.length !== Number(total))
       return refuse(
         interaction,
         "La liste a changé depuis la sélection. Rouvre-la et recommence.",
       );
-    const selected = pickWarnings(warnings, pageNumber, Number(mask));
+    const selected = purging
+      ? warnings
+      : pickWarnings(warnings, pageNumber, Number(mask));
     if (selected.length === 0)
       return refuse(interaction, "Ces avertissements n'existent plus.");
 
@@ -85,7 +113,7 @@ module.exports = defineComponent({
 
     await interaction.deferUpdate();
     const lifted = [];
-    let removed = 0;
+    const removedWarnings = [];
     for (const warning of selected) {
       const result = await retractWarning({
         db,
@@ -96,9 +124,10 @@ module.exports = defineComponent({
         reason: `Avertissement retiré par ${interaction.user.tag}`,
       });
       if (!result.removed) continue;
-      removed += 1;
+      removedWarnings.push(warning);
       if (result.lifted) lifted.push(result.lifted);
     }
+    const removed = removedWarnings.length;
     const delivered =
       removed > 0 &&
       (await sendNotice(
@@ -110,6 +139,17 @@ module.exports = defineComponent({
           lifted,
         }),
       ));
+    if (purging)
+      return interaction.editReply(
+        purgedView({
+          user,
+          purged: removedWarnings,
+          lifted,
+          delivered: removed === 0 || delivered,
+          page: 0,
+          authorId,
+        }),
+      );
     await interaction.editReply(
       removedView({
         user,

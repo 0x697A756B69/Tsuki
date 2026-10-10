@@ -15,6 +15,8 @@ const {
   warnlistView,
   removalView,
   removedView,
+  purgeView,
+  purgedView,
 } = require("../utils/warnlistPanel");
 const component = require("../components/warnlist");
 
@@ -130,7 +132,7 @@ test("warnlistView has no pager for a single page", () => {
     authorId: "mod",
   });
   assert.equal(
-    rows(view).some((row) => row.components[0].type === 2),
+    buttons(view).some((button) => /^Page /.test(button.label)),
     false,
   );
 });
@@ -471,6 +473,130 @@ test("confirming refuses a member the moderator cannot moderate", async () => {
     target: person("u", [PermissionFlagsBits.Administrator], 9),
   });
   await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.replies[0].content, /ne peux pas modérer/);
+});
+
+test("warnlistView offers a purge button only when there is something to purge", () => {
+  const full = warnlistView({
+    user: USER,
+    warnings: many(12),
+    page: 1,
+    authorId: "mod",
+  });
+  const purge = rows(full)
+    .flatMap((row) => row.components)
+    .find((button) => button.label === "Tout purger");
+  assert.equal(purge.custom_id, "warnlist:purge:u:1:mod");
+  const empty = warnlistView({
+    user: USER,
+    warnings: [],
+    page: 0,
+    authorId: "mod",
+  });
+  assert.equal(
+    rows(empty).some((row) => row.components[0].type === 2),
+    false,
+  );
+});
+
+test("purgeView asks for a confirmation and carries the total", () => {
+  const view = purgeView({ user: USER, total: 3, page: 1, authorId: "mod" });
+  assert.equal(view.flags, MessageFlags.IsComponentsV2);
+  assert.equal(texts(view)[0], "## Purger les 3 avertissements ?\n-# kyo");
+  assert.match(texts(view)[1], /expirés compris/);
+  assert.match(texts(view)[1], /expulsion/);
+  const [confirm, cancel] = buttons(view);
+  assert.equal(confirm.custom_id, "warnlist:purgeok:u:1:mod:0:3");
+  assert.equal(cancel.custom_id, "warnlist:page:u:1:mod");
+});
+
+test("purgedView sums up the lifted sanctions and the kicks that stay", () => {
+  const view = purgedView({
+    user: USER,
+    purged: [
+      warning({ sanction: "kick" }),
+      warning({ id: "WARN-2", sanction: "ban" }),
+      warning({ id: "WARN-3", sanction: "kick" }),
+    ],
+    lifted: ["ban"],
+    delivered: true,
+    page: 0,
+    authorId: "mod",
+  });
+  assert.equal(
+    texts(view)[0],
+    "## 3 avertissements purgés\nPour kyo.\nBannissement levé.\n2 expulsions déjà exécutées, non annulables.",
+  );
+  assert.equal(buttons(view)[0].custom_id, "warnlist:page:u:0:mod");
+});
+
+test("purgedView uses the singular and warns about closed messages", () => {
+  const view = purgedView({
+    user: USER,
+    purged: [warning({ sanction: "kick" })],
+    lifted: [],
+    delivered: false,
+    page: 0,
+    authorId: "mod",
+  });
+  assert.match(texts(view)[0], /^## 1 avertissement purgé/);
+  assert.match(texts(view)[0], /1 expulsion déjà exécutée, non annulable\./);
+  assert.match(texts(view)[0], /Messages privés fermés/);
+});
+
+const ADMIN = () => person("mod", [PermissionFlagsBits.Administrator], 5);
+
+test("asking for a purge shows the confirmation and removes nothing", async () => {
+  const { db, calls, run } = setupRemoval({ moderator: ADMIN() });
+  await run("purge", "u", "0", "mod");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.updates[0], /Purger les 2 avertissements/);
+  assert.match(calls.updates[0], /warnlist:purgeok:u:0:mod:0:2/);
+});
+
+test("a purge needs the administrator permission", async () => {
+  const { db, calls, run } = setupRemoval();
+  await run("purge", "u", "0", "mod");
+  await run("purgeok", "u", "0", "mod", "0", "2");
+  assert.equal(countWarns(db), 2);
+  assert.equal(calls.updates.length, 0);
+  assert.equal(calls.replies.length, 2);
+  assert.match(calls.replies[0].content, /administrateur/);
+});
+
+test("confirming a purge removes every warning with one message", async () => {
+  const { db, calls, run } = setupRemoval({ moderator: ADMIN() });
+  await run("purgeok", "u", "0", "mod", "0", "2");
+  assert.equal(countWarns(db), 0);
+  assert.deepEqual(calls.timeouts[0][0], null);
+  assert.equal(calls.dms.length, 1);
+  assert.match(calls.dms[0], /Avertissements retirés sur Serveur/);
+  assert.match(calls.updates[0], /2 avertissements purgés/);
+  assert.match(calls.updates[0], /Sourdine levée/);
+});
+
+test("confirming a purge refuses a list that changed", async () => {
+  const { db, calls, run } = setupRemoval({ moderator: ADMIN() });
+  await run("purgeok", "u", "0", "mod", "0", "5");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.replies[0].content, /La liste a changé/);
+});
+
+test("asking for a purge with nothing left is refused", async () => {
+  const { db, calls, run } = setupRemoval({ moderator: ADMIN() });
+  db.prepare("DELETE FROM warns").run();
+  await run("purge", "u", "0", "mod");
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /existent plus/);
+});
+
+test("confirming a purge respects the hierarchy", async () => {
+  const { db, calls, run } = setupRemoval({
+    moderator: ADMIN(),
+    target: person("u", [PermissionFlagsBits.Administrator], 9),
+  });
+  await run("purgeok", "u", "0", "mod", "0", "2");
   assert.equal(countWarns(db), 2);
   assert.match(calls.replies[0].content, /ne peux pas modérer/);
 });
