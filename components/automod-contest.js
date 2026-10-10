@@ -52,7 +52,12 @@ async function openContestChannel(bot, guild, settings, details) {
   if (channel === null) return null;
 
   const message = await channel
-    .send(buildContestMessage(details))
+    .send(
+      buildContestMessage({
+        ...details,
+        keepTranscript: settings.keepTranscript,
+      }),
+    )
     .catch(() => null);
   await message?.pin().catch(() => {});
   return channel;
@@ -109,6 +114,7 @@ module.exports = defineComponent({
       sanction: sanctionLabel(sanction?.sanction, sanction?.timeoutUntil),
       reason,
       blocked,
+      keepTranscript: settings.keepTranscript,
     });
     if (contestChannel !== null) setContestChannel(db, ref, contestChannel.id);
 

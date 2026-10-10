@@ -19,6 +19,9 @@ const {
   buildContestMessage,
   closeRow,
   verdictPayload,
+  TRANSCRIPT_NOTICE,
+  transcriptFileName,
+  formatTranscript,
 } = require("../utils/automodJustice");
 
 const DETAILS = {
@@ -217,4 +220,82 @@ test("contestedPayload drops the review buttons once a room exists", () => {
   const room = contestedPayload(panel(), { reason: "x", channelId: "room" })
     .components[0];
   assert.equal(buttons(room).length, 0);
+});
+
+test("buildContestMessage warns the member when the discussion is kept", () => {
+  const kept = JSON.stringify(
+    buildContestMessage({ ...DETAILS, keepTranscript: true }).components[0],
+  );
+  assert.ok(kept.includes(JSON.stringify(TRANSCRIPT_NOTICE).slice(1, -1)));
+  assert.match(TRANSCRIPT_NOTICE, /conservée pour l'équipe/);
+  const plain = JSON.stringify(buildContestMessage(DETAILS).components[0]);
+  assert.doesNotMatch(plain, /conservée/);
+});
+
+test("buildContestMessage puts the notice right under the title", () => {
+  const container = buildContestMessage({
+    ...DETAILS,
+    keepTranscript: true,
+  }).components[0].toJSON();
+  const [title, notice] = /** @type {any[]} */ (container.components);
+  assert.match(title.content, /Contestation de <@u>/);
+  assert.equal(notice.content, TRANSCRIPT_NOTICE);
+});
+
+test("transcriptFileName carries the room name and the UTC date", () => {
+  assert.equal(
+    transcriptFileName("contestation-lea", Date.UTC(2026, 9, 5, 23, 59)),
+    "contestation-lea-2026-10-05.txt",
+  );
+});
+
+test("formatTranscript writes one dated line per message, oldest first", () => {
+  const text = formatTranscript([
+    {
+      at: Date.UTC(2026, 9, 10, 14, 5),
+      author: "modo",
+      content: "On regarde ça",
+      files: [],
+    },
+    {
+      at: Date.UTC(2026, 9, 10, 14, 2),
+      author: "lea",
+      content: "C'était une blague",
+      files: [],
+    },
+  ]);
+  assert.equal(
+    text,
+    "[10/10/2026 14:02] lea : C'était une blague\n[10/10/2026 14:05] modo : On regarde ça",
+  );
+});
+
+test("formatTranscript indents multi-line messages and lists files", () => {
+  const text = formatTranscript([
+    {
+      at: Date.UTC(2026, 0, 2, 3, 4),
+      author: "lea",
+      content: "ligne un\nligne deux",
+      files: ["https://cdn/x.png"],
+    },
+  ]);
+  assert.equal(
+    text,
+    "[02/01/2026 03:04] lea : ligne un\n    ligne deux\n    [fichier : https://cdn/x.png]",
+  );
+});
+
+test("formatTranscript keeps file-only messages and skips empty ones", () => {
+  const text = formatTranscript([
+    { at: 1, author: "a", content: "", files: [] },
+    { at: 2, author: "b", content: "", files: ["https://cdn/y.png"] },
+  ]);
+  assert.match(
+    text,
+    /^\[01\/01\/1970 00:00\] b : \[fichier : https:\/\/cdn\/y\.png\]$/,
+  );
+});
+
+test("formatTranscript says so when nobody spoke", () => {
+  assert.equal(formatTranscript([]), "Aucun message.");
 });

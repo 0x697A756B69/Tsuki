@@ -271,6 +271,8 @@ test("logs are stored with identifiers and dates only", () => {
       points: null,
       trust: null,
       contest_channel: null,
+      judged_by: null,
+      judged_at: null,
     },
   );
 });
@@ -285,6 +287,8 @@ test("getLog reads the member and the contest state of a log", () => {
     contestedAt: null,
     contestStatus: null,
     contestChannel: null,
+    judgedBy: null,
+    judgedAt: null,
   });
 });
 
@@ -385,6 +389,8 @@ test("sendLog posts the panel and remembers it", async () => {
       points: null,
       trust: null,
       contest_channel: null,
+      judged_by: null,
+      judged_at: null,
     },
   );
 });

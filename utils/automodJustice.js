@@ -16,6 +16,8 @@ const { buildCustomId } = require("./customId");
 
 const NAME_PREFIX = "contestation-";
 const NAME_LENGTH = 40;
+const TRANSCRIPT_NOTICE = "-# Cette discussion est conservée pour l'équipe";
+const TRANSCRIPT_PAGES = 10;
 const VERDICT_COLOR = 0x8e8e93;
 const SANCTION_LABELS = {
   timeout: "Mise en sourdine",
@@ -105,6 +107,7 @@ function buildContestMessage({
   sanction,
   reason,
   blocked,
+  keepTranscript = false,
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
   const quote = (value) =>
@@ -118,9 +121,11 @@ function buildContestMessage({
       ? "Message indisponible."
       : quote(excerpt(blocked));
 
-  const container = new ContainerBuilder()
-    .setAccentColor(CONTEST_COLOR)
-    .addTextDisplayComponents(text(`## Contestation de <@${userId}>`))
+  const container = new ContainerBuilder().setAccentColor(CONTEST_COLOR);
+  container.addTextDisplayComponents(text(`## Contestation de <@${userId}>`));
+  if (keepTranscript)
+    container.addTextDisplayComponents(text(TRANSCRIPT_NOTICE));
+  container
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(
       text(
@@ -175,8 +180,75 @@ function verdictPayload(container, resolved) {
   };
 }
 
+function pad(value) {
+  return String(value).padStart(2, "0");
+}
+
+function transcriptFileName(channelName, now) {
+  const date = new Date(now);
+  return `${channelName}-${date.getUTCFullYear()}-${pad(date.getUTCMonth() + 1)}-${pad(date.getUTCDate())}.txt`;
+}
+
+function formatTranscript(messages) {
+  const lines = [...messages]
+    .filter((message) => message.content !== "" || message.files.length > 0)
+    .sort((a, b) => a.at - b.at)
+    .map((message) => {
+      const date = new Date(message.at);
+      const stamp = `${pad(date.getUTCDate())}/${pad(date.getUTCMonth() + 1)}/${date.getUTCFullYear()} ${pad(date.getUTCHours())}:${pad(date.getUTCMinutes())}`;
+      const body = [
+        ...message.content.split("\n").filter((line) => line !== ""),
+        ...message.files.map((url) => `[fichier : ${url}]`),
+      ];
+      return `[${stamp}] ${message.author} : ${body.join("\n    ")}`;
+    });
+  return lines.length === 0 ? "Aucun message." : lines.join("\n");
+}
+
+async function archiveTranscript(guild, settings, channel) {
+  if (!settings.keepTranscript || settings.logChannel === null) return;
+  const target = await guild.channels
+    .fetch(settings.logChannel)
+    .catch(() => null);
+  if (!target?.isTextBased()) return;
+
+  const collected = [];
+  let before;
+  for (let page = 0; page < TRANSCRIPT_PAGES; page++) {
+    const batch = await channel.messages
+      .fetch({ limit: 100, before })
+      .catch(() => null);
+    if (!batch || batch.size === 0) break;
+    collected.push(...batch.values());
+    before = batch.lastKey();
+    if (batch.size < 100) break;
+  }
+
+  const messages = collected
+    .filter((message) => !message.author.bot)
+    .map((message) => ({
+      at: message.createdTimestamp,
+      author: message.author.username,
+      content: message.content,
+      files: [...message.attachments.values()].map((file) => file.url),
+    }));
+  await target
+    .send({
+      content: `Discussion de contestation conservée (${channel.name}).`,
+      files: [
+        {
+          attachment: Buffer.from(formatTranscript(messages), "utf8"),
+          name: transcriptFileName(channel.name, Date.now()),
+        },
+      ],
+      allowedMentions: { parse: [] },
+    })
+    .catch(() => {});
+}
+
 module.exports = {
   NAME_PREFIX,
+  TRANSCRIPT_NOTICE,
   VERDICT_COLOR,
   closeRow,
   verdictPayload,
@@ -187,4 +259,7 @@ module.exports = {
   sanctionLabel,
   logSummary,
   buildContestMessage,
+  transcriptFileName,
+  formatTranscript,
+  archiveTranscript,
 };
