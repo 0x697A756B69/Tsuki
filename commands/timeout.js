@@ -76,6 +76,8 @@ module.exports = defineCommand({
 
     const end = `<t:${Math.round((Date.now() + duration) / 1000)}:R>`;
 
+    await message.deferReply();
+
     await user
       .send(
         `Tu as été exclu(e) temporairement de ${message.guild.name}.\n` +
@@ -87,7 +89,7 @@ module.exports = defineCommand({
 
     await member.timeout(duration, reason);
 
-    await message.reply(
+    await message.editReply(
       `<:timeout:1035248378495381504> ${user} a été exclu(e) temporairement.\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Fin de l'exclusion :** ${end}\n` +

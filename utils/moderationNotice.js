@@ -3,6 +3,7 @@ const { describeStep, formatDuration } = require("./warnLadder");
 
 const NOTICE_COLOR = 0xf5a524;
 const CLOSED_DELETE_DELAY = 8000;
+const CONTEST_DELETE_DELAY = 5 * 60 * 1000;
 
 function ordinal(count) {
   return count === 1 ? "1er" : `${count}e`;
@@ -71,17 +72,33 @@ async function sendNotice(user, payload) {
     .catch(() => false);
 }
 
-function closedNotice(userId) {
-  return `⚠️ <@${userId}> a reçu un avertissement, mais ses messages privés sont fermés.`;
+function closedNotice(userId, contestable = false) {
+  const notice = `⚠️ <@${userId}> a reçu un avertissement, mais ses messages privés sont fermés.`;
+  return contestable
+    ? `${notice}
+Il peut le contester avec le bouton ci-dessous.`
+    : notice;
 }
 
-async function announceClosedDm(channel, userId, delay = CLOSED_DELETE_DELAY) {
+async function announceClosedDm(
+  channel,
+  userId,
+  delay = undefined,
+  components = [],
+) {
+  const contestable = components.length > 0;
+  const wait =
+    delay ?? (contestable ? CONTEST_DELETE_DELAY : CLOSED_DELETE_DELAY);
   const message = await channel
-    ?.send({ content: closedNotice(userId), allowedMentions: { parse: [] } })
+    ?.send({
+      content: closedNotice(userId, contestable),
+      components,
+      allowedMentions: { parse: [] },
+    })
     .catch(() => null);
   if (!message) return false;
   await new Promise((resolve) => {
-    setTimeout(resolve, delay).unref();
+    setTimeout(resolve, wait).unref();
   });
   await message.delete().catch(() => {});
   return true;
@@ -90,6 +107,7 @@ async function announceClosedDm(channel, userId, delay = CLOSED_DELETE_DELAY) {
 module.exports = {
   NOTICE_COLOR,
   CLOSED_DELETE_DELAY,
+  CONTEST_DELETE_DELAY,
   ordinal,
   describeFuture,
   warnLines,

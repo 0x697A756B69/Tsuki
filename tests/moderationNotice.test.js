@@ -8,6 +8,8 @@ const {
   sendNotice,
   closedNotice,
   announceClosedDm,
+  CLOSED_DELETE_DELAY,
+  CONTEST_DELETE_DELAY,
 } = require("../utils/moderationNotice");
 
 const TIMEOUT_NEXT = { warns: 3, sanction: "timeout", minutes: 60 };
@@ -144,4 +146,28 @@ test("announceClosedDm does nothing without a channel", async () => {
     },
   };
   assert.equal(await announceClosedDm(broken, "u", 1), false);
+});
+
+test("closedNotice points to the contest button when there is one", () => {
+  assert.equal(closedNotice("u", false), closedNotice("u"));
+  assert.match(closedNotice("u", true), /contester avec le bouton ci-dessous/);
+});
+
+test("announceClosedDm carries the contest buttons it is given", async () => {
+  const row = { type: 1, components: [] };
+  const sent = [];
+  const channel = {
+    send: async (payload) => {
+      sent.push(payload);
+      return { delete: async () => {} };
+    },
+  };
+  assert.equal(await announceClosedDm(channel, "u", 1, [row]), true);
+  assert.deepEqual(sent[0].components, [row]);
+  assert.equal(sent[0].content, closedNotice("u", true));
+});
+
+test("announceClosedDm keeps the contest notice longer", () => {
+  assert.equal(CLOSED_DELETE_DELAY, 8000);
+  assert.ok(CONTEST_DELETE_DELAY >= 60 * 1000);
 });

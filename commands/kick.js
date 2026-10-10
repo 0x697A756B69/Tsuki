@@ -53,6 +53,8 @@ module.exports = defineCommand({
         flags: ephemeral,
       });
 
+    await message.deferReply();
+
     await user
       .send(
         `Tu as été exclu(e) de ${message.guild.name}.\n` +
@@ -63,7 +65,7 @@ module.exports = defineCommand({
 
     await member.kick(reason);
 
-    await message.reply(
+    await message.editReply(
       `<:expulser:1035322289308307526> ${user} a été exclu(e).\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\``,

@@ -70,25 +70,28 @@ module.exports = async (bot, execution) => {
   });
 
   const canContest = settings.contestHours > 0 && log !== null;
+  const components = canContest
+    ? [
+        contestRow({
+          guildId: execution.guild.id,
+          channelId: settings.logChannel,
+          messageId: log.id,
+        }),
+      ]
+    : [];
   const { delivered } = await enforceWarning({
     db: bot.db,
     guild: execution.guild,
     user,
     member,
     warning,
-    components: canContest
-      ? [
-          contestRow({
-            guildId: execution.guild.id,
-            channelId: settings.logChannel,
-            messageId: log.id,
-          }),
-        ]
-      : [],
+    components,
   });
   if (!delivered)
     announceClosedDm(
       execution.guild.channels.cache.get(execution.channelId),
       execution.userId,
+      undefined,
+      components,
     ).catch(() => {});
 };

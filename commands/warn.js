@@ -51,6 +51,8 @@ module.exports = defineCommand({
         flags: ephemeral,
       });
 
+    await message.deferReply();
+
     const warning = await issueWarning({
       db,
       guild: message.guild,
@@ -69,7 +71,7 @@ module.exports = defineCommand({
       ? ""
       : "\n-# Messages privés fermés : le membre n'a pas été prévenu.";
 
-    await message.reply(
+    await message.editReply(
       `⚠️ ${user} a reçu un avertissement (${warning.count} actif${warning.count > 1 ? "s" : ""}).\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\`\n` +

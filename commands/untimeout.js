@@ -53,6 +53,8 @@ module.exports = defineCommand({
         flags: ephemeral,
       });
 
+    await message.deferReply();
+
     await member.timeout(null, reason);
 
     await user
@@ -63,7 +65,7 @@ module.exports = defineCommand({
       )
       .catch(() => {});
 
-    await message.reply(
+    await message.editReply(
       `<:timeout:1035248378495381504> ${user} n'est plus exclu(e) temporairement.\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\``,

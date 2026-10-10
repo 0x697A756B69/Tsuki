@@ -53,6 +53,8 @@ module.exports = defineCommand({
         flags: ephemeral,
       });
 
+    await message.deferReply();
+
     await user
       .send(
         `<:ban:1035246059695390800> Tu as été banni(e) de ${message.guild.name}.\n` +
@@ -63,7 +65,7 @@ module.exports = defineCommand({
 
     await message.guild.bans.create(user.id, { reason });
 
-    await message.reply(
+    await message.editReply(
       `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\``,
