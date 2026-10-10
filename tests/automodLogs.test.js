@@ -269,6 +269,7 @@ test("logs are stored with identifiers and dates only", () => {
       timeout_until: null,
       points: null,
       trust: null,
+      contest_channel: null,
     },
   );
 });
@@ -372,6 +373,7 @@ test("sendLog posts the panel and remembers it", async () => {
       timeout_until: null,
       points: null,
       trust: null,
+      contest_channel: null,
     },
   );
 });

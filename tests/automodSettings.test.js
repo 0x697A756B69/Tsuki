@@ -33,6 +33,8 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     reasonSpam: "Spam",
     reasonMentions: "Mentions de masse",
     warnValidDays: 30,
+    justiceCategory: null,
+    keepTranscript: false,
     updatedBy: null,
     updatedAt: null,
   });
@@ -219,4 +221,31 @@ test("updateAutomodSettings saves the reasons and the warning validity", () => {
   assert.equal(settings.reasonWords, "Toxicité");
   assert.equal(settings.warnValidDays, 0);
   assert.equal(settings.reasonSpam, "Spam");
+});
+
+test("updateAutomodSettings stores the justice category and the transcript option", () => {
+  const db = createDatabase();
+  const settings = updateAutomodSettings(
+    db,
+    "g",
+    { justiceCategory: "55", keepTranscript: true },
+    "admin",
+  );
+
+  assert.equal(settings.justiceCategory, "55");
+  assert.equal(settings.keepTranscript, true);
+  assert.equal(
+    updateAutomodSettings(db, "g", { justiceCategory: null }, "admin")
+      .justiceCategory,
+    null,
+  );
+});
+
+test("the log table can remember the contest channel", () => {
+  const columns = createDatabase()
+    .prepare("PRAGMA table_info(automod_logs)")
+    .all()
+    .map((column) => column.name);
+
+  assert.ok(columns.includes("contest_channel"));
 });

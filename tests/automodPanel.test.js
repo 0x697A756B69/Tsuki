@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { ComponentType } = require("discord.js");
+const { ChannelType, ComponentType } = require("discord.js");
 const { DEFAULT_LADDER } = require("../utils/warnLadder");
 const { DEFAULT_REASONS } = require("../utils/warnReasons");
 const {
@@ -12,6 +12,7 @@ const {
   renderLadderView,
   renderValidityView,
   renderContestView,
+  renderJusticeView,
   renderObservationView,
   renderExemptionsView,
   renderLogsView,
@@ -40,6 +41,8 @@ const defaults = {
   reasonSpam: "Spam",
   reasonMentions: "Mentions de masse",
   warnValidDays: 30,
+  justiceCategory: null,
+  keepTranscript: false,
   updatedBy: null,
   updatedAt: null,
 };
@@ -105,6 +108,7 @@ test("main view offers one menu to go to every setting", () => {
       "ladder",
       "validity",
       "contest",
+      "justice",
       "logs",
       "observation",
       "exemptions",
@@ -345,6 +349,32 @@ test("logs view lets you pick a text channel or remove it", () => {
   assert.ok(!clear(set).disabled);
 });
 
+test("justice view lets you pick a category, remove it and keep the discussion", () => {
+  const empty = render(renderJusticeView({ settings: defaults }));
+  const [select] = empty.of(ComponentType.ChannelSelect);
+  const button = (view, action) =>
+    view
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === `automod-config:${action}`);
+
+  assert.equal(select.custom_id, "automod-config:justice-category");
+  assert.deepEqual(select.channel_types, [ChannelType.GuildCategory]);
+  assert.match(empty.text, /Aucune catégorie/);
+  assert.equal(button(empty, "justice-clear").disabled, true);
+  assert.equal(button(empty, "transcript-toggle").label, "Activer");
+  assert.match(empty.text, /disparaît avec le salon/);
+
+  const set = render(
+    renderJusticeView({
+      settings: { ...defaults, justiceCategory: "42", keepTranscript: true },
+    }),
+  );
+  assert.match(set.text, /<#42>/);
+  assert.ok(!button(set, "justice-clear").disabled);
+  assert.equal(button(set, "transcript-toggle").label, "Désactiver");
+  assert.match(set.text, /fichier de la conversation/);
+});
+
 test("the modals start with the current values", () => {
   const input = (modal) => render(modal).of(ComponentType.TextInput);
 
@@ -415,6 +445,7 @@ test("every view stays within the 40 components Discord allows", () => {
     render(renderLadderView({ ladder: DEFAULT_LADDER })),
     render(renderValidityView({ settings: busy })),
     render(renderContestView({ settings: busy })),
+    render(renderJusticeView({ settings: busy })),
     render(renderObservationView({ settings: busy })),
     render(
       renderExemptionsView({ exemptions: { roles: ["r"], channels: ["c"] } }),
@@ -431,6 +462,7 @@ test("every section view brings back to the welcome page", () => {
     render(renderLadderView({ ladder: DEFAULT_LADDER })),
     render(renderValidityView({ settings: defaults })),
     render(renderContestView({ settings: defaults })),
+    render(renderJusticeView({ settings: defaults })),
     render(renderObservationView({ settings: defaults })),
     render(renderExemptionsView({ exemptions: noExemptions })),
     render(renderLogsView({ settings: defaults })),

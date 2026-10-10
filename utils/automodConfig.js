@@ -235,6 +235,7 @@ function sectionView(name, interaction, db) {
     ladder: () => panel.renderLadderView({ ladder: getLadder(db, guildId) }),
     validity: () => panel.renderValidityView({ settings }),
     contest: () => panel.renderContestView({ settings }),
+    justice: () => panel.renderJusticeView({ settings }),
     logs: () => panel.renderLogsView({ settings }),
     observation: () => panel.renderObservationView({ settings }),
     exemptions: () =>

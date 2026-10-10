@@ -15,6 +15,8 @@ const COLUMNS = {
   reasonSpam: "reason_spam",
   reasonMentions: "reason_mentions",
   warnValidDays: "warn_valid_days",
+  justiceCategory: "justice_category",
+  keepTranscript: "keep_transcript",
 };
 
 function toSettings(row) {
@@ -35,6 +37,9 @@ function toSettings(row) {
     reasonSpam: String(row.reason_spam),
     reasonMentions: String(row.reason_mentions),
     warnValidDays: Number(row.warn_valid_days),
+    justiceCategory:
+      row.justice_category === null ? null : String(row.justice_category),
+    keepTranscript: Number(row.keep_transcript) === 1,
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };

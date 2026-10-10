@@ -139,6 +139,19 @@ module.exports = defineComponent({
         updateAutomodSettings(db, guildId, result, author);
         return finish(interaction, db, section("observation"));
       }
+      if (action === "justice-clear") {
+        updateAutomodSettings(db, guildId, { justiceCategory: null }, author);
+        return interaction.update(section("justice")());
+      }
+      if (action === "transcript-toggle") {
+        updateAutomodSettings(
+          db,
+          guildId,
+          { keepTranscript: !settings.keepTranscript },
+          author,
+        );
+        return interaction.update(section("justice")());
+      }
       if (action === "logs-clear") {
         updateAutomodSettings(
           db,
@@ -178,6 +191,16 @@ module.exports = defineComponent({
     if (interaction.isChannelSelectMenu() && action === "exempt-channels") {
       setExemptions(db, guildId, "channel", interaction.values, author);
       return finish(interaction, db, section("exemptions"));
+    }
+
+    if (interaction.isChannelSelectMenu() && action === "justice-category") {
+      updateAutomodSettings(
+        db,
+        guildId,
+        { justiceCategory: interaction.values[0] },
+        author,
+      );
+      return interaction.update(section("justice")());
     }
 
     if (interaction.isChannelSelectMenu() && action === "log-channel") {

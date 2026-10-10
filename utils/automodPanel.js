@@ -55,6 +55,11 @@ const HOME_SECTIONS = [
     description: "Fenêtre pour contester un blocage",
   },
   {
+    label: "Justice",
+    value: "justice",
+    description: "Salons privés pour contester un blocage",
+  },
+  {
     label: "Logs",
     value: "logs",
     description: "Salon où les blocages sont signalés",
@@ -315,6 +320,36 @@ function renderContestView({ settings }) {
   return panel(container);
 }
 
+function renderJusticeView({ settings }) {
+  const category = new ChannelSelectMenuBuilder()
+    .setCustomId(id("justice-category"))
+    .setPlaceholder("Catégorie Justice")
+    .setChannelTypes(ChannelType.GuildCategory);
+  const clear = button("justice-clear", "Retirer la catégorie").setDisabled(
+    settings.justiceCategory === null,
+  );
+
+  const container = section(
+    "Justice",
+    `${settings.justiceCategory ? `<#${settings.justiceCategory}>` : "Aucune catégorie"}\nChaque contestation ouvre un salon privé dans cette catégorie : le membre et les modérateurs y discutent, puis le salon est supprimé.`,
+  )
+    .addActionRowComponents((row) => row.addComponents(category))
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addSectionComponents(
+      setting(
+        "Conserver la discussion",
+        settings.keepTranscript
+          ? "Activé : un fichier de la conversation est envoyé aux logs avant la suppression du salon."
+          : "Désactivé : la conversation disparaît avec le salon.",
+        toggle("transcript-toggle", settings.keepTranscript),
+      ),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(buttons(clear, backButton()));
+
+  return panel(container);
+}
+
 function renderObservationView({ settings }) {
   const container = section(
     "Mode observation",
@@ -496,6 +531,7 @@ module.exports = {
   renderLadderView,
   renderValidityView,
   renderContestView,
+  renderJusticeView,
   renderObservationView,
   renderExemptionsView,
   renderLogsView,

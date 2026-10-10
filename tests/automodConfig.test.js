@@ -247,6 +247,7 @@ test("sectionView builds each section and refuses an unknown one", () => {
     "ladder",
     "validity",
     "contest",
+    "justice",
     "logs",
     "observation",
     "exemptions",
