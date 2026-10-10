@@ -1,5 +1,10 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
+const {
+  banNotice,
+  sendNotice,
+  closedDmLine,
+} = require("../utils/moderationNotice");
 
 const defineCommand = require("../utils/defineCommand");
 
@@ -55,20 +60,22 @@ module.exports = defineCommand({
 
     await message.deferReply();
 
-    await user
-      .send(
-        `<:ban:1035246059695390800> Tu as été banni(e) de ${message.guild.name}.\n` +
-          `> **Modérateur :** ${message.user.tag}\n` +
-          `> **Raison :** \`${reason}\``,
-      )
-      .catch(() => {});
+    const delivered = await sendNotice(
+      user,
+      banNotice({
+        guildName: message.guild.name,
+        reason,
+        moderator: message.user.tag,
+      }),
+    );
 
     await message.guild.bans.create(user.id, { reason });
 
     await message.editReply(
       `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
         `> **Modérateur :** ${message.user}\n` +
-        `> **Raison :** \`${reason}\``,
+        `> **Raison :** \`${reason}\`` +
+        closedDmLine(delivered),
     );
   },
 });

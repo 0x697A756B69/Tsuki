@@ -5,6 +5,7 @@ const {
   describeFuture,
   warnLines,
   warnNotice,
+  closedDmLine,
   banNotice,
   kickNotice,
   timeoutNotice,
@@ -282,4 +283,12 @@ test("warnNotice carries the server name in its footer", () => {
     validDays: 0,
   }).embeds[0].toJSON();
   assert.equal(embed.footer.text, "Serveur");
+});
+
+test("closedDmLine only speaks when the member was not reached", () => {
+  assert.equal(closedDmLine(true), "");
+  assert.equal(
+    closedDmLine(false),
+    "\n-# Messages privés fermés : le membre n'a pas été prévenu.",
+  );
 });

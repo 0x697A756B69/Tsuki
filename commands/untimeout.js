@@ -1,5 +1,10 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
+const {
+  untimeoutNotice,
+  sendNotice,
+  closedDmLine,
+} = require("../utils/moderationNotice");
 
 const defineCommand = require("../utils/defineCommand");
 
@@ -57,18 +62,20 @@ module.exports = defineCommand({
 
     await member.timeout(null, reason);
 
-    await user
-      .send(
-        `Tu n'es plus exclu(e) temporairement de ${message.guild.name}.\n` +
-          `> **Modérateur :** ${message.user.tag}\n` +
-          `> **Raison :** \`${reason}\``,
-      )
-      .catch(() => {});
+    const delivered = await sendNotice(
+      user,
+      untimeoutNotice({
+        guildName: message.guild.name,
+        reason,
+        moderator: message.user.tag,
+      }),
+    );
 
     await message.editReply(
       `<:timeout:1035248378495381504> ${user} n'est plus exclu(e) temporairement.\n` +
         `> **Modérateur :** ${message.user}\n` +
-        `> **Raison :** \`${reason}\``,
+        `> **Raison :** \`${reason}\`` +
+        closedDmLine(delivered),
     );
   },
 });

@@ -2,6 +2,7 @@ const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
 const { issueWarning } = require("../utils/warnSanctions");
 const { describeStep } = require("../utils/warnLadder");
+const { closedDmLine } = require("../utils/moderationNotice");
 
 const defineCommand = require("../utils/defineCommand");
 
@@ -67,9 +68,7 @@ module.exports = defineCommand({
     const sanction = warning.applied
       ? `> **Sanction :** ${describeStep(warning.step)}\n`
       : "";
-    const closed = warning.delivered
-      ? ""
-      : "\n-# Messages privés fermés : le membre n'a pas été prévenu.";
+    const closed = closedDmLine(warning.delivered);
 
     await message.editReply(
       `⚠️ ${user} a reçu un avertissement (${warning.count} actif${warning.count > 1 ? "s" : ""}).\n` +

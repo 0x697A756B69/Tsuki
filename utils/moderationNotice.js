@@ -157,6 +157,12 @@ function verdictNotice({ guildName, accepted, lifted = null }) {
   });
 }
 
+function closedDmLine(delivered) {
+  return delivered
+    ? ""
+    : "\n-# Messages privés fermés : le membre n'a pas été prévenu.";
+}
+
 async function sendNotice(user, payload) {
   if (!user) return false;
   return user
@@ -212,6 +218,7 @@ module.exports = {
   untimeoutNotice,
   verdictNotice,
   sendNotice,
+  closedDmLine,
   closedNotice,
   announceClosedDm,
 };
