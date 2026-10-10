@@ -10,7 +10,6 @@ const {
 } = require("discord.js");
 const { RULE_LABELS } = require("./automodWarnings");
 const { buildCustomId } = require("./customId");
-const { formatNumber } = require("./riskScore");
 
 const BLOCKED_COLOR = 0xe5484d;
 const OBSERVED_COLOR = 0xf5a524;
@@ -19,7 +18,6 @@ const ACTION_ID = "automod-action";
 const EXCERPT_LENGTH = 200;
 const RETENTION = 30 * 24 * 60 * 60 * 1000;
 const PURGE_BATCH = 100;
-const UNLOGGED_CHANNEL = "-";
 
 function logTitle(ruleKey, observed = false) {
   return `${observed ? "Message détecté" : "Message bloqué"} : ${RULE_LABELS[ruleKey]}`;
@@ -86,12 +84,6 @@ function resolvedNotice({ moderatorId, label, date }) {
   return `Traité par <@${moderatorId}> : ${label}, le <t:${Math.floor(date / 1000)}:f>`;
 }
 
-function scoreLine({ observed, score, threshold, points, trust }) {
-  if (observed || score === null) return "";
-  const limit = threshold > 0 ? ` / ${threshold}` : "";
-  return `\n**Score :** ${formatNumber(score)}${limit} (${points} × ${formatNumber(trust)})`;
-}
-
 function buildLogMessage({
   ruleKey,
   ruleName,
@@ -104,10 +96,6 @@ function buildLogMessage({
   messageId = null,
   resolved = null,
   observed = false,
-  score = null,
-  threshold = 0,
-  points = null,
-  trust = null,
   date = Date.now(),
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
@@ -124,7 +112,7 @@ function buildLogMessage({
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(
       text(
-        `**Règle :** ${ruleName}\n**Action :** ${observed ? "observation, aucune sanction" : `bloqué, avertissement ajouté (${warningTotal} au total)`}${scoreLine({ observed, score, threshold, points, trust })}`,
+        `**Règle :** ${ruleName}\n**Action :** ${observed ? "observation, aucune sanction" : `bloqué, avertissement ajouté (${warningTotal} actif${warningTotal > 1 ? "s" : ""})`}`,
       ),
     );
 
@@ -187,29 +175,11 @@ function markResolved(container, resolved) {
 
 function addLog(
   db,
-  {
-    guildId,
-    channelId,
-    messageId,
-    userId = null,
-    timeoutUntil = null,
-    points = null,
-    trust = null,
-    date = Date.now(),
-  },
+  { guildId, channelId, messageId, userId = null, date = Date.now() },
 ) {
   db.prepare(
-    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id, timeout_until, points, trust) VALUES (?, ?, ?, ?, ?, ?, ?, ?)",
-  ).run(
-    guildId,
-    channelId,
-    messageId,
-    date,
-    userId,
-    timeoutUntil,
-    points,
-    trust,
-  );
+    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id) VALUES (?, ?, ?, ?, ?)",
+  ).run(guildId, channelId, messageId, date, userId);
 }
 
 function getLog(db, { guildId, channelId, messageId }) {
@@ -225,22 +195,7 @@ function getLog(db, { guildId, channelId, messageId }) {
     contestedAt: row.contested_at === null ? null : Number(row.contested_at),
     contestStatus:
       row.contest_status === null ? null : String(row.contest_status),
-    timeoutUntil: row.timeout_until === null ? null : Number(row.timeout_until),
-    points: row.points === null ? null : Number(row.points),
-    trust: row.trust === null ? null : Number(row.trust),
   };
-}
-
-function setLogTimeout(db, { guildId, channelId, messageId }, timeoutUntil) {
-  db.prepare(
-    "UPDATE automod_logs SET timeout_until = ? WHERE guild = ? AND channel = ? AND message = ?",
-  ).run(timeoutUntil, guildId, channelId, messageId);
-}
-
-function clearLogPoints(db, { guildId, channelId, messageId }) {
-  db.prepare(
-    "UPDATE automod_logs SET points = NULL, trust = NULL WHERE guild = ? AND channel = ? AND message = ?",
-  ).run(guildId, channelId, messageId);
 }
 
 function setContestStatus(db, { guildId, channelId, messageId }, status) {
@@ -297,8 +252,6 @@ async function sendLog(bot, guild, logChannelId, data) {
     channelId: channel.id,
     messageId: message.id,
     userId: data.userId,
-    points: data.points,
-    trust: data.trust,
     date: data.date,
   });
   return message;
@@ -318,15 +271,12 @@ module.exports = {
   ACTION_ID,
   EXCERPT_LENGTH,
   RETENTION,
-  UNLOGGED_CHANNEL,
   logTitle,
   excerpt,
   buildLogMessage,
   markResolved,
   addLog,
   getLog,
-  setLogTimeout,
-  clearLogPoints,
   markContested,
   setContestStatus,
   getExpiredLogs,

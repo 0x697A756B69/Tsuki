@@ -17,9 +17,6 @@ const {
   ACTIONS,
   parseAction,
   missingPermission,
-  removeWarning,
-  addModeratorWarning,
-  canLiftTimeout,
   contestVerdict,
   banConfirmation,
 } = require("../utils/automodActions");
@@ -173,47 +170,6 @@ test("missingPermission names the permission that is missing", () => {
   );
 });
 
-test("removeWarning deletes only the matching warning", () => {
-  const db = createDatabase();
-  insertWarning(db, "WARN-1");
-  insertWarning(db, "WARN-2");
-  assert.equal(removeWarning(db, "other", "u", "WARN-1"), false);
-  assert.equal(removeWarning(db, "g", "someone", "WARN-1"), false);
-  assert.equal(removeWarning(db, "g", "u", "WARN-1"), true);
-  assert.equal(removeWarning(db, "g", "u", "WARN-1"), false);
-  assert.equal(countWarns(db), 1);
-});
-
-test("addModeratorWarning writes the warning with the moderator as author", () => {
-  const db = createDatabase();
-  insertWarning(db, "OLD");
-  const result = addModeratorWarning(db, {
-    id: "WARN-5",
-    guildId: "g",
-    userId: "u",
-    moderatorId: "mod",
-    date: 7,
-  });
-  assert.deepEqual(result, {
-    id: "WARN-5",
-    reason: "AutoMod : message détecté",
-    total: 2,
-  });
-  assert.deepEqual(
-    { ...db.prepare("SELECT * FROM warns WHERE id = 'WARN-5'").get() },
-    {
-      id: "WARN-5",
-      guild: "g",
-      user: "u",
-      author: "mod",
-      reason: "AutoMod : message détecté",
-      date: 7,
-      sanction: null,
-      timeout_until: null,
-    },
-  );
-});
-
 test("banConfirmation is an ephemeral prompt with confirm and cancel", () => {
   const prompt = banConfirmation("u", "LOG");
   const row = prompt.components[0].toJSON();
@@ -265,6 +221,7 @@ test("warn adds a warning written by the moderator", async () => {
   const row = db.prepare("SELECT * FROM warns").get();
   assert.equal(row.author, "mod");
   assert.equal(row.id, "WARN-9");
+  assert.equal(calls.dms.length, 1);
   assert.match(JSON.stringify(calls.updates[0]), /avertissement ajouté/);
 });
 
@@ -364,6 +321,8 @@ function contested({ timeoutUntil = null, contest = true } = {}) {
   return { message, timeoutUntil, contest };
 }
 
+const FUTURE = Date.now() + 3_600_000;
+
 function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
   const { message } = contested();
   const timeouts = [];
@@ -373,35 +332,14 @@ function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
   });
   const context = setup({ message, target });
   insertWarning(context.db);
-  addLog(context.db, { ...REF, userId: "u", timeoutUntil, date: 1_000 });
+  if (timeoutUntil !== null)
+    context.db
+      .prepare("UPDATE warns SET sanction = 'timeout', timeout_until = ?")
+      .run(timeoutUntil);
+  addLog(context.db, { ...REF, userId: "u", date: 1_000 });
   markContested(context.db, REF, 2_000);
   return { ...context, timeouts };
 }
-
-test("canLiftTimeout only matches the timeout Tsuki noted", () => {
-  const log = { timeoutUntil: 500 };
-  assert.equal(
-    canLiftTimeout(log, { communicationDisabledUntilTimestamp: 500 }),
-    true,
-  );
-  assert.equal(
-    canLiftTimeout(log, { communicationDisabledUntilTimestamp: 900 }),
-    false,
-  );
-  assert.equal(
-    canLiftTimeout(log, { communicationDisabledUntilTimestamp: null }),
-    false,
-  );
-  assert.equal(
-    canLiftTimeout(
-      { timeoutUntil: null },
-      { communicationDisabledUntilTimestamp: null },
-    ),
-    false,
-  );
-  assert.equal(canLiftTimeout(log, null), false);
-  assert.equal(canLiftTimeout(null, null), false);
-});
 
 test("contestVerdict tells the member the outcome", () => {
   assert.equal(
@@ -413,8 +351,12 @@ test("contestVerdict tells the member the outcome", () => {
     "Ta contestation sur Serveur a été acceptée : ton avertissement est retiré.",
   );
   assert.match(
-    contestVerdict("Serveur", true, true),
+    contestVerdict("Serveur", true, "timeout"),
     /et ta sourdine est levée/,
+  );
+  assert.match(
+    contestVerdict("Serveur", true, "ban"),
+    /et ton bannissement est levé/,
   );
 });
 
@@ -432,8 +374,8 @@ test("accepting a contest removes the warning and tells the member", async () =>
 
 test("accepting lifts the timeout Tsuki set", async () => {
   const { calls, timeouts, run } = setupContest({
-    timeoutUntil: 7_000,
-    memberUntil: 7_000,
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
   });
   await run("accept", "u", "WARN-1");
   assert.equal(timeouts[0][0], null);
@@ -442,8 +384,8 @@ test("accepting lifts the timeout Tsuki set", async () => {
 
 test("accepting keeps a timeout set by hand", async () => {
   const { calls, timeouts, run } = setupContest({
-    timeoutUntil: 7_000,
-    memberUntil: 9_000,
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE + 1,
   });
   await run("accept", "u", "WARN-1");
   assert.equal(timeouts.length, 0);
@@ -457,37 +399,10 @@ test("accepting without a warning only settles the contest", async () => {
   assert.equal(getLog(db, REF).contestStatus, "accepted");
 });
 
-function giveRisk(db) {
-  db.prepare("UPDATE automod_logs SET points = 2, trust = 1.5").run();
-}
-
-test("accepting a contest takes the points off the log", async () => {
-  const { db, run } = setupContest();
-  giveRisk(db);
-  await run("accept", "u", "WARN-1");
-  assert.equal(getLog(db, REF).points, null);
-  assert.equal(getLog(db, REF).trust, null);
-});
-
-test("accepting without a warning still takes the points off", async () => {
-  const { db, run } = setupContest();
-  giveRisk(db);
-  await run("accept", "u", "-");
-  assert.equal(getLog(db, REF).points, null);
-});
-
-test("refusing a contest keeps the points", async () => {
-  const { db, run } = setupContest();
-  giveRisk(db);
-  await run("refuse", "u");
-  assert.equal(getLog(db, REF).points, 2);
-  assert.equal(getLog(db, REF).trust, 1.5);
-});
-
 test("refusing a contest keeps the warning", async () => {
   const { db, calls, timeouts, run } = setupContest({
-    timeoutUntil: 7_000,
-    memberUntil: 7_000,
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
   });
   await run("refuse", "u");
   assert.equal(countWarns(db), 1);

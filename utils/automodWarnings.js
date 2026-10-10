@@ -1,10 +1,15 @@
 const { RULE_NAMES } = require("./automodRules");
-const { formatNumber } = require("./riskScore");
 
 const RULE_LABELS = {
   words: "mot interdit",
   spam: "spam",
   mentions: "mentions de masse",
+};
+
+const REASON_KEYS = {
+  words: "reasonWords",
+  spam: "reasonSpam",
+  mentions: "reasonMentions",
 };
 
 function getRuleKey(ruleName) {
@@ -14,53 +19,10 @@ function getRuleKey(ruleName) {
   return entry ? entry[0] : null;
 }
 
-function warningReason(ruleKey) {
-  return `AutoMod : ${RULE_LABELS[ruleKey]}`;
-}
-
-function countWarnings(db, guildId, userId) {
-  const row = db
-    .prepare("SELECT COUNT(*) AS total FROM warns WHERE guild = ? AND user = ?")
-    .get(guildId, userId);
-  return Number(row.total);
-}
-
-function addAutomodWarning(
-  db,
-  { id, guildId, userId, botId, ruleKey, date = Date.now() },
-) {
-  if (!(ruleKey in RULE_LABELS))
+function ruleReason(settings, ruleKey) {
+  if (!(ruleKey in REASON_KEYS))
     throw new TypeError(`Unknown rule: ${ruleKey}`);
-
-  const reason = warningReason(ruleKey);
-  db.prepare(
-    "INSERT INTO warns (id, guild, user, author, reason, date) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(id, guildId, userId, botId, reason, date);
-  return { id, reason, total: countWarnings(db, guildId, userId) };
+  return settings[REASON_KEYS[ruleKey]];
 }
 
-function blockedNotice(guildName, ruleKey, { total, score }, settings) {
-  const left = settings.sensitivity > 0 && score < settings.sensitivity;
-  const minutes = settings.escalationMinutes;
-  const risk = left
-    ? `${formatNumber(score)} sur ${settings.sensitivity}, à ${settings.sensitivity}, tu seras mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""}.`
-    : `${formatNumber(score)}.`;
-  return `Ton message a été bloqué sur ${guildName}.
-**Règle :** ${RULE_LABELS[ruleKey]}
-**Avertissements :** ${total}.
-**Score :** ${risk}`;
-}
-
-function escalationNotice(guildName, minutes) {
-  return `Tu as été mis en sourdine ${minutes} minute${minutes > 1 ? "s" : ""} sur ${guildName} : ton score de risque est trop élevé.`;
-}
-
-module.exports = {
-  RULE_LABELS,
-  escalationNotice,
-  getRuleKey,
-  warningReason,
-  countWarnings,
-  addAutomodWarning,
-  blockedNotice,
-};
+module.exports = { RULE_LABELS, getRuleKey, ruleReason };

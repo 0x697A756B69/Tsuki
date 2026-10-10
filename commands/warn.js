@@ -1,5 +1,7 @@
 const Discord = require("discord.js");
 const { canModerate } = require("../utils/hierarchy");
+const { issueWarning } = require("../utils/warnSanction");
+const { describeStep } = require("../utils/warnLadder");
 
 const defineCommand = require("../utils/defineCommand");
 
@@ -49,22 +51,30 @@ module.exports = defineCommand({
         flags: ephemeral,
       });
 
-    const id = await bot.utils.createId("WARN");
-    db.prepare(
-      "INSERT INTO warns (id, guild, user, author, reason, date) VALUES (?, ?, ?, ?, ?, ?)",
-    ).run(id, message.guildId, user.id, message.user.id, reason, Date.now());
+    const warning = await issueWarning({
+      db,
+      guild: message.guild,
+      user,
+      member,
+      userId: user.id,
+      id: await bot.utils.createId("WARN"),
+      authorId: message.user.id,
+      reason,
+    });
 
-    await user
-      .send(
-        `Tu as reçu un avertissement sur ${message.guild.name}.\n> **Raison :** \`${reason}\``,
-      )
-      .catch(() => {});
+    const sanction = warning.applied
+      ? `> **Sanction :** ${describeStep(warning.step)}\n`
+      : "";
+    const closed = warning.delivered
+      ? ""
+      : "\n-# Messages privés fermés : le membre n'a pas été prévenu.";
 
     await message.reply(
-      `⚠️ ${user} a reçu un avertissement.\n` +
+      `⚠️ ${user} a reçu un avertissement (${warning.count} actif${warning.count > 1 ? "s" : ""}).\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\`\n` +
-        `> **ID :** \`${id}\``,
+        sanction +
+        `> **ID :** \`${warning.id}\`${closed}`,
     );
   },
 });

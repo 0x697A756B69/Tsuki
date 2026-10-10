@@ -19,8 +19,6 @@ const {
   markResolved,
   addLog,
   getLog,
-  setLogTimeout,
-  clearLogPoints,
   markContested,
   getExpiredLogs,
   deleteLog,
@@ -145,7 +143,7 @@ test("buildLogMessage shows member, channel, rule, action and quote", () => {
   assert.match(json, /<@u>/);
   assert.match(json, /<#c>/);
   assert.match(json, new RegExp(RULE_NAMES.words));
-  assert.match(json, /bloqué, avertissement ajouté \(2 au total\)/);
+  assert.match(json, /bloqué, avertissement ajouté \(2 actifs\)/);
   assert.match(json, /> gros mot/);
 });
 
@@ -249,36 +247,6 @@ test("a blocked message log carries the warning for its buttons", async () => {
   assert.match(json, new RegExp(`${ACTION_ID}:remove:u:WARN-1`));
 });
 
-test("a blocked log shows the score, the threshold and its detail", () => {
-  const json = render({ score: 4.5, threshold: 6, points: 3, trust: 1.5 });
-  assert.match(json, /\*\*Score :\*\* 4,5 \/ 6 \(3 × 1,5\)/);
-});
-
-test("a log leaves the threshold out when the muting is off", () => {
-  const json = render({ score: 3, threshold: 0, points: 3, trust: 1 });
-  assert.match(json, /\*\*Score :\*\* 3 \(3 × 1\)/);
-});
-
-test("an observed or unscored log has no score line", () => {
-  assert.doesNotMatch(
-    render({ observed: true, score: 3, threshold: 6, points: 3, trust: 1 }),
-    /Score/,
-  );
-  assert.doesNotMatch(render(), /Score/);
-});
-
-test("a block posts the score of the member in the log", async () => {
-  const sent = [];
-  const channel = logChannel(sent);
-  const bot = createBot(channel);
-  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
-  await autoModerationActionExecution(bot, execution({ channel }));
-  assert.match(
-    JSON.stringify(sent[0].components[0].toJSON()),
-    /Score :\*\* 2 \/ 6 \(2 × 1\)/,
-  );
-});
-
 test("logs are stored with identifiers and dates only", () => {
   const db = createDatabase();
   addLog(db, {
@@ -308,15 +276,12 @@ test("logs are stored with identifiers and dates only", () => {
 test("getLog reads the member and the contest state of a log", () => {
   const db = createDatabase();
   const ref = { guildId: "g", channelId: "log", messageId: "m" };
-  addLog(db, { ...ref, userId: "u", timeoutUntil: 9, date: 5 });
+  addLog(db, { ...ref, userId: "u", date: 5 });
   assert.deepEqual(getLog(db, ref), {
     userId: "u",
     createdAt: 5,
     contestedAt: null,
     contestStatus: null,
-    timeoutUntil: 9,
-    points: null,
-    trust: null,
   });
 });
 
@@ -325,26 +290,6 @@ test("getLog is null for an unknown log", () => {
     getLog(createDatabase(), { guildId: "g", channelId: "c", messageId: "x" }),
     null,
   );
-});
-
-test("setLogTimeout notes when the timeout ends", () => {
-  const db = createDatabase();
-  const ref = { guildId: "g", channelId: "log", messageId: "m" };
-  addLog(db, { ...ref, userId: "u" });
-  setLogTimeout(db, ref, 123);
-  assert.equal(getLog(db, ref).timeoutUntil, 123);
-});
-
-test("clearLogPoints empties the risk of one log only", () => {
-  const db = createDatabase();
-  const ref = { guildId: "g", channelId: "log", messageId: "m" };
-  const other = { ...ref, messageId: "n" };
-  addLog(db, { ...ref, userId: "u", points: 2, trust: 1.5 });
-  addLog(db, { ...other, userId: "u", points: 3, trust: 1 });
-  clearLogPoints(db, ref);
-  assert.equal(getLog(db, ref).points, null);
-  assert.equal(getLog(db, ref).trust, null);
-  assert.equal(getLog(db, other).points, 3);
 });
 
 test("markContested accepts one contest per log", () => {
@@ -411,12 +356,7 @@ test("sendLog posts the panel and remembers it", async () => {
     id: "g",
     channels: { cache: new Map([["log", logChannel(sent)]]) },
   };
-  const message = await sendLog(
-    bot,
-    guild,
-    "log",
-    data({ points: 2, trust: 1.5 }),
-  );
+  const message = await sendLog(bot, guild, "log", data());
   assert.equal(message.id, "M-1");
   assert.equal(sent.length, 1);
   assert.deepEqual(
@@ -430,8 +370,8 @@ test("sendLog posts the panel and remembers it", async () => {
       contested_at: null,
       contest_status: null,
       timeout_until: null,
-      points: 2,
-      trust: 1.5,
+      points: null,
+      trust: null,
     },
   );
 });
@@ -513,10 +453,7 @@ test("a blocked message is logged in the log channel", async () => {
   updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
   await autoModerationActionExecution(bot, execution({ channel }));
   assert.equal(sent.length, 1);
-  assert.match(
-    JSON.stringify(sent[0].components[0].toJSON()),
-    /\(1 au total\)/,
-  );
+  assert.match(JSON.stringify(sent[0].components[0].toJSON()), /\(1 actif\)/);
   assert.equal(
     bot.db.prepare("SELECT COUNT(*) AS n FROM automod_logs").get().n,
     1,
@@ -606,61 +543,4 @@ test("outside observation the alert is deleted but nothing is logged", async () 
     }),
   );
   assert.equal(sent.length, 0);
-});
-
-test("a timeout is noted in the log with the exact end", async () => {
-  const channel = logChannel();
-  const bot = createBot(channel);
-  updateAutomodSettings(
-    bot.db,
-    "g",
-    { logChannel: "log", sensitivity: 2 },
-    "admin",
-  );
-  const member = {
-    moderatable: true,
-    timeout: async () => ({ communicationDisabledUntilTimestamp: 777 }),
-  };
-  await autoModerationActionExecution(bot, execution({ channel, member }));
-  const ref = { guildId: "g", channelId: "log", messageId: "M-1" };
-  assert.equal(getLog(bot.db, ref).userId, "u");
-  assert.equal(getLog(bot.db, ref).timeoutUntil, 777);
-});
-
-test("a log notes no timeout when the member is only warned", async () => {
-  const channel = logChannel();
-  const bot = createBot(channel);
-  updateAutomodSettings(bot.db, "g", { logChannel: "log" }, "admin");
-  await autoModerationActionExecution(bot, execution({ channel }));
-  const ref = { guildId: "g", channelId: "log", messageId: "M-1" };
-  assert.equal(getLog(bot.db, ref).userId, "u");
-  assert.equal(getLog(bot.db, ref).timeoutUntil, null);
-});
-
-test("addLog freezes the points and the trust of the infraction", () => {
-  const db = createDatabase();
-  const ref = { guildId: "g", channelId: "log", messageId: "m" };
-  addLog(db, { ...ref, userId: "u", points: 3, trust: 0.5, date: 5 });
-  const log = getLog(db, ref);
-  assert.equal(log.points, 3);
-  assert.equal(log.trust, 0.5);
-});
-
-test("the database rejects points and trust out of range", () => {
-  const db = createDatabase();
-  for (const [index, changes] of [
-    { points: 0 },
-    { points: 21 },
-    { trust: 0 },
-    { trust: -1 },
-  ].entries())
-    assert.throws(() =>
-      addLog(db, {
-        guildId: "g",
-        channelId: "log",
-        messageId: `m${index}`,
-        ...changes,
-      }),
-    );
-  assert.equal(db.prepare("SELECT * FROM automod_logs").get(), undefined);
 });

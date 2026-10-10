@@ -56,38 +56,15 @@ function missingPermission(action, permissions) {
   return `Il faut la permission « ${PERMISSION_NAMES.get(permission)} » pour faire ça.`;
 }
 
-function removeWarning(db, guildId, userId, warningId) {
-  const result = db
-    .prepare("DELETE FROM warns WHERE id = ? AND guild = ? AND user = ?")
-    .run(warningId, guildId, userId);
-  return Number(result.changes) > 0;
-}
+const LIFTED = {
+  timeout: " et ta sourdine est levée",
+  ban: " et ton bannissement est levé",
+};
 
-function addModeratorWarning(
-  db,
-  { id, guildId, userId, moderatorId, date = Date.now() },
-) {
-  const reason = "AutoMod : message détecté";
-  db.prepare(
-    "INSERT INTO warns (id, guild, user, author, reason, date) VALUES (?, ?, ?, ?, ?, ?)",
-  ).run(id, guildId, userId, moderatorId, reason, date);
-  const row = db
-    .prepare("SELECT COUNT(*) AS total FROM warns WHERE guild = ? AND user = ?")
-    .get(guildId, userId);
-  return { id, reason, total: Number(row.total) };
-}
-
-function canLiftTimeout(log, member) {
-  return (
-    log?.timeoutUntil != null &&
-    member?.communicationDisabledUntilTimestamp === log.timeoutUntil
-  );
-}
-
-function contestVerdict(guildName, accepted, timeoutLifted = false) {
+function contestVerdict(guildName, accepted, lifted = null) {
   if (!accepted)
     return `Ta contestation sur ${guildName} a été refusée : l'avertissement est maintenu.`;
-  return `Ta contestation sur ${guildName} a été acceptée : ton avertissement est retiré${timeoutLifted ? " et ta sourdine est levée" : ""}.`;
+  return `Ta contestation sur ${guildName} a été acceptée : ton avertissement est retiré${LIFTED[lifted] ?? ""}.`;
 }
 
 function banConfirmation(userId, messageId) {
@@ -115,9 +92,6 @@ module.exports = {
   ACTIONS,
   parseAction,
   missingPermission,
-  removeWarning,
-  addModeratorWarning,
-  canLiftTimeout,
   contestVerdict,
   banConfirmation,
 };
