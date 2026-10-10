@@ -1,6 +1,11 @@
 const Discord = require("discord.js");
 const ms = require("ms");
 const { canModerate } = require("../utils/hierarchy");
+const {
+  timeoutNotice,
+  sendNotice,
+  closedDmLine,
+} = require("../utils/moderationNotice");
 
 const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 
@@ -76,22 +81,26 @@ module.exports = defineCommand({
 
     const end = `<t:${Math.round((Date.now() + duration) / 1000)}:R>`;
 
-    await user
-      .send(
-        `Tu as été exclu(e) temporairement de ${message.guild.name}.\n` +
-          `> **Modérateur :** ${message.user.tag}\n` +
-          `> **Fin de l'exclusion :** ${end}\n` +
-          `> **Raison :** \`${reason}\``,
-      )
-      .catch(() => {});
+    await message.deferReply();
+
+    const delivered = await sendNotice(
+      user,
+      timeoutNotice({
+        guildName: message.guild.name,
+        reason,
+        moderator: message.user.tag,
+        until: Date.now() + duration,
+      }),
+    );
 
     await member.timeout(duration, reason);
 
-    await message.reply(
+    await message.editReply(
       `<:timeout:1035248378495381504> ${user} a été exclu(e) temporairement.\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Fin de l'exclusion :** ${end}\n` +
-        `> **Raison :** \`${reason}\``,
+        `> **Raison :** \`${reason}\`` +
+        closedDmLine(delivered),
     );
   },
 });
