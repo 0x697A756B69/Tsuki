@@ -217,6 +217,16 @@ function getLogByContestChannel(db, guildId, contestChannelId) {
   return { ref, ...getLog(db, ref) };
 }
 
+function isContestChannel(db, guildId, channelId) {
+  return (
+    db
+      .prepare(
+        "SELECT 1 FROM automod_logs WHERE guild = ? AND contest_channel = ?",
+      )
+      .get(guildId, channelId) !== undefined
+  );
+}
+
 function setJudged(
   db,
   { guildId, channelId, messageId },
@@ -330,6 +340,7 @@ module.exports = {
   setContestStatus,
   setContestChannel,
   getLogByContestChannel,
+  isContestChannel,
   setJudged,
   clearContestChannel,
   resolvedNotice,

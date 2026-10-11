@@ -21,6 +21,7 @@ const {
   getLog,
   markContested,
   setContestChannel,
+  isContestChannel,
   getExpiredLogs,
   deleteLog,
   sendLog,
@@ -299,6 +300,17 @@ test("setContestChannel remembers the private channel of a contest", () => {
   assert.equal(getLog(db, ref).contestChannel, null);
   setContestChannel(db, ref, "room");
   assert.equal(getLog(db, ref).contestChannel, "room");
+});
+
+test("isContestChannel recognises a contest channel of the same guild only", () => {
+  const db = createDatabase();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(db, { ...ref, userId: "u" });
+  assert.equal(isContestChannel(db, "g", "room"), false);
+  setContestChannel(db, ref, "room");
+  assert.equal(isContestChannel(db, "g", "room"), true);
+  assert.equal(isContestChannel(db, "g", "log"), false);
+  assert.equal(isContestChannel(db, "other", "room"), false);
 });
 
 test("getLog is null for an unknown log", () => {

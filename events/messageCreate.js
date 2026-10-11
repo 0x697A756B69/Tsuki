@@ -6,6 +6,7 @@ const { getModifiers, computeMultiplier } = require("../utils/modifiers");
 const { announceLevelUp } = require("../utils/announce");
 const { updateRewardRoles } = require("../utils/rewards");
 const { addMessage } = require("../utils/messageCount");
+const { isContestChannel } = require("../utils/automodLogs");
 
 const tracker = createMessageXpTracker();
 
@@ -17,6 +18,8 @@ module.exports = async (bot, message) => {
     parentId: message.channel.isThread() ? message.channel.parentId : null,
     roleIds: [...message.member.roles.cache.keys()],
   };
+  if (isContestChannel(bot.db, message.guildId, context.channelId)) return;
+
   const modifiers = getModifiers(bot.db, message.guildId);
   if (computeMultiplier(modifiers, context) === 0) return;
 

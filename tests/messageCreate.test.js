@@ -7,6 +7,7 @@ const { updateSettings } = require("../utils/settings");
 const { setModifier } = require("../utils/modifiers");
 const { setReward } = require("../utils/rewards");
 const { addXp } = require("../utils/xp");
+const { addLog, setContestChannel } = require("../utils/automodLogs");
 
 const granted = [];
 
@@ -181,4 +182,27 @@ test("an excluded channel is not counted", async () => {
   setModifier(bot.db, "g", "channel", "spam", 0);
   await messageCreate(bot, message("spammer", { channelId: "spam" }));
   assert.equal(countOf(bot, "spammer"), 0);
+});
+
+test("a contest channel gives no XP and no message count", async () => {
+  const bot = createBot();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(bot.db, { ...ref, userId: "u" });
+  setContestChannel(bot.db, ref, "room");
+  await messageCreate(bot, message("accused", { channelId: "room" }));
+  assert.equal(xpOf(bot, "accused"), 0);
+  assert.equal(
+    bot.db.prepare("SELECT COUNT(*) AS n FROM message_daily").get().n,
+    0,
+  );
+});
+
+test("a channel that is no longer a contest channel gives XP again", async () => {
+  const bot = createBot();
+  const ref = { guildId: "g", channelId: "log", messageId: "m" };
+  addLog(bot.db, { ...ref, userId: "u" });
+  setContestChannel(bot.db, ref, "room");
+  setContestChannel(bot.db, ref, null);
+  await messageCreate(bot, message("cleared", { channelId: "room" }));
+  assert.equal(xpOf(bot, "cleared"), 20);
 });
