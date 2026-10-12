@@ -46,18 +46,24 @@ function listWarnings(db, guildId, userId, validDays, now = Date.now()) {
     }));
 }
 
-function removeWarning(db, guildId, userId, warningId) {
+function findWarning(db, guildId, userId, warningId) {
   const row = db
     .prepare(
       "SELECT sanction, timeout_until FROM warns WHERE id = ? AND guild = ? AND user = ?",
     )
     .get(warningId, guildId, userId);
   if (!row) return null;
-  db.prepare("DELETE FROM warns WHERE id = ?").run(warningId);
   return {
     sanction: row.sanction === null ? null : String(row.sanction),
     timeoutUntil: row.timeout_until === null ? null : Number(row.timeout_until),
   };
+}
+
+function removeWarning(db, guildId, userId, warningId) {
+  const warning = findWarning(db, guildId, userId, warningId);
+  if (warning === null) return null;
+  db.prepare("DELETE FROM warns WHERE id = ?").run(warningId);
+  return warning;
 }
 
 function warningSanction(db, guildId, userId, warningId) {
@@ -164,13 +170,9 @@ async function liftSanction({
   muteRoleId = null,
 }) {
   const target = liftTarget(warning, member, now, muteRoleId);
-  try {
-    if (target === "mute") await member.roles.remove(muteRoleId, reason);
-    else if (target === "timeout") await member.timeout(null, reason);
-    else if (target === "ban") await guild.bans.remove(userId, reason);
-  } catch {
-    return null;
-  }
+  if (target === "mute") await member.roles.remove(muteRoleId, reason);
+  else if (target === "timeout") await member.timeout(null, reason);
+  else if (target === "ban") await guild.bans.remove(userId, reason);
   return target;
 }
 
@@ -263,17 +265,23 @@ async function retractWarning({
   reason,
   now = Date.now(),
 }) {
-  const warning = removeWarning(db, guild.id, userId, warningId);
+  const warning = findWarning(db, guild.id, userId, warningId);
   if (warning === null) return { removed: false, lifted: null };
-  const lifted = await liftSanction({
-    guild,
-    member,
-    userId,
-    warning,
-    reason,
-    now,
-    muteRoleId: getAutomodSettings(db, guild.id).muteRole,
-  });
+  let lifted;
+  try {
+    lifted = await liftSanction({
+      guild,
+      member,
+      userId,
+      warning,
+      reason,
+      now,
+      muteRoleId: getAutomodSettings(db, guild.id).muteRole,
+    });
+  } catch {
+    return { removed: false, lifted: null, failed: true };
+  }
+  removeWarning(db, guild.id, userId, warningId);
   return { removed: true, lifted };
 }
 

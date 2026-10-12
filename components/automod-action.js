@@ -94,6 +94,12 @@ async function perform(bot, interaction, db, action, args, member, ref) {
             reason: `AutoMod : contestation acceptée par ${user.tag}`,
           })
         : { lifted: null };
+    if (retracted.failed)
+      await interaction.followUp({
+        content:
+          "La sanction n'a pas pu être levée : l'avertissement est conservé. Réessaie depuis la liste des avertissements.",
+        flags: MessageFlags.Ephemeral,
+      });
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);

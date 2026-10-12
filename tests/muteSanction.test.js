@@ -347,35 +347,31 @@ function savedUntil(db, id) {
     ?.timeout_until;
 }
 
-test(
-  "retractWarning keeps the warning when the mute role cannot be removed",
-  { todo: true },
-  async () => {
-    const db = createDatabase();
-    insertWarning(db, {
-      id: "WARN-1",
-      guildId: "g",
-      userId: "u",
-      authorId: "mod",
-      reason: "Spam",
-      date: 1_000,
-    });
-    const until = Date.now() + 10 * MINUTE;
-    noteSanction(db, "WARN-1", "timeout", until);
+test("retractWarning keeps the warning when the mute role cannot be removed", async () => {
+  const db = createDatabase();
+  insertWarning(db, {
+    id: "WARN-1",
+    guildId: "g",
+    userId: "u",
+    authorId: "mod",
+    reason: "Spam",
+    date: 1_000,
+  });
+  const until = Date.now() + 10 * MINUTE;
+  noteSanction(db, "WARN-1", "timeout", until);
 
-    const result = await retractWarning({
-      db,
-      guild: createGuild(),
-      userId: "u",
-      warningId: "WARN-1",
-      member: createMember([], { hasRole: true, failRemove: true }),
-      reason: "Retiré",
-    });
+  const result = await retractWarning({
+    db,
+    guild: createGuild(),
+    userId: "u",
+    warningId: "WARN-1",
+    member: createMember([], { hasRole: true, failRemove: true }),
+    reason: "Retiré",
+  });
 
-    assert.deepEqual(result, { removed: false, lifted: null, failed: true });
-    assert.equal(savedUntil(db, "WARN-1"), until);
-  },
-);
+  assert.deepEqual(result, { removed: false, lifted: null, failed: true });
+  assert.equal(savedUntil(db, "WARN-1"), until);
+});
 
 test(
   "enforceWarning notes the mute end before giving the role",
@@ -431,4 +427,19 @@ test("enforceWarning forgets the mute end when the role cannot be added", async 
 
   assert.equal(applied, null);
   assert.equal(savedUntil(db, "WARN-1"), null);
+});
+
+test("liftSanction lets Discord errors through", async () => {
+  await assert.rejects(
+    liftSanction({
+      guild: createGuild(),
+      member: createMember([], { hasRole: true, failRemove: true }),
+      userId: "u",
+      warning: { sanction: "timeout", timeoutUntil: Date.now() + MINUTE },
+      reason: "Retiré",
+      now: Date.now(),
+      muteRoleId: "mute",
+    }),
+    /Missing Permissions/,
+  );
 });
