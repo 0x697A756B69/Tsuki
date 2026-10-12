@@ -36,7 +36,8 @@ function getLeaderboardData(
   { type, period, voiceEnabled, date = new Date() },
 ) {
   const effectiveType = voiceEnabled ? type : "messages";
-  const toIds = (rows) => rows.map(({ user, value }) => ({ id: user, value }));
+  const toIds = (rows) =>
+    rows.map(({ user, ...rest }) => ({ id: user, ...rest }));
   return {
     type: effectiveType,
     period,
@@ -46,7 +47,9 @@ function getLeaderboardData(
       ({ channel, value }) => ({ id: channel, value }),
     ),
     voice: voiceEnabled
-      ? toIds(getTopMembers(db, guildId, "voice", period, date, SIDE_ROWS))
+      ? getTopMembers(db, guildId, "voice", period, date, SIDE_ROWS).map(
+          ({ user, minutes }) => ({ id: user, value: minutes }),
+        )
       : null,
   };
 }
@@ -77,13 +80,13 @@ async function resolveNames(guild, data) {
       }),
     ),
   );
-  const named = ({ id, value }) => ({
+  const named = ({ id, ...rest }) => ({
     name: profiles.get(id).name,
-    value,
+    ...rest,
   });
-  const withAvatar = ({ id, value }) => ({
-    ...named({ id, value }),
-    avatar: profiles.get(id).avatar,
+  const withAvatar = (row) => ({
+    ...named(row),
+    avatar: profiles.get(row.id).avatar,
   });
 
   return {

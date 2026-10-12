@@ -109,8 +109,10 @@ function getTypeLabel(type) {
   return TYPE_LABELS[type] ?? TYPE_LABELS.messages;
 }
 
-function formatValue(type, value) {
-  return type === "voice" ? formatDuration(value) : formatNumber(value);
+function formatValue(type, member) {
+  return type === "voice"
+    ? `${formatNumber(member.value)} XP · ${formatDuration(member.minutes ?? 0)}`
+    : formatNumber(member.value);
 }
 
 function frostedPanel(ctx, background, x, y, width, height) {
@@ -242,7 +244,7 @@ async function drawMembers(ctx, background, { type, members }) {
 
     ctx.textAlign = "right";
     ctx.fillStyle = LIGHT;
-    ctx.fillText(formatValue(type, member.value), 928, baseline);
+    ctx.fillText(formatValue(type, member), 928, baseline);
 
     drawTrail(
       ctx,

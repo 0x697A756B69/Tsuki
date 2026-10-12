@@ -28,6 +28,9 @@ function createDatabase() {
   db.prepare(
     "INSERT INTO voice_daily (guild, day, user, minutes) VALUES ('g', '2026-10-08', 'b', 90), ('g', '2026-10-08', 'a', 20)",
   ).run();
+  db.prepare(
+    "INSERT INTO xp_daily (guild, user, day, source, xp) VALUES ('g', 'b', '2026-10-08', 'voice', 45), ('g', 'a', '2026-10-08', 'voice', 10)",
+  ).run();
   return db;
 }
 
@@ -85,7 +88,7 @@ test("getLeaderboardData gathers the lists with raw identifiers", () => {
   assert.equal(data.activity[5].value, 40);
 });
 
-test("getLeaderboardData ranks voice minutes for the voice type", () => {
+test("getLeaderboardData ranks voice XP with time spent for the voice type", () => {
   const data = getLeaderboardData(createDatabase(), "g", {
     type: "voice",
     period: "week",
@@ -94,8 +97,8 @@ test("getLeaderboardData ranks voice minutes for the voice type", () => {
   });
 
   assert.equal(data.type, "voice");
-  assert.deepEqual(data.members[0], { id: "b", value: 90 });
-  assert.equal(data.activity[3].value, 110);
+  assert.deepEqual(data.members[0], { id: "b", value: 45, minutes: 90 });
+  assert.equal(data.activity[3].value, 55);
 });
 
 test("getLeaderboardData drops the voice data when voice is disabled", () => {

@@ -23,6 +23,12 @@ function addMessages(db, day, channel, user, messages, guild = "g") {
   ).run(guild, day, channel, user, messages);
 }
 
+function addVoiceXp(db, day, user, xp, guild = "g") {
+  db.prepare(
+    "INSERT INTO xp_daily (guild, user, day, source, xp) VALUES (?, ?, ?, 'voice', ?)",
+  ).run(guild, user, day, xp);
+}
+
 function addMinutes(db, day, user, minutes, guild = "g") {
   db.prepare(
     "INSERT INTO voice_daily (guild, day, user, minutes) VALUES (?, ?, ?, ?)",
@@ -75,15 +81,26 @@ test("getTopMembers ranks members by messages", () => {
   ]);
 });
 
-test("getTopMembers ranks members by voice minutes", () => {
+test("getTopMembers ranks members by voice XP with their time spent", () => {
   const db = createDatabase();
-  addMinutes(db, "2026-10-08", "a", 30);
-  addMinutes(db, "2026-10-07", "a", 15);
-  addMinutes(db, "2026-10-08", "b", 60);
+  addVoiceXp(db, "2026-10-08", "a", 30);
+  addVoiceXp(db, "2026-10-04", "a", 15);
+  addVoiceXp(db, "2026-10-08", "b", 60);
+  addMinutes(db, "2026-10-08", "a", 50);
+  addMinutes(db, "2026-10-04", "a", 40);
+  addMinutes(db, "2026-10-08", "b", 20);
+  addMinutes(db, "2026-10-08", "c", 500);
+  db.prepare(
+    "INSERT INTO xp_daily (guild, user, day, source, xp) VALUES ('g', 'a', '2026-10-08', 'messages', 999)",
+  ).run();
 
   assert.deepEqual(getTopMembers(db, "g", "voice", "global", NOW), [
-    { user: "b", value: 60 },
-    { user: "a", value: 45 },
+    { user: "b", value: 60, minutes: 20 },
+    { user: "a", value: 45, minutes: 90 },
+  ]);
+  assert.deepEqual(getTopMembers(db, "g", "voice", "week", NOW), [
+    { user: "b", value: 60, minutes: 20 },
+    { user: "a", value: 30, minutes: 50 },
   ]);
 });
 
@@ -210,11 +227,12 @@ test("getActivity sums the last six months for the global period", () => {
   ]);
 });
 
-test("getActivity covers voice minutes and year boundaries", () => {
+test("getActivity covers voice XP and year boundaries", () => {
   const db = createDatabase();
-  addMinutes(db, "2026-12-30", "a", 12);
-  addMinutes(db, "2027-01-02", "b", 8);
-  addMinutes(db, "2027-01-02", "a", 2);
+  addVoiceXp(db, "2026-12-30", "a", 12);
+  addVoiceXp(db, "2027-01-02", "b", 8);
+  addVoiceXp(db, "2027-01-02", "a", 2);
+  addMinutes(db, "2027-01-02", "a", 999);
 
   const activity = getActivity(
     db,
