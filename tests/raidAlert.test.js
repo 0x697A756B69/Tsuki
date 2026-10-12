@@ -1,0 +1,204 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { DatabaseSync } = require("node:sqlite");
+const { MessageFlags } = require("discord.js");
+const migrate = require("../loaders/migrate");
+const { updateAutomodSettings } = require("../utils/automodSettings");
+const { updateRaidSettings } = require("../utils/raidSettings");
+const { MINUTE } = require("../utils/raidDetector");
+const { getLastTier, recordTier } = require("../utils/raidLog");
+const {
+  MAX_LISTED,
+  TITLES,
+  buildRaidAlert,
+  sendRaidAlert,
+  sweepRaids,
+} = require("../utils/raidAlert");
+
+const NOW = 1700000000000;
+
+function createDatabase() {
+  const db = new DatabaseSync(":memory:");
+  migrate(db);
+  return db;
+}
+
+function render(changes = {}) {
+  const message = buildRaidAlert({
+    tier: "alert",
+    count: 8,
+    windowMinutes: 10,
+    members: [
+      { user: "1", signals: ["age", "avatar"] },
+      { user: "2", signals: [] },
+    ],
+    date: NOW,
+    ...changes,
+  });
+  return JSON.stringify(message.components[0].toJSON());
+}
+
+function createGuild(sent, channelId = "log") {
+  return {
+    id: "g",
+    channels: {
+      cache: new Map([
+        [
+          channelId,
+          {
+            isTextBased: () => true,
+            send: async (payload) => {
+              sent.push(payload);
+              return { id: `m${sent.length}` };
+            },
+          },
+        ],
+      ]),
+    },
+  };
+}
+
+test("buildRaidAlert is a components v2 message that pings nobody", () => {
+  const message = buildRaidAlert({
+    tier: "watch",
+    count: 5,
+    windowMinutes: 10,
+    date: NOW,
+  });
+
+  assert.equal(message.flags, MessageFlags.IsComponentsV2);
+  assert.deepEqual(message.allowedMentions, { parse: [] });
+  assert.equal(message.components.length, 1);
+});
+
+test("buildRaidAlert titles each tier and uses a different color", () => {
+  const colors = new Set();
+  for (const tier of ["calm", "watch", "alert", "raid"]) {
+    const message = buildRaidAlert({ tier, count: 5, windowMinutes: 10 });
+    const json = message.components[0].toJSON();
+    assert.match(JSON.stringify(json), new RegExp(TITLES[tier]));
+    colors.add(json.accent_color);
+  }
+  assert.equal(colors.size, 4);
+});
+
+test("buildRaidAlert shows the count, the window and the members with their signals", () => {
+  const json = render();
+
+  assert.match(json, /8 en 10 minutes/);
+  assert.match(json, /<@1> · Compte récent, Sans avatar/);
+  assert.match(json, /<@2> · aucun signal/);
+});
+
+test("buildRaidAlert uses the singular for one minute", () => {
+  assert.match(render({ windowMinutes: 1 }), /8 en 1 minute[^s]/);
+});
+
+test("buildRaidAlert lists at most ten members and counts the others", () => {
+  const members = Array.from({ length: MAX_LISTED + 3 }, (_, index) => ({
+    user: `u${index}`,
+    signals: [],
+  }));
+  const json = render({ members });
+
+  assert.match(json, new RegExp(`<@u${MAX_LISTED - 1}>`));
+  assert.doesNotMatch(json, new RegExp(`<@u${MAX_LISTED}>`));
+  assert.match(json, /… et 3 autres/);
+});
+
+test("buildRaidAlert for calm shows no arrivals and no members", () => {
+  const json = render({ tier: "calm", count: 0 });
+
+  assert.match(json, /revenues à un rythme normal/);
+  assert.doesNotMatch(json, /Arrivées/);
+  assert.doesNotMatch(json, /<@1>/);
+});
+
+test("buildRaidAlert says when it only observes and when the date is", () => {
+  assert.match(
+    render({ observed: true }),
+    /Observation : rien n'a été appliqué/,
+  );
+  assert.match(render({ observed: false }), /Aucune sanction/);
+  assert.match(render(), /<t:1700000000:f>/);
+});
+
+test("sendRaidAlert sends the alert to the channel and returns the message", async () => {
+  const sent = [];
+  const message = await sendRaidAlert(createGuild(sent), "log", {
+    tier: "raid",
+    count: 10,
+    windowMinutes: 10,
+  });
+
+  assert.equal(sent.length, 1);
+  assert.equal(message.id, "m1");
+});
+
+test("sendRaidAlert returns null without a channel, with a missing one or on failure", async () => {
+  const sent = [];
+  const data = { tier: "raid", count: 10, windowMinutes: 10 };
+
+  assert.equal(await sendRaidAlert(createGuild(sent), null, data), null);
+  assert.equal(await sendRaidAlert(createGuild(sent), "gone", data), null);
+
+  const broken = createGuild(sent);
+  broken.channels.cache.get("log").send = async () => {
+    throw new Error("missing access");
+  };
+  assert.equal(await sendRaidAlert(broken, "log", data), null);
+  assert.equal(sent.length, 0);
+});
+
+function createBot(sent, state = { tier: "raid", heldAt: NOW }) {
+  const db = createDatabase();
+  updateRaidSettings(db, "g", { enabled: true, scope: "all" }, "admin");
+  updateAutomodSettings(db, "g", { logChannel: "log" }, "admin");
+  recordTier(db, "g", state.tier, 10, false, state.heldAt);
+  return {
+    db,
+    raidMemory: new Map([["g", { recent: [], state }]]),
+    guilds: { cache: new Map([["g", createGuild(sent)]]) },
+  };
+}
+
+test("sweepRaids announces the return to calm once the delay has passed", async () => {
+  const sent = [];
+  const bot = createBot(sent);
+
+  assert.equal(await sweepRaids(bot, NOW + 5 * MINUTE), 0);
+  assert.equal(sent.length, 0);
+
+  assert.equal(await sweepRaids(bot, NOW + 10 * MINUTE), 1);
+  assert.equal(sent.length, 1);
+  assert.match(
+    JSON.stringify(sent[0].components[0].toJSON()),
+    /Retour au calme/,
+  );
+  assert.equal(getLastTier(bot.db, "g").tier, "calm");
+
+  assert.equal(await sweepRaids(bot, NOW + 30 * MINUTE), 0);
+  assert.equal(sent.length, 1);
+});
+
+test("sweepRaids skips calm guilds, disabled guilds and guilds that left", async () => {
+  const sent = [];
+  const calm = createBot(sent, { tier: "calm", heldAt: NOW });
+  assert.equal(await sweepRaids(calm, NOW + 60 * MINUTE), 0);
+
+  const disabled = createBot(sent);
+  updateRaidSettings(disabled.db, "g", { enabled: false }, "admin");
+  assert.equal(await sweepRaids(disabled, NOW + 60 * MINUTE), 0);
+
+  const gone = createBot(sent);
+  gone.guilds.cache.clear();
+  assert.equal(await sweepRaids(gone, NOW + 60 * MINUTE), 0);
+
+  assert.equal(sent.length, 0);
+});
+
+test("sweepRaids does nothing before any join has been seen", async () => {
+  const bot = { db: createDatabase(), guilds: { cache: new Map() } };
+
+  assert.equal(await sweepRaids(bot, NOW), 0);
+});
