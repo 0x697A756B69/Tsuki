@@ -259,7 +259,7 @@ function seedRewards(db) {
 test("resync gives each member the role of their total XP", async () => {
   const db = createDatabase();
   seedRewards(db);
-  addXp(db, "g", "1", totalXpForLevel(10));
+  addXp(db, "g", "1", totalXpForLevel(10), "messages");
   const member = guildMember("1");
 
   const report = await resyncRewardRoles(db, "g", new Map([["1", member]]));
@@ -282,7 +282,7 @@ test("resync removes reward roles from members without XP", async () => {
 test("resync only counts the members it actually changed", async () => {
   const db = createDatabase();
   seedRewards(db);
-  addXp(db, "g", "1", totalXpForLevel(10));
+  addXp(db, "g", "1", totalXpForLevel(10), "messages");
   const right = guildMember("1", { held: ["active"] });
   const wrong = guildMember("2", { held: ["veteran"] });
 
@@ -313,8 +313,8 @@ test("resync skips bots", async () => {
 test("resync keeps going when one member cannot be updated", async () => {
   const db = createDatabase();
   seedRewards(db);
-  addXp(db, "g", "1", totalXpForLevel(10));
-  addXp(db, "g", "2", totalXpForLevel(10));
+  addXp(db, "g", "1", totalXpForLevel(10), "messages");
+  addXp(db, "g", "2", totalXpForLevel(10), "messages");
   const broken = guildMember("1", { fail: true });
   const fine = guildMember("2");
 
@@ -334,7 +334,7 @@ test("resync keeps going when one member cannot be updated", async () => {
 test("resync ignores the XP of other guilds", async () => {
   const db = createDatabase();
   seedRewards(db);
-  addXp(db, "other", "1", totalXpForLevel(10));
+  addXp(db, "other", "1", totalXpForLevel(10), "messages");
   const member = guildMember("1");
 
   const report = await resyncRewardRoles(db, "g", new Map([["1", member]]));

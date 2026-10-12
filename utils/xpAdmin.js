@@ -22,18 +22,34 @@ function formatAdjustment(member, { level, previousTotal, total }) {
   return `${member} n'a pas changé d'XP.\n> ${summary}`;
 }
 
-function renderResetConfirm({ userId, authorId, total }) {
+const RESET_LABELS = { all: "tout", messages: "messages", voice: "vocal" };
+
+function getResetLabel(type) {
+  const label = RESET_LABELS[type];
+  if (!label) throw new RangeError(`Unknown reset type: ${type}`);
+  return label;
+}
+
+function formatResetDone({ userId, type, before, after }) {
+  return `🗑️ XP (${getResetLabel(type)}) de <@${userId}> remise à zéro : **${before} XP** → **${after} XP**.`;
+}
+
+function renderResetConfirm({ userId, authorId, type = "all", before, after }) {
   return {
-    content: `⚠️ Remettre à zéro l'XP de <@${userId}> ? Il a actuellement **${total} XP**. Cette action est définitive.`,
+    content: `⚠️ Remettre à zéro l'XP (${getResetLabel(type)}) de <@${userId}> ? Son total passera de **${before} XP** à **${after} XP**. Cette action est définitive.`,
     components: [
       new ActionRowBuilder()
         .addComponents(
           new ButtonBuilder()
-            .setCustomId(buildCustomId("xp-reset", "confirm", userId, authorId))
+            .setCustomId(
+              buildCustomId("xp-reset", "confirm", userId, authorId, type),
+            )
             .setLabel("Confirmer")
             .setStyle(ButtonStyle.Danger),
           new ButtonBuilder()
-            .setCustomId(buildCustomId("xp-reset", "cancel", userId, authorId))
+            .setCustomId(
+              buildCustomId("xp-reset", "cancel", userId, authorId, type),
+            )
             .setLabel("Annuler")
             .setStyle(ButtonStyle.Secondary),
         )
@@ -46,5 +62,6 @@ module.exports = {
   checkMember,
   checkAmount,
   formatAdjustment,
+  formatResetDone,
   renderResetConfirm,
 };

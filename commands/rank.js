@@ -20,10 +20,21 @@ module.exports = defineCommand({
       name: "membre",
       description: "Le membre à afficher (toi par défaut).",
     },
+    {
+      type: "string",
+      name: "type",
+      description: "Le type d'XP à afficher (global par défaut).",
+      choices: [
+        { name: "Global", value: "global" },
+        { name: "Messages", value: "messages" },
+        { name: "Vocal", value: "voice" },
+      ],
+    },
   ],
 
   async run(bot, interaction, args, db) {
     const isSelf = !args.getUser("membre");
+    const type = args.getString("type") ?? "global";
     const member = isSelf ? interaction.member : args.getMember("membre");
 
     const error = checkMember(member);
@@ -33,10 +44,10 @@ module.exports = defineCommand({
         flags: MessageFlags.Ephemeral,
       });
 
-    const data = getRankCardData(db, interaction.guildId, member.id);
+    const data = getRankCardData(db, interaction.guildId, member.id, type);
     if (!data)
       return interaction.reply({
-        content: formatNoXp(member, isSelf),
+        content: formatNoXp(member, isSelf, type),
         flags: MessageFlags.Ephemeral,
       });
 

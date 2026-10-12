@@ -19,7 +19,13 @@ async function rewardMember(bot, guild, settings, modifiers, channel, member) {
   const gain = Math.round(settings.voiceXp * multiplier);
   if (gain <= 0) return;
 
-  const { previousLevel, level } = addXp(bot.db, guild.id, member.id, gain);
+  const { previousLevel, level } = addXp(
+    bot.db,
+    guild.id,
+    member.id,
+    gain,
+    "voice",
+  );
   if (level === previousLevel) return;
 
   const { added } = await updateRewardRoles(bot.db, guild.id, member, level);

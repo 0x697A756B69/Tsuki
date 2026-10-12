@@ -179,8 +179,8 @@ test("renderLeaderboard handles extreme values", async () => {
     type: "voice",
     period: "global",
     members: [
-      { name: "x".repeat(200), value: 123456789 },
-      { name: "short", value: 1 },
+      { name: "x".repeat(200), value: 123456789, minutes: 99999 },
+      { name: "short", value: 1, minutes: 1 },
     ],
     activity,
     channels: [{ name: `#${"y".repeat(200)}`, value: 99999999 }],

@@ -1,12 +1,20 @@
 const { scanVoice } = require("../utils/voiceScan");
 const { purgeLogs } = require("../utils/automodLogs");
 const { sweepRooms } = require("../utils/automodRooms");
+const { sweepDeletedChannels } = require("../utils/channelCleanup");
 
 const SCAN_INTERVAL = 60 * 1000;
 const PURGE_INTERVAL = 60 * 60 * 1000;
 
 module.exports = async (bot) => {
   console.log(`Logged in as ${bot.user.tag}`);
+
+  if (!bot.cleanupDone) {
+    bot.cleanupDone = true;
+    sweepDeletedChannels(bot).catch((err) =>
+      console.error("[channel cleanup]", err),
+    );
+  }
 
   if (!bot.purgeTimer) {
     const purge = () => {

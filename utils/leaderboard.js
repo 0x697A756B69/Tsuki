@@ -1,8 +1,12 @@
 const { toDay } = require("./xp");
 
 const SOURCES = {
-  messages: { table: "message_daily", column: "messages" },
-  voice: { table: "voice_daily", column: "minutes" },
+  messages: { table: "message_daily", column: "messages", filter: "" },
+  voice: {
+    table: "xp_daily",
+    column: "xp",
+    filter: "AND source = 'voice'",
+  },
 };
 
 function shiftDay(day, offset) {
@@ -36,17 +40,30 @@ function getTopMembers(
   date = new Date(),
   limit = 10,
 ) {
-  const { table, column } = getSource(type);
-  const start = getPeriodStart(period, date);
-  return db
+  const { table, column, filter } = getSource(type);
+  const start = getPeriodStart(period, date) ?? "";
+  const rows = db
     .prepare(
       `SELECT user, SUM(${column}) AS value FROM ${table}
-       WHERE guild = ? AND day >= ?
+       WHERE guild = ? AND day >= ? ${filter}
        GROUP BY user HAVING value > 0
        ORDER BY value DESC, user ASC LIMIT ?`,
     )
-    .all(guildId, start ?? "", limit)
-    .map((row) => ({ user: String(row.user), value: Number(row.value) }));
+    .all(guildId, start, limit);
+  const members = rows.map((row) => ({
+    user: String(row.user),
+    value: Number(row.value),
+  }));
+  if (type !== "voice") return members;
+
+  const minutes = db.prepare(
+    `SELECT COALESCE(SUM(minutes), 0) AS minutes FROM voice_daily
+     WHERE guild = ? AND user = ? AND day >= ?`,
+  );
+  return members.map((member) => ({
+    ...member,
+    minutes: Number(minutes.get(guildId, member.user, start).minutes),
+  }));
 }
 
 function getTopChannels(db, guildId, period, date = new Date(), limit = 5) {
@@ -91,12 +108,12 @@ function getActivityBuckets(period, date) {
 }
 
 function getActivity(db, guildId, type, period, date = new Date()) {
-  const { table, column } = getSource(type);
+  const { table, column, filter } = getSource(type);
   const buckets = getActivityBuckets(period, date);
   const rows = db
     .prepare(
       `SELECT day, SUM(${column}) AS value FROM ${table}
-       WHERE guild = ? AND day >= ? AND day <= ?
+       WHERE guild = ? AND day >= ? AND day <= ? ${filter}
        GROUP BY day`,
     )
     .all(guildId, buckets[0].start, buckets[buckets.length - 1].end);
