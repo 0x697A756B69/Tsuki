@@ -9,6 +9,8 @@ const {
   getTotalXp,
   addXp,
   resetXp,
+  getTypeXp,
+  getBreakdown,
   countRanked,
   getRank,
 } = require("../utils/xp");
@@ -320,4 +322,55 @@ test("resetXp wipes every source and the daily XP", () => {
   assert.equal(resetXp(db, "g", "a"), 35);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM members").get().n, 0);
   assert.equal(db.prepare("SELECT COUNT(*) AS n FROM xp_daily").get().n, 0);
+});
+
+test("getTypeXp reads the XP of one type", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 20, "messages");
+  addXp(db, "g", "a", 10, "voice");
+  addXp(db, "g", "a", 5, "manual");
+
+  assert.equal(getTypeXp(db, "g", "a"), 35);
+  assert.equal(getTypeXp(db, "g", "a", "global"), 35);
+  assert.equal(getTypeXp(db, "g", "a", "messages"), 20);
+  assert.equal(getTypeXp(db, "g", "a", "voice"), 10);
+  assert.equal(getTypeXp(db, "g", "nobody", "voice"), 0);
+  assert.throws(() => getTypeXp(db, "g", "a", "manual"), RangeError);
+});
+
+test("getBreakdown gives the XP of every source", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 20, "messages");
+  addXp(db, "g", "a", -5, "manual");
+
+  assert.deepEqual(getBreakdown(db, "g", "a"), {
+    messages: 20,
+    voice: 0,
+    manual: -5,
+  });
+  assert.deepEqual(getBreakdown(db, "g", "nobody"), {
+    messages: 0,
+    voice: 0,
+    manual: 0,
+  });
+});
+
+test("getRank and countRanked work per type", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 300, "messages");
+  addXp(db, "g", "b", 100, "messages");
+  addXp(db, "g", "b", 500, "voice");
+  addXp(db, "g", "c", 50, "manual");
+
+  assert.deepEqual(getRank(db, "g", "a", "messages"), {
+    position: 1,
+    ranked: 2,
+  });
+  assert.deepEqual(getRank(db, "g", "b", "voice"), { position: 1, ranked: 1 });
+  assert.equal(getRank(db, "g", "a", "voice"), null);
+  assert.equal(getRank(db, "g", "c", "messages"), null);
+  assert.deepEqual(getRank(db, "g", "b"), { position: 1, ranked: 3 });
+  assert.equal(countRanked(db, "g", "voice"), 1);
+  assert.equal(countRanked(db, "g", "messages"), 2);
+  assert.equal(countRanked(db, "g"), 3);
 });

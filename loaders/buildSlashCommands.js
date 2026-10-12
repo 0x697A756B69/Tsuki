@@ -7,6 +7,7 @@ function addOption(builder, option) {
       .setDescription(option.description)
       .setRequired(option.required ?? false);
     if (option.autocomplete) o.setAutocomplete(true);
+    if (option.choices) o.addChoices(...option.choices);
     return o;
   });
 }

@@ -13,6 +13,7 @@ export interface CommandOption {
   description: string;
   required?: boolean;
   autocomplete?: boolean;
+  choices?: { name: string; value: string }[];
 }
 
 export interface Command {

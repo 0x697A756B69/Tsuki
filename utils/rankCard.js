@@ -9,6 +9,7 @@ const TEXT_LEFT = 360;
 const BAR_RIGHT = 1440;
 const NAME_MAX_WIDTH = 600;
 const RANK_MAX_WIDTH = 190;
+const BREAKDOWN_MAX_WIDTH = 820;
 
 const DEFAULT_COLORS = ["#7d8aa8", "#ffffff"];
 
@@ -44,6 +45,17 @@ function getBarRatio(current, required) {
   return Math.min(1, current / required);
 }
 
+function formatBreakdown({ messages, voice, manual }) {
+  return [
+    ["Messages", messages],
+    ["Vocal", voice],
+    ["Manuel", manual],
+  ]
+    .filter(([, value]) => value !== 0)
+    .map(([name, value]) => `${name} ${formatNumber(value)}`)
+    .join(" · ");
+}
+
 function truncateText(text, maxWidth, measure) {
   if (measure(text) <= maxWidth) return text;
   let cut = text;
@@ -72,6 +84,9 @@ async function renderRankCard({
   totalXp,
   position,
   ranked,
+  label = null,
+  xpLabel = "XP au total",
+  breakdown = null,
   colors = DEFAULT_COLORS,
 }) {
   registerFonts();
@@ -126,7 +141,24 @@ async function renderRankCard({
 
   ctx.fillStyle = "#c8c8c8";
   ctx.font = `400 38px ${FONT}`;
-  ctx.fillText(`Niveau ${level}`, TEXT_LEFT, 215);
+  ctx.fillText(
+    label ? `Niveau ${level} · ${label}` : `Niveau ${level}`,
+    TEXT_LEFT,
+    215,
+  );
+
+  if (breakdown) {
+    ctx.font = `400 28px ${FONT}`;
+    ctx.fillText(
+      truncateText(
+        formatBreakdown(breakdown),
+        BREAKDOWN_MAX_WIDTH,
+        (text) => ctx.measureText(text).width,
+      ),
+      TEXT_LEFT,
+      285,
+    );
+  }
 
   const rankText = `#${position}`;
   const rankSize = fitFontSize(
@@ -184,7 +216,7 @@ async function renderRankCard({
     430,
   );
   ctx.textAlign = "right";
-  ctx.fillText(`${formatNumber(totalXp)} XP au total`, BAR_RIGHT, 430);
+  ctx.fillText(`${formatNumber(totalXp)} ${xpLabel}`, BAR_RIGHT, 430);
 
   return canvas.encode("png");
 }
@@ -193,6 +225,7 @@ module.exports = {
   renderRankCard,
   registerFonts,
   formatNumber,
+  formatBreakdown,
   getBarRatio,
   truncateText,
   fitFontSize,

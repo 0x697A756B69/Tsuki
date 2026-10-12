@@ -48,3 +48,37 @@ test("routes to the right subcommand", async () => {
     "show",
   );
 });
+
+test("builds the choices of a string option", () => {
+  const commands = new Collection([
+    [
+      "demo",
+      {
+        name: "demo",
+        description: "Demo.",
+        permission: "Aucune",
+        dm: false,
+        options: [
+          {
+            type: "string",
+            name: "type",
+            description: "Le type.",
+            choices: [
+              { name: "Global", value: "global" },
+              { name: "Vocal", value: "voice" },
+            ],
+          },
+        ],
+      },
+    ],
+  ]);
+  const [demo] = buildSlashCommands(commands);
+
+  assert.deepEqual(
+    demo.options[0].choices.map(({ name, value }) => ({ name, value })),
+    [
+      { name: "Global", value: "global" },
+      { name: "Vocal", value: "voice" },
+    ],
+  );
+});

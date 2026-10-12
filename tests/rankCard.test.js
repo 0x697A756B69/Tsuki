@@ -4,6 +4,7 @@ const { createCanvas } = require("@napi-rs/canvas");
 const {
   renderRankCard,
   formatNumber,
+  formatBreakdown,
   getBarRatio,
   truncateText,
   fitFontSize,
@@ -93,4 +94,30 @@ test("renderRankCard handles extreme values", async () => {
     const png = await renderRankCard({ ...data, avatar: createAvatar() });
     assert.equal(png.readUInt32BE(16), 1500);
   }
+});
+
+test("formatBreakdown lists the sources that have XP", () => {
+  assert.equal(
+    formatBreakdown({ messages: 1200, voice: 300, manual: 50 }),
+    "Messages 1 200 · Vocal 300 · Manuel 50",
+  );
+  assert.equal(
+    formatBreakdown({ messages: 80, voice: 0, manual: 0 }),
+    "Messages 80",
+  );
+  assert.match(
+    formatBreakdown({ messages: 80, voice: 0, manual: -20 }),
+    /^Messages 80 · Manuel [-−]20$/,
+  );
+});
+
+test("renderRankCard draws a typed card with its label and breakdown", async () => {
+  const png = await renderRankCard({
+    ...member,
+    avatar: createAvatar(),
+    label: "Vocal",
+    xpLabel: "XP vocal",
+    breakdown: { messages: 4000, voice: 1420, manual: 0 },
+  });
+  assert.deepEqual([...png.subarray(1, 4)], [80, 78, 71]);
 });
