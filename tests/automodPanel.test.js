@@ -43,6 +43,8 @@ const defaults = {
   warnValidDays: 30,
   justiceCategory: null,
   keepTranscript: false,
+  muteType: "timeout",
+  muteRole: null,
   updatedBy: null,
   updatedAt: null,
 };
