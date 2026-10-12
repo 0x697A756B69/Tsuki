@@ -44,7 +44,7 @@ function createMember(calls, { hasRole = true, failing = false } = {}) {
   };
 }
 
-function createBot(db, members = {}, calls = []) {
+function createBot(db, members = {}, calls = [], fetch = async () => null) {
   const cache = new Map(
     Object.entries(members).map(([id, options]) => [
       id,
@@ -55,9 +55,7 @@ function createBot(db, members = {}, calls = []) {
     db,
     calls,
     guilds: {
-      cache: new Map([
-        ["g", { id: "g", members: { cache, fetch: async () => null } }],
-      ]),
+      cache: new Map([["g", { id: "g", members: { cache, fetch } }]]),
     },
   };
 }
@@ -169,4 +167,30 @@ test("sweepMutes tries again later when Discord refuses", async () => {
   bot.guilds.cache.get("g").members.cache.set("a", createMember(bot.calls));
   assert.equal(await sweepMutes(bot, NOW + MINUTE), 1);
   assert.equal(bot.muteSweptAt, NOW + MINUTE);
+});
+
+test(
+  "sweepMutes tries again later when a member cannot be fetched",
+  { todo: true },
+  async () => {
+    const db = createDatabase();
+    mute(db, "W1", "a", NOW - 5 * MINUTE);
+    const bot = createBot(db, {}, [], async () => {
+      throw new Error("Service Unavailable");
+    });
+
+    assert.equal(await sweepMutes(bot, NOW), 0);
+    assert.equal(bot.muteSweptAt, undefined);
+  },
+);
+
+test("sweepMutes moves on when Discord does not know the member", async () => {
+  const db = createDatabase();
+  mute(db, "W1", "a", NOW - 5 * MINUTE);
+  const bot = createBot(db, {}, [], async () => {
+    throw Object.assign(new Error("Unknown Member"), { code: 10007 });
+  });
+
+  assert.equal(await sweepMutes(bot, NOW), 0);
+  assert.equal(bot.muteSweptAt, NOW);
 });
