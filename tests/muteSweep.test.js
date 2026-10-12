@@ -169,20 +169,16 @@ test("sweepMutes tries again later when Discord refuses", async () => {
   assert.equal(bot.muteSweptAt, NOW + MINUTE);
 });
 
-test(
-  "sweepMutes tries again later when a member cannot be fetched",
-  { todo: true },
-  async () => {
-    const db = createDatabase();
-    mute(db, "W1", "a", NOW - 5 * MINUTE);
-    const bot = createBot(db, {}, [], async () => {
-      throw new Error("Service Unavailable");
-    });
+test("sweepMutes tries again later when a member cannot be fetched", async () => {
+  const db = createDatabase();
+  mute(db, "W1", "a", NOW - 5 * MINUTE);
+  const bot = createBot(db, {}, [], async () => {
+    throw new Error("Service Unavailable");
+  });
 
-    assert.equal(await sweepMutes(bot, NOW), 0);
-    assert.equal(bot.muteSweptAt, undefined);
-  },
-);
+  assert.equal(await sweepMutes(bot, NOW), 0);
+  assert.equal(bot.muteSweptAt, undefined);
+});
 
 test("sweepMutes moves on when Discord does not know the member", async () => {
   const db = createDatabase();

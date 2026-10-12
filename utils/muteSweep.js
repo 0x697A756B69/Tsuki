@@ -22,6 +22,19 @@ function expiredMutes(db, since, now) {
     }));
 }
 
+const UNKNOWN_MEMBER = 10007;
+
+async function findMember(guild, userId) {
+  const cached = guild.members.cache.get(userId);
+  if (cached) return cached;
+  try {
+    return await guild.members.fetch(userId);
+  } catch (err) {
+    if (err?.code === UNKNOWN_MEMBER) return null;
+    throw err;
+  }
+}
+
 async function sweepMutes(bot, now = Date.now()) {
   const since = bot.muteSweptAt ?? now - FIRST_WINDOW;
   let lifted = 0;
@@ -34,9 +47,7 @@ async function sweepMutes(bot, now = Date.now()) {
     const guild = bot.guilds.cache.get(guildId);
     if (!guild) continue;
     try {
-      const member =
-        guild.members.cache.get(user) ??
-        (await guild.members.fetch(user).catch(() => null));
+      const member = await findMember(guild, user);
       if (!member?.roles.cache.has(role)) continue;
       await member.roles.remove(role, REASON);
       lifted += 1;
