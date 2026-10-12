@@ -20,8 +20,8 @@ function createDatabase() {
 
 test("getRankCardData gathers level, progress and position", () => {
   const db = createDatabase();
-  addXp(db, "g", "a", 150);
-  addXp(db, "g", "b", 40);
+  addXp(db, "g", "a", 150, "messages");
+  addXp(db, "g", "b", 40, "messages");
 
   assert.deepEqual(getRankCardData(db, "g", "a"), {
     level: 1,
@@ -36,9 +36,9 @@ test("getRankCardData gathers level, progress and position", () => {
 
 test("getRankCardData is null without XP", () => {
   const db = createDatabase();
-  addXp(db, "g", "a", 10);
-  addXp(db, "g", "b", 5);
-  addXp(db, "g", "b", -5);
+  addXp(db, "g", "a", 10, "messages");
+  addXp(db, "g", "b", 5, "messages");
+  addXp(db, "g", "b", -5, "manual");
 
   assert.equal(getRankCardData(db, "g", "nobody"), null);
   assert.equal(getRankCardData(db, "g", "b"), null);
@@ -102,7 +102,7 @@ test("/rank refuses members without XP privately", async () => {
 
 test("/rank replies publicly with a PNG card", async () => {
   const db = createDatabase();
-  addXp(db, "g", "me", 200);
+  addXp(db, "g", "me", 200, "messages");
   const interaction = createInteraction();
   interaction.member = {
     id: "me",

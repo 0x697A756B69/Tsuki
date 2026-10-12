@@ -37,7 +37,7 @@ module.exports = defineSubcommand({
         flags: MessageFlags.Ephemeral,
       });
 
-    const result = addXp(db, interaction.guildId, member.id, -amount);
+    const result = addXp(db, interaction.guildId, member.id, -amount, "manual");
     if (result.level !== result.previousLevel)
       await updateRewardRoles(db, interaction.guildId, member, result.level);
     await interaction.reply(formatAdjustment(member, result));

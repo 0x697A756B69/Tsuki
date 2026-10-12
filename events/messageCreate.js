@@ -52,6 +52,7 @@ module.exports = async (bot, message) => {
     message.guildId,
     message.author.id,
     gain,
+    "messages",
   );
 
   if (level === previousLevel) return;

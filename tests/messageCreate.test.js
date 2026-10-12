@@ -67,6 +67,17 @@ test("a normal message gives the base XP", async () => {
   assert.equal(xpOf(bot, "normal"), 20);
 });
 
+test("message XP is stored in the messages source", async () => {
+  const bot = createBot();
+  await messageCreate(bot, message("sourced"));
+  const row = bot.db
+    .prepare(
+      "SELECT message_xp, voice_xp, manual_xp FROM members WHERE user = 'sourced'",
+    )
+    .get();
+  assert.deepEqual({ ...row }, { message_xp: 20, voice_xp: 0, manual_xp: 0 });
+});
+
 test("a role bonus multiplies the XP", async () => {
   const bot = createBot();
   setModifier(bot.db, "g", "role", "booster", 1.5);
@@ -101,7 +112,7 @@ test("an excluded role gives no XP", async () => {
 test("reaching a level with a reward gives the role", async () => {
   const bot = createBot();
   setReward(bot.db, "g", 1, "regular");
-  addXp(bot.db, "g", "climber", 90);
+  addXp(bot.db, "g", "climber", 90, "messages");
 
   await messageCreate(bot, message("climber"));
 
@@ -126,7 +137,7 @@ test("the level up announcement mentions the role gained", async () => {
     "admin",
   );
   setReward(bot.db, "g", 1, "regular");
-  addXp(bot.db, "g", "rewarded", 90);
+  addXp(bot.db, "g", "rewarded", 90, "messages");
 
   await messageCreate(bot, message("rewarded"));
 
@@ -141,7 +152,7 @@ test("the level up announcement has no role when none was gained", async () => {
     { announceMode: "current", announceMessage: "{niveau} {role}" },
     "admin",
   );
-  addXp(bot.db, "g", "unrewarded", 90);
+  addXp(bot.db, "g", "unrewarded", 90, "messages");
 
   await messageCreate(bot, message("unrewarded"));
 

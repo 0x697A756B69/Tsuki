@@ -82,6 +82,10 @@ test("members with company in a voice channel earn the voice XP", async () => {
 
   assert.equal(xpOf(bot, "a"), 10);
   assert.equal(xpOf(bot, "b"), 10);
+  const row = bot.db
+    .prepare("SELECT message_xp, voice_xp FROM members WHERE user = 'a'")
+    .get();
+  assert.deepEqual({ ...row }, { message_xp: 0, voice_xp: 10 });
 });
 
 test("members alone, muted or deafened earn nothing", async () => {
@@ -160,7 +164,7 @@ test("channel and role bonuses apply, an exclusion wins", async () => {
 test("reaching a level with a reward gives the role", async () => {
   const bot = createBot();
   setReward(bot.db, "g", 1, "regular");
-  addXp(bot.db, "g", "a", 95);
+  addXp(bot.db, "g", "a", 95, "messages");
   addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
 
   await scanVoice(bot);
@@ -175,7 +179,7 @@ test("the level up is announced in the configured channel", async () => {
     announceMessage: "{niveau} {role}",
   });
   setReward(bot.db, "g", 1, "regular");
-  addXp(bot.db, "g", "a", 95);
+  addXp(bot.db, "g", "a", 95, "messages");
   addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
 
   await scanVoice(bot);
@@ -185,7 +189,7 @@ test("the level up is announced in the configured channel", async () => {
 
 test("the level up is sent by DM in DM mode", async () => {
   const bot = createBot({ announceMode: "dm", announceMessage: "{niveau}" });
-  addXp(bot.db, "g", "a", 95);
+  addXp(bot.db, "g", "a", 95, "messages");
   addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
 
   await scanVoice(bot);
@@ -195,7 +199,7 @@ test("the level up is sent by DM in DM mode", async () => {
 
 test("the level up is not announced in current channel mode", async () => {
   const bot = createBot({ announceMode: "current" });
-  addXp(bot.db, "g", "a", 95);
+  addXp(bot.db, "g", "a", 95, "messages");
   addGuild(bot, { v: [voiceMember("a"), voiceMember("b")] });
 
   await scanVoice(bot);
