@@ -1,6 +1,8 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
-const { resetXp } = require("../utils/xp");
+const { previewReset, resetXp } = require("../utils/xp");
+const { getLevelProgress } = require("../utils/levels");
+const { formatResetDone } = require("../utils/xpAdmin");
 const { updateRewardRoles } = require("../utils/rewards");
 
 function refuse(interaction, content) {
@@ -10,7 +12,7 @@ function refuse(interaction, content) {
 module.exports = defineComponent({
   id: "xp-reset",
 
-  async run(bot, interaction, [action, userId, authorId], db) {
+  async run(bot, interaction, [action, userId, authorId, type = "all"], db) {
     if (!interaction.isButton()) return;
 
     if (interaction.user.id !== authorId)
@@ -31,13 +33,25 @@ module.exports = defineComponent({
       });
 
     if (action === "confirm") {
-      const previousTotal = resetXp(db, interaction.guildId, userId);
+      const { before, after } = previewReset(
+        db,
+        interaction.guildId,
+        userId,
+        type,
+      );
+      resetXp(db, interaction.guildId, userId, type);
       const member = await interaction.guild.members
         .fetch(userId)
         .catch(() => null);
-      if (member) await updateRewardRoles(db, interaction.guildId, member, 0);
+      if (member)
+        await updateRewardRoles(
+          db,
+          interaction.guildId,
+          member,
+          getLevelProgress(after).level,
+        );
       return interaction.update({
-        content: `🗑️ L'XP de <@${userId}> a été remise à zéro (**${previousTotal} XP** effacés).`,
+        content: formatResetDone({ userId, type, before, after }),
         components: [],
       });
     }

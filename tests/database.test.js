@@ -11,6 +11,7 @@ const {
   resetXp,
   getTypeXp,
   getBreakdown,
+  previewReset,
   countRanked,
   getRank,
 } = require("../utils/xp");
@@ -373,4 +374,94 @@ test("getRank and countRanked work per type", () => {
   assert.equal(countRanked(db, "g", "voice"), 1);
   assert.equal(countRanked(db, "g", "messages"), 2);
   assert.equal(countRanked(db, "g"), 3);
+});
+
+function seedSources(db) {
+  addXp(db, "g", "a", 300, "messages", new Date("2026-10-01T12:00:00Z"));
+  addXp(db, "g", "a", 100, "voice", new Date("2026-10-01T12:00:00Z"));
+  addXp(db, "g", "a", 50, "manual", new Date("2026-10-01T12:00:00Z"));
+}
+
+test("previewReset gives the total before and after each type", () => {
+  const db = createDatabase();
+  seedSources(db);
+
+  assert.deepEqual(previewReset(db, "g", "a"), {
+    before: 450,
+    removed: 450,
+    after: 0,
+  });
+  assert.deepEqual(previewReset(db, "g", "a", "messages"), {
+    before: 450,
+    removed: 300,
+    after: 150,
+  });
+  assert.deepEqual(previewReset(db, "g", "a", "voice"), {
+    before: 450,
+    removed: 100,
+    after: 350,
+  });
+  assert.deepEqual(previewReset(db, "g", "nobody", "voice"), {
+    before: 0,
+    removed: 0,
+    after: 0,
+  });
+  assert.throws(() => previewReset(db, "g", "a", "manual"), RangeError);
+});
+
+test("resetXp by type clears only that source", () => {
+  const db = createDatabase();
+  seedSources(db);
+
+  assert.equal(resetXp(db, "g", "a", "voice"), 450);
+  assert.deepEqual(sourcesOf(db), {
+    total_xp: 350,
+    message_xp: 300,
+    voice_xp: 0,
+    manual_xp: 50,
+  });
+  const days = db.prepare("SELECT source FROM xp_daily ORDER BY source").all();
+  assert.deepEqual(
+    days.map((row) => row.source),
+    ["manual", "messages"],
+  );
+});
+
+test("resetXp on messages keeps the voice and manual XP", () => {
+  const db = createDatabase();
+  seedSources(db);
+
+  resetXp(db, "g", "a", "messages");
+  assert.deepEqual(sourcesOf(db), {
+    total_xp: 150,
+    message_xp: 0,
+    voice_xp: 100,
+    manual_xp: 50,
+  });
+});
+
+test("resetXp by type never takes the total below zero", () => {
+  const db = createDatabase();
+  addXp(db, "g", "a", 100, "messages");
+  addXp(db, "g", "a", -80, "manual");
+
+  resetXp(db, "g", "a", "messages");
+  assert.equal(getTotalXp(db, "g", "a"), 0);
+});
+
+test("resetXp all also clears the manual XP", () => {
+  const db = createDatabase();
+  seedSources(db);
+
+  assert.equal(resetXp(db, "g", "a", "all"), 450);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM members").get().n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM xp_daily").get().n, 0);
+});
+
+test("resetXp rejects an unknown type and changes nothing", () => {
+  const db = createDatabase();
+  seedSources(db);
+
+  assert.throws(() => resetXp(db, "g", "a", "other"), RangeError);
+  assert.equal(getTotalXp(db, "g", "a"), 450);
 });

@@ -86,18 +86,38 @@ function addXp(db, guildId, userId, amount, source, date = new Date()) {
   });
 }
 
-function resetXp(db, guildId, userId) {
+const RESET_COLUMNS = { messages: "message_xp", voice: "voice_xp" };
+
+function previewReset(db, guildId, userId, type = "all") {
+  if (type !== "all" && !RESET_COLUMNS[type])
+    throw new RangeError(`Unknown reset type: ${type}`);
+  const before = getTotalXp(db, guildId, userId);
+  if (type === "all") return { before, removed: before, after: 0 };
+  const after = Math.max(0, before - getTypeXp(db, guildId, userId, type));
+  return { before, removed: before - after, after };
+}
+
+function resetXp(db, guildId, userId, type = "all") {
+  const { before, after } = previewReset(db, guildId, userId, type);
   return transaction(db, () => {
-    const previousTotal = getTotalXp(db, guildId, userId);
-    db.prepare("DELETE FROM members WHERE guild = ? AND user = ?").run(
-      guildId,
-      userId,
-    );
-    db.prepare("DELETE FROM xp_daily WHERE guild = ? AND user = ?").run(
-      guildId,
-      userId,
-    );
-    return previousTotal;
+    if (type === "all") {
+      db.prepare("DELETE FROM members WHERE guild = ? AND user = ?").run(
+        guildId,
+        userId,
+      );
+      db.prepare("DELETE FROM xp_daily WHERE guild = ? AND user = ?").run(
+        guildId,
+        userId,
+      );
+      return before;
+    }
+    db.prepare(
+      `UPDATE members SET ${RESET_COLUMNS[type]} = 0, total_xp = ? WHERE guild = ? AND user = ?`,
+    ).run(after, guildId, userId);
+    db.prepare(
+      "DELETE FROM xp_daily WHERE guild = ? AND user = ? AND source = ?",
+    ).run(guildId, userId, type);
+    return before;
   });
 }
 
@@ -132,6 +152,7 @@ module.exports = {
   getTypeXp,
   getBreakdown,
   addXp,
+  previewReset,
   resetXp,
   countRanked,
   getRank,
