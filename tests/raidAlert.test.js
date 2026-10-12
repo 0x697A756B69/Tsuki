@@ -202,3 +202,49 @@ test("sweepRaids does nothing before any join has been seen", async () => {
 
   assert.equal(await sweepRaids(bot, NOW), 0);
 });
+
+test("buildRaidAlert tells what was applied and what failed", () => {
+  const text = render({
+    response: {
+      action: "timeout",
+      observed: false,
+      planned: ["1", "2", "3"],
+      done: ["1", "2"],
+      failed: ["3"],
+    },
+  });
+
+  assert.match(text, /Appliqué :\*\* mis en sourdine · 2 membres/);
+  assert.match(text, /Échec :\*\* 1 membre/);
+  assert.match(text, /Sanctions appliquées automatiquement/);
+});
+
+test("buildRaidAlert tells what would have been applied in observation", () => {
+  const text = render({
+    observed: true,
+    response: {
+      action: "ban",
+      observed: true,
+      planned: ["1", "2"],
+      done: [],
+      failed: [],
+    },
+  });
+
+  assert.match(text, /Aurait été appliqué :\*\* banni · 2 membres/);
+  assert.match(text, /Observation : rien n.a été appliqué/);
+});
+
+test("buildRaidAlert shows no action line for a log-only response", () => {
+  const text = render({
+    response: {
+      action: "log",
+      observed: false,
+      planned: [],
+      done: [],
+      failed: [],
+    },
+  });
+
+  assert.doesNotMatch(text, /Appliqué|Aurait été|Échec/);
+});

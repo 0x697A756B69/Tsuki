@@ -1,6 +1,7 @@
 const { getRaidSettings } = require("../utils/raidSettings");
 const { observeJoin } = require("../utils/raidWatch");
 const { announceRaid } = require("../utils/raidAlert");
+const { respondToRaid } = require("../utils/raidResponse");
 
 module.exports = async (bot, member) => {
   if (member.user.bot) return;
@@ -24,6 +25,7 @@ module.exports = async (bot, member) => {
     settings,
     now,
   );
+  const response = await respondToRaid(bot, member.guild, settings, result);
   if (result.evaluation.changed)
-    await announceRaid(bot, member.guild, settings, result, now);
+    await announceRaid(bot, member.guild, settings, result, now, response);
 };

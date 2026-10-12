@@ -7,6 +7,7 @@ const {
 const { getAutomodSettings } = require("./automodSettings");
 const { SIGNAL_LABELS, isSuspect } = require("./joinSignals");
 const { getRaidSettings } = require("./raidSettings");
+const { ACTION_LABELS } = require("./raidResponse");
 const { refreshRaid } = require("./raidWatch");
 
 const TITLES = {
@@ -28,12 +29,34 @@ function memberLine({ user, signals }) {
   return `<@${user}> · ${labels.length === 0 ? "aucun signal" : labels.join(", ")}`;
 }
 
+function countLabel(count) {
+  return `${count} membre${count > 1 ? "s" : ""}`;
+}
+
+function responseLines(response) {
+  if (!response || response.action === "log") return [];
+  const label = ACTION_LABELS[response.action];
+  const lines = [];
+  if (response.observed && response.planned.length > 0)
+    lines.push(
+      `**Aurait été appliqué :** ${label} · ${countLabel(response.planned.length)}`,
+    );
+  if (response.done.length > 0)
+    lines.push(`**Appliqué :** ${label} · ${countLabel(response.done.length)}`);
+  if (response.failed.length > 0)
+    lines.push(
+      `**Échec :** ${countLabel(response.failed.length)} (permissions ou hiérarchie)`,
+    );
+  return lines;
+}
+
 function buildRaidAlert({
   tier,
   count,
   windowMinutes,
   members = [],
   observed = false,
+  response = null,
   date = Date.now(),
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
@@ -62,11 +85,18 @@ function buildRaidAlert({
     }
   }
 
+  const lines = responseLines(response);
+  if (lines.length > 0)
+    container
+      .addSeparatorComponents(new SeparatorBuilder())
+      .addTextDisplayComponents(text(lines.join("\n")));
+
+  const applied = response !== null && response.done.length > 0;
   container
     .addSeparatorComponents(new SeparatorBuilder())
     .addTextDisplayComponents(
       text(
-        `-# ${observed ? "Observation : rien n'a été appliqué" : "Aucune sanction n'a été appliquée"} · <t:${Math.floor(date / 1000)}:f>`,
+        `-# ${observed ? "Observation : rien n'a été appliqué" : applied ? "Sanctions appliquées automatiquement" : "Aucune sanction n'a été appliquée"} · <t:${Math.floor(date / 1000)}:f>`,
       ),
     );
 
@@ -84,7 +114,14 @@ async function sendRaidAlert(guild, channelId, data) {
   return channel.send(buildRaidAlert(data)).catch(() => null);
 }
 
-function announceRaid(bot, guild, settings, { evaluation, recent }, date) {
+function announceRaid(
+  bot,
+  guild,
+  settings,
+  { evaluation, recent },
+  date,
+  response = null,
+) {
   const { logChannel } = getAutomodSettings(bot.db, guild.id);
   const members = recent
     .filter((join) => settings.scope === "all" || isSuspect(join.signals))
@@ -95,6 +132,7 @@ function announceRaid(bot, guild, settings, { evaluation, recent }, date) {
     windowMinutes: settings.windowMinutes,
     members,
     observed: settings.observation,
+    response,
     date,
   });
 }

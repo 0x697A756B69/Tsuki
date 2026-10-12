@@ -118,3 +118,31 @@ test("guildMemberAdd keeps the recent joins in the bot memory", async () => {
 
   assert.equal(bot.raidMemory.get("g").recent.length, 1);
 });
+
+function withMembers(guild, timeouts) {
+  guild.members = {
+    cache: new Map(),
+    fetch: async (id) => ({ timeout: async () => timeouts.push(id) }),
+  };
+}
+
+test("guildMemberAdd applies the action of the tier to the recent group", async () => {
+  const { bot, guild, sent } = createBot({ raid: { alertAction: "timeout" } });
+  const timeouts = [];
+  withMembers(guild, timeouts);
+  for (const index of [1, 2, 3, 4])
+    await guildMemberAdd(bot, member(guild, index));
+
+  assert.deepEqual(timeouts, ["u1", "u2", "u3", "u4"]);
+  assert.match(JSON.stringify(sent.at(-1).components[0].toJSON()), /Appliqué/);
+});
+
+test("guildMemberAdd leaves members alone for log-only tiers", async () => {
+  const { bot, guild } = createBot();
+  const timeouts = [];
+  withMembers(guild, timeouts);
+  for (const index of [1, 2, 3, 4, 5])
+    await guildMemberAdd(bot, member(guild, index));
+
+  assert.deepEqual(timeouts, []);
+});
