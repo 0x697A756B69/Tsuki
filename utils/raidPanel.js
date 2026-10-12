@@ -148,7 +148,11 @@ function renderRaidView({ settings, logChannel }) {
     .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents(row(select))
     .addActionRowComponents(
-      row(button("response", "Réponses"), buildBackButton()),
+      row(
+        button("response", "Réponses"),
+        button("simulate", "Simuler un raid"),
+        buildBackButton(),
+      ),
     );
 
   return panel(container);

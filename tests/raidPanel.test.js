@@ -368,3 +368,29 @@ test("the navigation buttons open the views and modals", async () => {
   const modal = await run(db, "thresholds", fakeInteraction("button"));
   assert.equal(modal[0][0], "modal");
 });
+
+test("the anti-raid view has a simulation button", () => {
+  const db = createDatabase();
+  const view = renderRaidView({
+    settings: getRaidSettings(db, "g"),
+    logChannel: "log",
+  });
+
+  assert.ok(
+    collect(view).some((node) => node.custom_id === "raid-config:simulate"),
+  );
+});
+
+test("the simulation button answers privately without changing anything", async () => {
+  const db = createDatabase();
+  updateRaidSettings(db, "g", { raidAction: "ban" }, "admin");
+  const before = getRaidSettings(db, "g");
+  const replies = await run(db, "simulate", fakeInteraction("button"));
+
+  assert.equal(replies[0][1].flags, MessageFlags.Ephemeral);
+  assert.match(replies[0][1].content, /Simulation/);
+  assert.match(replies[0][1].content, /Raid probable.*banni/);
+  assert.deepEqual(getRaidSettings(db, "g"), before);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM raid_joins").get().n, 0);
+  assert.equal(db.prepare("SELECT COUNT(*) AS n FROM raid_tiers").get().n, 0);
+});

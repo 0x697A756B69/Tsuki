@@ -8,6 +8,7 @@ const {
   signalChanges,
   toggleRaid,
 } = require("../utils/raidConfig");
+const { formatSimulation, simulateRaid } = require("../utils/raidSimulation");
 const {
   CONFIG_ID,
   renderRaidResponseView,
@@ -51,6 +52,11 @@ module.exports = defineComponent({
     if (interaction.isButton()) {
       if (action === "raid") return interaction.update(raidView());
       if (action === "response") return interaction.update(responseView());
+      if (action === "simulate")
+        return interaction.reply({
+          content: formatSimulation(simulateRaid(settings), settings),
+          flags: MessageFlags.Ephemeral,
+        });
       if (action === "thresholds")
         return interaction.showModal(renderThresholdsModal({ settings }));
       if (action === "timeout")
