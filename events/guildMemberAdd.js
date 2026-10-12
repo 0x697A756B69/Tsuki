@@ -2,6 +2,7 @@ const { getRaidSettings } = require("../utils/raidSettings");
 const { observeJoin } = require("../utils/raidWatch");
 const { announceRaid } = require("../utils/raidAlert");
 const { respondToRaid } = require("../utils/raidResponse");
+const { syncLockdown } = require("../utils/raidLockdown");
 
 module.exports = async (bot, member) => {
   if (member.user.bot) return;
@@ -26,6 +27,21 @@ module.exports = async (bot, member) => {
     now,
   );
   const response = await respondToRaid(bot, member.guild, settings, result);
+  const lockdown = await syncLockdown(
+    bot.db,
+    member.guild,
+    settings,
+    result.evaluation.tier,
+    now,
+  );
   if (result.evaluation.changed)
-    await announceRaid(bot, member.guild, settings, result, now, response);
+    await announceRaid(
+      bot,
+      member.guild,
+      settings,
+      result,
+      now,
+      response,
+      lockdown,
+    );
 };

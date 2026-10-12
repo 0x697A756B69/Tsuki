@@ -146,3 +146,29 @@ test("guildMemberAdd leaves members alone for log-only tiers", async () => {
 
   assert.deepEqual(timeouts, []);
 });
+
+test("guildMemberAdd pauses the invites at the raid tier and says so", async () => {
+  const { bot, guild, sent } = createBot({ raid: { lockdown: "invites" } });
+  const incidents = [];
+  guild.verificationLevel = 1;
+  guild.incidentsData = null;
+  guild.setIncidentActions = async (value) => incidents.push(value);
+  for (const index of [1, 2, 3, 4, 5])
+    await guildMemberAdd(bot, member(guild, index));
+
+  assert.equal(incidents.length, 1);
+  assert.match(
+    JSON.stringify(sent.at(-1).components[0].toJSON()),
+    /Verrouillage :\*\* invitations en pause/,
+  );
+});
+
+test("guildMemberAdd keeps the invites open when the lockdown is off", async () => {
+  const { bot, guild } = createBot();
+  const incidents = [];
+  guild.setIncidentActions = async (value) => incidents.push(value);
+  for (const index of [1, 2, 3, 4, 5])
+    await guildMemberAdd(bot, member(guild, index));
+
+  assert.deepEqual(incidents, []);
+});

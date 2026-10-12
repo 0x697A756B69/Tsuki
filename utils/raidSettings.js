@@ -18,6 +18,7 @@ const COLUMNS = {
   raidAction: "raid_action",
   timeoutMinutes: "timeout_minutes",
   quarantineRole: "quarantine_role",
+  lockdown: "lockdown",
 };
 
 function toSettings(row) {
@@ -42,6 +43,7 @@ function toSettings(row) {
     timeoutMinutes: Number(row.timeout_minutes),
     quarantineRole:
       row.quarantine_role === null ? null : String(row.quarantine_role),
+    lockdown: String(row.lockdown),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };

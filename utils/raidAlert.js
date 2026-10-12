@@ -7,6 +7,7 @@ const {
 const { getAutomodSettings } = require("./automodSettings");
 const { SIGNAL_LABELS, isSuspect } = require("./joinSignals");
 const { getRaidSettings } = require("./raidSettings");
+const { MODE_LABELS, getLockdown, syncLockdown } = require("./raidLockdown");
 const { ACTION_LABELS } = require("./raidResponse");
 const { refreshRaid } = require("./raidWatch");
 
@@ -50,6 +51,22 @@ function responseLines(response) {
   return lines;
 }
 
+function lockdownLine(lockdown) {
+  if (!lockdown) return [];
+  const label = MODE_LABELS[lockdown.mode];
+  if (!lockdown.ok)
+    return [
+      lockdown.action === "engage"
+        ? `**Échec du verrouillage :** ${label}`
+        : "**Échec de la levée :** nouvelle tentative au prochain contrôle",
+    ];
+  if (lockdown.action === "release")
+    return ["**Verrouillage levé :** état d'avant restauré"];
+  return [
+    `**${lockdown.observed ? "Aurait été verrouillé" : "Verrouillage"} :** ${label}`,
+  ];
+}
+
 function buildRaidAlert({
   tier,
   count,
@@ -57,6 +74,7 @@ function buildRaidAlert({
   members = [],
   observed = false,
   response = null,
+  lockdown = null,
   date = Date.now(),
 }) {
   const text = (value) => new TextDisplayBuilder().setContent(value);
@@ -85,7 +103,7 @@ function buildRaidAlert({
     }
   }
 
-  const lines = responseLines(response);
+  const lines = [...responseLines(response), ...lockdownLine(lockdown)];
   if (lines.length > 0)
     container
       .addSeparatorComponents(new SeparatorBuilder())
@@ -121,6 +139,7 @@ function announceRaid(
   { evaluation, recent },
   date,
   response = null,
+  lockdown = null,
 ) {
   const { logChannel } = getAutomodSettings(bot.db, guild.id);
   const members = recent
@@ -133,6 +152,7 @@ function announceRaid(
     members,
     observed: settings.observation,
     response,
+    lockdown,
     date,
   });
 }
@@ -140,15 +160,23 @@ function announceRaid(
 async function sweepRaids(bot, now = Date.now()) {
   let changes = 0;
   for (const [guildId, entry] of bot.raidMemory ?? []) {
-    if (entry.state === null || entry.state.tier === "calm") continue;
+    const idle = entry.state === null || entry.state.tier === "calm";
+    if (idle && getLockdown(bot.db, guildId) === null) continue;
     const guild = bot.guilds.cache.get(guildId);
     if (!guild) continue;
     const settings = getRaidSettings(bot.db, guildId);
     if (!settings.enabled) continue;
     const result = refreshRaid(bot.db, bot.raidMemory, guildId, settings, now);
+    const lockdown = await syncLockdown(
+      bot.db,
+      guild,
+      settings,
+      result.evaluation.tier,
+      now,
+    );
     if (!result.evaluation.changed) continue;
     changes += 1;
-    await announceRaid(bot, guild, settings, result, now);
+    await announceRaid(bot, guild, settings, result, now, null, lockdown);
   }
   return changes;
 }

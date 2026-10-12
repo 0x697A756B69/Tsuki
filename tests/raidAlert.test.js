@@ -248,3 +248,74 @@ test("buildRaidAlert shows no action line for a log-only response", () => {
 
   assert.doesNotMatch(text, /Appliqué|Aurait été|Échec/);
 });
+
+test("buildRaidAlert tells when the lockdown starts and ends", () => {
+  const start = render({
+    lockdown: { action: "engage", mode: "invites", observed: false, ok: true },
+  });
+  assert.match(start, /Verrouillage :\*\* invitations en pause/);
+
+  const end = render({
+    lockdown: { action: "release", mode: "invites", observed: false, ok: true },
+  });
+  assert.match(end, /Verrouillage levé/);
+});
+
+test("buildRaidAlert tells when the lockdown would have happened or failed", () => {
+  const planned = render({
+    lockdown: {
+      action: "engage",
+      mode: "verification",
+      observed: true,
+      ok: true,
+    },
+  });
+  assert.match(planned, /Aurait été verrouillé :\*\* vérification maximale/);
+
+  const failed = render({
+    lockdown: { action: "engage", mode: "invites", observed: false, ok: false },
+  });
+  assert.match(failed, /Échec du verrouillage/);
+
+  const stuck = render({
+    lockdown: {
+      action: "release",
+      mode: "invites",
+      observed: false,
+      ok: false,
+    },
+  });
+  assert.match(stuck, /Échec de la levée/);
+});
+
+test("sweepRaids lifts the lockdown once the raid is over", async () => {
+  const db = createDatabase();
+  updateRaidSettings(
+    db,
+    "g",
+    { enabled: true, scope: "all", lockdown: "invites" },
+    "admin",
+  );
+  db.prepare(
+    "INSERT INTO raid_lockdowns (guild, mode, previous_level, previous_invites_until, started_at) VALUES ('g', 'invites', NULL, NULL, 1)",
+  ).run();
+  const actions = [];
+  const sent = [];
+  const guild = createGuild(sent);
+  guild.setIncidentActions = async (value) => actions.push(value);
+  const bot = {
+    db,
+    guilds: { cache: new Map([["g", guild]]) },
+    raidMemory: new Map([
+      ["g", { recent: [], state: { tier: "calm", heldAt: NOW } }],
+    ]),
+  };
+
+  await sweepRaids(bot, NOW);
+
+  assert.deepEqual(actions, [{ invitesDisabledUntil: null }]);
+  assert.equal(
+    db.prepare("SELECT COUNT(*) AS n FROM raid_lockdowns").get().n,
+    0,
+  );
+});

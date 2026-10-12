@@ -34,6 +34,7 @@ test("getRaidSettings returns the defaults for a new guild", () => {
     raidAction: "log",
     timeoutMinutes: 60,
     quarantineRole: null,
+    lockdown: "off",
     updatedBy: null,
     updatedAt: null,
   });
