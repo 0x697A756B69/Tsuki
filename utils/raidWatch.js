@@ -58,4 +58,4 @@ function observeJoin(db, memory, guildId, member, settings, now) {
   return { signals, ...refreshRaid(db, memory, guildId, settings, now) };
 }
 
-module.exports = { observeJoin, refreshRaid };
+module.exports = { getEntry, observeJoin, refreshRaid };

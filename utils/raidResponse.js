@@ -19,11 +19,12 @@ function actionFor(settings, tier) {
   return "log";
 }
 
-function planResponse({ tier, settings, recent, handled }) {
+function planResponse({ tier, settings, recent, handled, freed = new Set() }) {
   const action = actionFor(settings, tier);
   if (action === "log") return { action, targets: [] };
   const rank = ACTIONS.indexOf(action);
   const targets = recent
+    .filter((join) => !freed.has(join.user))
     .filter((join) => settings.scope === "all" || isSuspect(join.signals))
     .filter((join) => ACTIONS.indexOf(handled.get(join.user)) < rank)
     .map((join) => join.user);
@@ -64,6 +65,7 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
   bot.raidMemory ??= new Map();
   const entry = bot.raidMemory.get(guild.id);
   entry.handled ??= new Map();
+  entry.freed ??= new Set();
   if (evaluation.tier === "calm") entry.handled.clear();
 
   const { action, targets } = planResponse({
@@ -71,6 +73,7 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
     settings,
     recent,
     handled: entry.handled,
+    freed: entry.freed,
   });
   const response = {
     action,
