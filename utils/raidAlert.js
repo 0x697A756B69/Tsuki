@@ -6,6 +6,7 @@ const {
 } = require("discord.js");
 const { getAutomodSettings } = require("./automodSettings");
 const { SIGNAL_LABELS, isSuspect } = require("./joinSignals");
+const { buildRaidButtons } = require("./raidButtons");
 const { getRaidSettings } = require("./raidSettings");
 const { MODE_LABELS, getLockdown, syncLockdown } = require("./raidLockdown");
 const { ACTION_LABELS } = require("./raidResponse");
@@ -117,6 +118,8 @@ function buildRaidAlert({
         `-# ${observed ? "Observation : rien n'a été appliqué" : applied ? "Sanctions appliquées automatiquement" : "Aucune sanction n'a été appliquée"} · <t:${Math.floor(date / 1000)}:f>`,
       ),
     );
+
+  if (tier !== "calm") container.addActionRowComponents(buildRaidButtons());
 
   return {
     components: [container],
