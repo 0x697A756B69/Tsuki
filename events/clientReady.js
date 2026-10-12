@@ -2,6 +2,8 @@ const { scanVoice } = require("../utils/voiceScan");
 const { purgeLogs } = require("../utils/automodLogs");
 const { sweepRooms } = require("../utils/automodRooms");
 const { sweepDeletedChannels } = require("../utils/channelCleanup");
+const { purgeRaidLogs } = require("../utils/raidLog");
+const { sweepRaids } = require("../utils/raidAlert");
 
 const SCAN_INTERVAL = 60 * 1000;
 const PURGE_INTERVAL = 60 * 60 * 1000;
@@ -20,10 +22,17 @@ module.exports = async (bot) => {
     const purge = () => {
       purgeLogs(bot).catch((err) => console.error("[automod purge]", err));
       sweepRooms(bot).catch((err) => console.error("[automod rooms]", err));
+      purgeRaidLogs(bot.db);
     };
     purge();
     bot.purgeTimer = setInterval(purge, PURGE_INTERVAL);
   }
+
+  if (!bot.raidTimer)
+    bot.raidTimer = setInterval(
+      () => sweepRaids(bot).catch((err) => console.error("[raid sweep]", err)),
+      SCAN_INTERVAL,
+    );
 
   if (bot.voiceTimer) return;
   bot.voiceTimer = setInterval(

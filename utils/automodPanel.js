@@ -70,6 +70,11 @@ const HOME_SECTIONS = [
     description: "Signaler sans bloquer",
   },
   {
+    label: "Anti-raid",
+    value: "raid",
+    description: "Afflux de nouveaux comptes",
+  },
+  {
     label: "Exemptions",
     value: "exemptions",
     description: "Rôles et salons jamais bloqués",

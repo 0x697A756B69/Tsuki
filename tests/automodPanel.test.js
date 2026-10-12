@@ -111,6 +111,7 @@ test("main view offers one menu to go to every setting", () => {
       "justice",
       "logs",
       "observation",
+      "raid",
       "exemptions",
     ],
   );
