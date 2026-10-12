@@ -47,7 +47,13 @@ function moderatorRoleIds(roles, guildId) {
     .map((role) => role.id);
 }
 
-function contestOverwrites({ guildId, memberId, botId, moderatorIds }) {
+function contestOverwrites({
+  guildId,
+  memberId,
+  botId,
+  moderatorIds,
+  muteRoleId = null,
+}) {
   const talk = [
     PermissionFlagsBits.ViewChannel,
     PermissionFlagsBits.SendMessages,
@@ -68,6 +74,7 @@ function contestOverwrites({ guildId, memberId, botId, moderatorIds }) {
       id,
       allow: [...talk, PermissionFlagsBits.ManageMessages],
     })),
+    ...(muteRoleId === null ? [] : [{ id: muteRoleId, allow: talk }]),
   ];
 }
 
