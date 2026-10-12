@@ -238,6 +238,7 @@ function sectionView(name, interaction, db) {
     validity: () => panel.renderValidityView({ settings }),
     contest: () => panel.renderContestView({ settings }),
     justice: () => panel.renderJusticeView({ settings }),
+    mute: () => panel.renderMuteView({ settings }),
     logs: () => panel.renderLogsView({ settings }),
     observation: () => panel.renderObservationView({ settings }),
     exemptions: () =>
