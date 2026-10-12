@@ -4,6 +4,7 @@ const { sweepRooms } = require("../utils/automodRooms");
 const { sweepDeletedChannels } = require("../utils/channelCleanup");
 const { purgeRaidLogs } = require("../utils/raidLog");
 const { sweepRaids } = require("../utils/raidAlert");
+const { sweepMutes } = require("../utils/muteSweep");
 
 const SCAN_INTERVAL = 60 * 1000;
 const PURGE_INTERVAL = 60 * 60 * 1000;
@@ -31,6 +32,12 @@ module.exports = async (bot) => {
   if (!bot.raidTimer)
     bot.raidTimer = setInterval(
       () => sweepRaids(bot).catch((err) => console.error("[raid sweep]", err)),
+      SCAN_INTERVAL,
+    );
+
+  if (!bot.muteTimer)
+    bot.muteTimer = setInterval(
+      () => sweepMutes(bot).catch((err) => console.error("[mute sweep]", err)),
       SCAN_INTERVAL,
     );
 
