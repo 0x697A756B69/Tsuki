@@ -13,6 +13,7 @@ const {
   renderValidityView,
   renderContestView,
   renderJusticeView,
+  renderMuteView,
   renderObservationView,
   renderExemptionsView,
   renderLogsView,
@@ -43,6 +44,8 @@ const defaults = {
   warnValidDays: 30,
   justiceCategory: null,
   keepTranscript: false,
+  muteType: "timeout",
+  muteRole: null,
   updatedBy: null,
   updatedAt: null,
 };
@@ -109,6 +112,7 @@ test("main view offers one menu to go to every setting", () => {
       "validity",
       "contest",
       "justice",
+      "mute",
       "logs",
       "observation",
       "raid",
@@ -374,6 +378,30 @@ test("justice view lets you pick a category, remove it and keep the discussion",
   assert.ok(!button(set, "justice-clear").disabled);
   assert.equal(button(set, "transcript-toggle").label, "Désactiver");
   assert.match(set.text, /fichier de la conversation/);
+});
+
+test("mute view switches between the Discord timeout and the mute role", () => {
+  const toggle = (view) =>
+    view
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === "automod-config:mute-toggle");
+
+  const timeout = render(renderMuteView({ settings: defaults }));
+  assert.match(timeout.text, /sourdine par Discord/);
+  assert.equal(toggle(timeout).label, "Activer");
+
+  const fresh = render(
+    renderMuteView({ settings: { ...defaults, muteType: "role" } }),
+  );
+  assert.match(fresh.text, /créé au premier usage/);
+  assert.equal(toggle(fresh).label, "Désactiver");
+
+  const set = render(
+    renderMuteView({
+      settings: { ...defaults, muteType: "role", muteRole: "77" },
+    }),
+  );
+  assert.match(set.text, /<@&77>/);
 });
 
 test("the modals start with the current values", () => {

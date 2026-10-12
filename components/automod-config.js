@@ -152,6 +152,15 @@ module.exports = defineComponent({
         );
         return interaction.update(section("justice")());
       }
+      if (action === "mute-toggle") {
+        updateAutomodSettings(
+          db,
+          guildId,
+          { muteType: settings.muteType === "role" ? "timeout" : "role" },
+          author,
+        );
+        return interaction.update(section("mute")());
+      }
       if (action === "logs-clear") {
         updateAutomodSettings(
           db,

@@ -35,6 +35,8 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     warnValidDays: 30,
     justiceCategory: null,
     keepTranscript: false,
+    muteType: "timeout",
+    muteRole: null,
     updatedBy: null,
     updatedAt: null,
   });
@@ -248,4 +250,35 @@ test("the log table can remember the contest channel", () => {
     .map((column) => column.name);
 
   assert.ok(columns.includes("contest_channel"));
+});
+
+test("updateAutomodSettings stores the mute type and the mute role", () => {
+  const db = createDatabase();
+  const settings = updateAutomodSettings(
+    db,
+    "g",
+    { muteType: "role", muteRole: "77" },
+    "admin",
+  );
+
+  assert.equal(settings.muteType, "role");
+  assert.equal(settings.muteRole, "77");
+});
+
+test("updateAutomodSettings clears the mute role", () => {
+  const db = createDatabase();
+  updateAutomodSettings(db, "g", { muteRole: "77" }, "admin");
+
+  assert.equal(
+    updateAutomodSettings(db, "g", { muteRole: null }, "admin").muteRole,
+    null,
+  );
+});
+
+test("automod settings reject an unknown mute type", () => {
+  const db = createDatabase();
+
+  assert.throws(() =>
+    updateAutomodSettings(db, "g", { muteType: "ghost" }, "admin"),
+  );
 });

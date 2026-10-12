@@ -60,6 +60,11 @@ const HOME_SECTIONS = [
     description: "Salons privés pour contester un blocage",
   },
   {
+    label: "Sourdine",
+    value: "mute",
+    description: "Sourdine Discord ou rôle muet",
+  },
+  {
     label: "Logs",
     value: "logs",
     description: "Salon où les blocages sont signalés",
@@ -355,6 +360,28 @@ function renderJusticeView({ settings }) {
   return panel(container);
 }
 
+function renderMuteView({ settings }) {
+  const role = settings.muteType === "role";
+  const container = section(
+    "Sourdine",
+    "Choisis comment un palier de sourdine rend un membre muet.",
+  )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addSectionComponents(
+      setting(
+        "Rôle muet",
+        role
+          ? `Activé : le membre reçoit ${settings.muteRole ? `<@&${settings.muteRole}>` : "le rôle Muet, créé au premier usage"} et peut encore écrire dans son salon de contestation.`
+          : "Désactivé : le membre est mis en sourdine par Discord et ne peut plus écrire nulle part.",
+        toggle("mute-toggle", role),
+      ),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
+    .addActionRowComponents(buttons(backButton()));
+
+  return panel(container);
+}
+
 function renderObservationView({ settings }) {
   const container = section(
     "Mode observation",
@@ -537,6 +564,7 @@ module.exports = {
   renderValidityView,
   renderContestView,
   renderJusticeView,
+  renderMuteView,
   renderObservationView,
   renderExemptionsView,
   renderLogsView,

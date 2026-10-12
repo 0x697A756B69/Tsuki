@@ -79,6 +79,19 @@ test("contestOverwrites hides the channel from everyone else", () => {
   assert.equal(overwrites.length, 4);
 });
 
+test("contestOverwrites lets the mute role talk in the contest channel", () => {
+  const overwrites = contestOverwrites({
+    guildId: "g",
+    memberId: "u",
+    botId: "bot",
+    moderatorIds: [],
+    muteRoleId: "mute",
+  });
+  const entry = overwrites.find((item) => item.id === "mute");
+  assert.ok(entry.allow.includes(PermissionFlagsBits.SendMessages));
+  assert.equal(overwrites.length, 4);
+});
+
 test("canOpenContestChannel needs a category and Manage Channels", () => {
   const category = { type: ChannelType.GuildCategory };
   const allowed = new PermissionsBitField(PermissionFlagsBits.ManageChannels);

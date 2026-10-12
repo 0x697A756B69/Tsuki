@@ -8,6 +8,7 @@ const {
 } = require("./warnLadder");
 const { getAutomodSettings } = require("./automodSettings");
 const { warnNotice, sendNotice } = require("./moderationNotice");
+const { ensureMuteRole } = require("./muteRole");
 
 const MINUTE = 60 * 1000;
 
@@ -91,15 +92,26 @@ function registerWarning(
   };
 }
 
-function canApply(member, step) {
+function canApply(member, step, muteMode = false) {
   if (step === null || step.sanction === null) return false;
-  if (step.sanction === "timeout") return member?.moderatable === true;
+  if (step.sanction === "timeout")
+    return muteMode
+      ? member?.manageable === true
+      : member?.moderatable === true;
   if (step.sanction === "kick") return member?.kickable === true;
   return member === null || member?.bannable === true;
 }
 
-function liftTarget(warning, member, now = Date.now()) {
+function liftTarget(warning, member, now = Date.now(), muteRoleId = null) {
   if (warning?.sanction === "ban") return "ban";
+  if (
+    warning?.sanction === "timeout" &&
+    warning.timeoutUntil !== null &&
+    warning.timeoutUntil > now &&
+    muteRoleId !== null &&
+    member?.roles?.cache?.has(muteRoleId)
+  )
+    return "mute";
   if (
     warning?.sanction === "timeout" &&
     warning.timeoutUntil !== null &&
@@ -110,9 +122,21 @@ function liftTarget(warning, member, now = Date.now()) {
   return null;
 }
 
-async function applySanction({ guild, member, userId, step, reason, now }) {
-  if (!canApply(member, step)) return null;
+async function applySanction({
+  guild,
+  member,
+  userId,
+  step,
+  reason,
+  now,
+  muteRoleId = null,
+}) {
+  if (!canApply(member, step, muteRoleId !== null)) return null;
   try {
+    if (step.sanction === "timeout" && muteRoleId !== null) {
+      await member.roles.add(muteRoleId, reason);
+      return { sanction: "timeout", timeoutUntil: now + step.minutes * MINUTE };
+    }
     if (step.sanction === "timeout") {
       const updated = await member.timeout(step.minutes * MINUTE, reason);
       return {
@@ -130,10 +154,19 @@ async function applySanction({ guild, member, userId, step, reason, now }) {
   }
 }
 
-async function liftSanction({ guild, member, userId, warning, reason, now }) {
-  const target = liftTarget(warning, member, now);
+async function liftSanction({
+  guild,
+  member,
+  userId,
+  warning,
+  reason,
+  now,
+  muteRoleId = null,
+}) {
+  const target = liftTarget(warning, member, now, muteRoleId);
   try {
-    if (target === "timeout") await member.timeout(null, reason);
+    if (target === "mute") await member.roles.remove(muteRoleId, reason);
+    else if (target === "timeout") await member.timeout(null, reason);
     else if (target === "ban") await guild.bans.remove(userId, reason);
   } catch {
     return null;
@@ -150,7 +183,11 @@ async function enforceWarning({
   components = [],
   now = Date.now(),
 }) {
-  const effective = canApply(member, warning.step) ? warning.step : null;
+  const settings = getAutomodSettings(db, guild.id);
+  const muteMode = settings.muteType === "role";
+  const effective = canApply(member, warning.step, muteMode)
+    ? warning.step
+    : null;
   const until =
     effective?.sanction === "timeout" ? now + effective.minutes * MINUTE : null;
 
@@ -165,8 +202,13 @@ async function enforceWarning({
   });
   const delivered = await sendNotice(user, { ...notice, components });
 
+  const muteRoleId =
+    muteMode && effective?.sanction === "timeout"
+      ? await ensureMuteRole(db, guild, settings)
+      : null;
   const applied =
-    effective === null
+    effective === null ||
+    (muteMode && effective.sanction === "timeout" && muteRoleId === null)
       ? null
       : await applySanction({
           guild,
@@ -175,6 +217,7 @@ async function enforceWarning({
           step: effective,
           reason: `Avertissements actifs : ${warning.count}`,
           now,
+          muteRoleId,
         });
   if (applied !== null)
     noteSanction(db, warning.id, applied.sanction, applied.timeoutUntil);
@@ -229,6 +272,7 @@ async function retractWarning({
     warning,
     reason,
     now,
+    muteRoleId: getAutomodSettings(db, guild.id).muteRole,
   });
   return { removed: true, lifted };
 }

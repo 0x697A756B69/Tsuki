@@ -17,6 +17,8 @@ const COLUMNS = {
   warnValidDays: "warn_valid_days",
   justiceCategory: "justice_category",
   keepTranscript: "keep_transcript",
+  muteType: "mute_type",
+  muteRole: "mute_role",
 };
 
 function toSettings(row) {
@@ -40,6 +42,8 @@ function toSettings(row) {
     justiceCategory:
       row.justice_category === null ? null : String(row.justice_category),
     keepTranscript: Number(row.keep_transcript) === 1,
+    muteType: String(row.mute_type),
+    muteRole: row.mute_role === null ? null : String(row.mute_role),
     updatedBy: row.updated_by === null ? null : String(row.updated_by),
     updatedAt: row.updated_at === null ? null : Number(row.updated_at),
   };

@@ -45,6 +45,7 @@ async function openContestChannel(bot, guild, settings, details) {
         memberId: details.userId,
         botId: bot.user.id,
         moderatorIds: moderatorRoleIds(guild.roles.cache.values(), guild.id),
+        muteRoleId: settings.muteType === "role" ? settings.muteRole : null,
       }),
       reason: "AutoMod : contestation",
     })
