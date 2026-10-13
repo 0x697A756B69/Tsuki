@@ -14,6 +14,7 @@ const {
   liftRaid,
 } = require("../utils/raidControl");
 const { getRaidSettings } = require("../utils/raidSettings");
+const { KINDS, summarizeCauses } = require("../utils/failure");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
@@ -23,9 +24,9 @@ function plural(count, word) {
   return `${count} ${word}${count > 1 ? "s" : ""}`;
 }
 
-function failures(count) {
+function failures(count, causes = []) {
   return count > 0
-    ? ` ${plural(count, "échec")} (permissions ou hiérarchie).`
+    ? ` ${plural(count, "échec")} (${summarizeCauses(causes) || KINDS.permissions}).`
     : "";
 }
 
@@ -57,9 +58,9 @@ module.exports = defineComponent({
 
     if (action === "free") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const { freed, failed } = await freeGroup(bot, guild, settings);
+      const { freed, failed, causes } = await freeGroup(bot, guild, settings);
       return interaction.editReply({
-        content: `${plural(freed.length, "membre")} libéré${freed.length > 1 ? "s" : ""}, plus aucune sanction automatique pour ce groupe.${failures(failed.length)}`,
+        content: `${plural(freed.length, "membre")} libéré${freed.length > 1 ? "s" : ""}, plus aucune sanction automatique pour ce groupe.${failures(failed.length, causes)}`,
       });
     }
 
@@ -75,22 +76,22 @@ module.exports = defineComponent({
         content: "Bannissement en cours…",
         components: [],
       });
-      const { banned, failed } = await banGroup(bot, guild, settings);
+      const { banned, failed, causes } = await banGroup(bot, guild, settings);
       return interaction.editReply({
-        content: `${plural(banned.length, "membre")} banni${banned.length > 1 ? "s" : ""}.${failures(failed.length)}`,
+        content: `${plural(banned.length, "membre")} banni${banned.length > 1 ? "s" : ""}.${failures(failed.length, causes)}`,
       });
     }
 
     if (action === "lift") {
       await interaction.deferReply({ flags: MessageFlags.Ephemeral });
-      const { freed, failed, lockdown } = await liftRaid(
+      const { freed, failed, causes, lockdown } = await liftRaid(
         bot,
         guild,
         settings,
         now,
       );
       const lines = [
-        `Retour au calme : ${plural(freed.length, "membre")} libéré${freed.length > 1 ? "s" : ""}.${failures(failed.length)}`,
+        `Retour au calme : ${plural(freed.length, "membre")} libéré${freed.length > 1 ? "s" : ""}.${failures(failed.length, causes)}`,
       ];
       if (lockdown?.action === "release")
         lines.push(

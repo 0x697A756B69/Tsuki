@@ -584,3 +584,16 @@ test("the room cannot be extended before the verdict or outside a room", async (
 test("extendroom is a moderator action", () => {
   assert.equal(ACTIONS.extendroom.permission, ManageMessages);
 });
+
+test("a failed action says why, and the message is still closed", async () => {
+  const target = fakeMember("u", [], 1, {
+    timeout: async () => {
+      throw new Error("Missing Permissions");
+    },
+  });
+  const { calls, run } = setup({ target });
+  await run("timeout", "u");
+
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+  assert.match(calls.follow[0].content, /permissions ou hiérarchie/);
+});

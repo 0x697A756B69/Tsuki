@@ -11,6 +11,7 @@ const { getRaidSettings } = require("./raidSettings");
 const { MODE_LABELS, getLockdown, syncLockdown } = require("./raidLockdown");
 const { ACTION_LABELS } = require("./raidResponse");
 const { refreshRaid } = require("./raidWatch");
+const { KINDS, summarizeCauses } = require("./failure");
 
 const TITLES = {
   calm: "Retour au calme",
@@ -47,7 +48,7 @@ function responseLines(response) {
     lines.push(`**Appliqué :** ${label} · ${countLabel(response.done.length)}`);
   if (response.failed.length > 0)
     lines.push(
-      `**Échec :** ${countLabel(response.failed.length)} (permissions ou hiérarchie)`,
+      `**Échec :** ${countLabel(response.failed.length)} (${summarizeCauses(response.causes ?? []) || KINDS.permissions})`,
     );
   return lines;
 }

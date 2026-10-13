@@ -2,6 +2,7 @@ const { isSuspect } = require("./joinSignals");
 const { getRaidSettings, updateRaidSettings } = require("./raidSettings");
 const { oncePerGuild } = require("./oncePerGuild");
 const { getEntry } = require("./raidWatch");
+const { describeFailure } = require("./failure");
 
 const MINUTE = 60 * 1000;
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];
@@ -88,6 +89,7 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
     planned: targets,
     done: [],
     failed: [],
+    causes: [],
   };
   if (targets.length === 0 || settings.observation) return response;
 
@@ -107,6 +109,7 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
     if (roleId === null) {
       targets.forEach(release);
       response.failed.push(...targets);
+      response.causes.push(describeFailure(new Error("Missing Permissions")));
       return response;
     }
   }
@@ -114,9 +117,10 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
     try {
       await applyAction(guild, userId, action, settings, roleId);
       response.done.push(userId);
-    } catch {
+    } catch (err) {
       release(userId);
       response.failed.push(userId);
+      response.causes.push(describeFailure(err));
     }
   }
   return response;

@@ -16,6 +16,7 @@ const {
   freeGroup,
   liftRaid,
 } = require("../utils/raidControl");
+const { KINDS } = require("../utils/failure");
 
 const NOW = 1700000000000;
 
@@ -80,7 +81,7 @@ test("freeGroup lifts timeouts and quarantine but not kicks", async () => {
     ["timeout", "a", null],
     ["unrole", "b", "sas"],
   ]);
-  assert.deepEqual(result, { freed: ["a", "b"], failed: [] });
+  assert.deepEqual(result, { freed: ["a", "b"], failed: [], causes: [] });
   assert.deepEqual([...bot.raidMemory.get("g").handled], [["c", "kick"]]);
 });
 
@@ -146,7 +147,11 @@ test("banGroup bans the group and remembers it", async () => {
     ["ban", "b"],
     ["ban", "c"],
   ]);
-  assert.deepEqual(result, { banned: ["a", "b", "c"], failed: [] });
+  assert.deepEqual(result, {
+    banned: ["a", "b", "c"],
+    failed: [],
+    causes: [],
+  });
   assert.equal(bot.raidMemory.get("g").handled.get("a"), "ban");
 });
 
@@ -154,7 +159,11 @@ test("banGroup reports failures and keeps going", async () => {
   const { bot, guild, settings } = createFixture({ failing: ["b"] });
   const result = await banGroup(bot, guild, settings);
 
-  assert.deepEqual(result, { banned: ["a", "c"], failed: ["b"] });
+  assert.deepEqual(result, {
+    banned: ["a", "c"],
+    failed: ["b"],
+    causes: [KINDS.permissions],
+  });
 });
 
 test("banGroup skips members already banned", async () => {

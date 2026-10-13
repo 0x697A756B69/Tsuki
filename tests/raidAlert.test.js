@@ -319,3 +319,18 @@ test("sweepRaids lifts the lockdown once the raid is over", async () => {
     0,
   );
 });
+
+test("buildRaidAlert tells the cause of the failures", () => {
+  const json = render({
+    response: {
+      action: "ban",
+      observed: false,
+      planned: ["3"],
+      done: [],
+      failed: ["3"],
+      causes: ["membre introuvable"],
+    },
+  });
+
+  assert.match(json, /Échec.*(membre introuvable)/);
+});

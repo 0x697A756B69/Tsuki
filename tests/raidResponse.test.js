@@ -12,6 +12,7 @@ const {
   planResponse,
   respondToRaid,
 } = require("../utils/raidResponse");
+const { KINDS } = require("../utils/failure");
 
 const settingsBase = {
   scope: "all",
@@ -342,4 +343,19 @@ test("a quarantine without a role releases every reserved member", async () => {
   );
   assert.deepEqual(response.failed, ["a", "b"]);
   assert.equal(bot.raidMemory.get("g").handled.size, 0);
+});
+
+test("respondToRaid names the cause of each failure", async () => {
+  const { bot, guild, settings } = createFixture({
+    raid: { alertAction: "timeout" },
+    failing: ["a"],
+  });
+  const response = await respondToRaid(
+    bot,
+    guild,
+    settings,
+    raid("alert", ["a"], ["b"]),
+  );
+
+  assert.deepEqual(response.causes, [KINDS.permissions]);
 });
