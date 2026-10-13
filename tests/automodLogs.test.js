@@ -1,8 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { AutoModerationActionType } = require("discord.js");
-const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const {
@@ -18,15 +16,10 @@ const {
 } = require("../utils/automodLogs");
 const { ACTION_ID } = require("../utils/automodLogView");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
+const { createDatabase } = require("./helpers/database");
 
 const BOT = "bot";
 const DAY = 24 * 60 * 60 * 1000;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function data(changes = {}) {
   return {

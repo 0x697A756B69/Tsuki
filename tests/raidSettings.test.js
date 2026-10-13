@@ -1,17 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   getRaidSettings,
   updateRaidSettings,
 } = require("../utils/raidSettings");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 test("getRaidSettings returns the defaults for a new guild", () => {
   assert.deepEqual(getRaidSettings(createDatabase(), "g"), {

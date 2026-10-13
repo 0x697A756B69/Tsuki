@@ -1,21 +1,14 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   getPeriodStart,
   getTopMembers,
   getTopChannels,
   getActivity,
 } = require("../utils/leaderboard");
+const { createDatabase } = require("./helpers/database");
 
 const NOW = new Date("2026-10-08T10:00:00Z");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function addMessages(db, day, channel, user, messages, guild = "g") {
   db.prepare(

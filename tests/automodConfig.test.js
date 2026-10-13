@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   parseWords,
   parseMentionLimit,
@@ -23,12 +21,7 @@ const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("../utils/automodSettings");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 test("parseWords splits on lines and commas and cleans the words", () => {
   assert.deepEqual(parseWords(" Foo \nbar, FOO\n\n  Baz qux "), {

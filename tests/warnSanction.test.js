@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { setLadder } = require("../utils/warnLadder");
 const {
@@ -19,15 +17,10 @@ const {
   retractWarning,
   warningSanction,
 } = require("../utils/warnSanctions");
+const { createDatabase } = require("./helpers/database");
 
 const DAY = 24 * 60 * 60 * 1000;
 const MINUTE = 60 * 1000;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function warning(changes = {}) {
   return {

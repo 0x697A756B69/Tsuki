@@ -1,18 +1,11 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   getModifiers,
   setModifier,
   computeMultiplier,
 } = require("../utils/modifiers");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 function modifiers({ role = {}, channel = {} } = {}) {
   return {

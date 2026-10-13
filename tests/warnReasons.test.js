@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   DEFAULT_REASONS,
   cleanReasons,
@@ -9,12 +7,7 @@ const {
   setReasons,
   resetReasons,
 } = require("../utils/warnReasons");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 test("getReasons returns the default list for a new guild", () => {
   assert.deepEqual(getReasons(createDatabase(), "g"), DEFAULT_REASONS);

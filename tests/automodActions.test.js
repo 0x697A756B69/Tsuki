@@ -1,8 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
-const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { addLog, getLog, markContested } = require("../utils/automodLogs");
@@ -18,15 +16,10 @@ const { buildContestMessage } = require("../utils/automodJustice");
 const { setContestChannel } = require("../utils/automodLogs");
 const { ROOM_EXTENSION } = require("../utils/automodRooms");
 const component = require("../components/automod-action");
+const { createDatabase } = require("./helpers/database");
 
 const { ManageMessages, ModerateMembers, BanMembers } = PermissionFlagsBits;
 const ALL = [ManageMessages, ModerateMembers, BanMembers];
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function insertWarning(db, id = "WARN-1", guild = "g", user = "u") {
   db.prepare(
