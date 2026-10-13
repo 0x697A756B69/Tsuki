@@ -18,6 +18,7 @@ const {
   logSummary,
   buildContestMessage,
   closeRow,
+  reminderMessage,
   verdictPayload,
   TRANSCRIPT_NOTICE,
   transcriptFileName,
@@ -311,4 +312,15 @@ test("formatTranscript keeps file-only messages and skips empty ones", () => {
 
 test("formatTranscript says so when nobody spoke", () => {
   assert.equal(formatTranscript([]), "Aucun message.");
+});
+
+test("reminderMessage offers to extend or close the room", () => {
+  const message = reminderMessage();
+  const row = JSON.parse(JSON.stringify(message.components[0]));
+  assert.deepEqual(
+    row.components.map((button) => button.custom_id),
+    [`${ACTION_ID}:extendroom`, `${ACTION_ID}:closeroom`],
+  );
+  assert.match(message.content, /moins d.une heure/);
+  assert.deepEqual(message.allowedMentions, { parse: [] });
 });

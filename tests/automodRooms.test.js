@@ -19,6 +19,7 @@ const {
   getMemberRooms,
   closeRoom,
   sweepRooms,
+  remindRooms,
   closeMemberRooms,
 } = require("../utils/automodRooms");
 const guildMemberRemove = require("../events/guildMemberRemove");
@@ -41,6 +42,7 @@ function room(db, messageId, { userId = "u", judgedAt = null } = {}) {
 
 function fakeBot(db, { missing = [] } = {}) {
   const deleted = [];
+  const sent = [];
   const channels = {
     fetch: async (id) => {
       if (missing.includes(id)) throw new Error("gone");
@@ -48,12 +50,14 @@ function fakeBot(db, { missing = [] } = {}) {
         id,
         name: id,
         delete: async (reason) => deleted.push({ id, reason }),
+        send: async (message) => sent.push({ id, message }),
       };
     },
   };
   return {
     db,
     deleted,
+    sent,
     guilds: { fetch: async () => ({ id: "g", channels }) },
   };
 }
@@ -191,8 +195,28 @@ test("extendRoom delays expiry and allows a new reminder", () => {
   assert.equal(getExpiredRooms(db, NOW + ROOM_LIFETIME - 2).length, 0);
   assert.equal(getExpiredRooms(db, NOW + ROOM_LIFETIME + 1).length, 1);
   assert.equal(getRoomsToRemind(db, NOW).length, 0);
-  assert.equal(
-    getRoomsToRemind(db, NOW + ROOM_EXTENSION).length,
-    1,
+  assert.equal(getRoomsToRemind(db, NOW + ROOM_EXTENSION).length, 1);
+});
+
+test("remindRooms warns each room once, an hour before its deletion", async () => {
+  const db = createDatabase();
+  room(db, "soon", { judgedAt: NOW - ROOM_LIFETIME + 1 });
+  room(db, "far", { judgedAt: NOW });
+  const bot = fakeBot(db);
+  assert.equal(await remindRooms(bot, NOW), 1);
+  assert.deepEqual(
+    bot.sent.map((entry) => entry.id),
+    ["room-soon"],
   );
+  assert.match(bot.sent[0].message.content, /supprimé/);
+  assert.equal(await remindRooms(bot, NOW), 0);
+  assert.equal(bot.sent.length, 1);
+});
+
+test("remindRooms survives a room that is already gone", async () => {
+  const db = createDatabase();
+  room(db, "soon", { judgedAt: NOW - ROOM_LIFETIME + 1 });
+  const bot = fakeBot(db, { missing: ["room-soon"] });
+  assert.equal(await remindRooms(bot, NOW), 1);
+  assert.equal(bot.sent.length, 0);
 });

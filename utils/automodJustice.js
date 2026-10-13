@@ -166,6 +166,27 @@ function closeRow() {
   );
 }
 
+function reminderMessage() {
+  const row = /** @type {ActionRowBuilder<ButtonBuilder>} */ (
+    new ActionRowBuilder()
+  ).addComponents(
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(ACTION_ID, "extendroom"))
+      .setLabel("Prolonger de 24 h")
+      .setStyle(ButtonStyle.Primary),
+    new ButtonBuilder()
+      .setCustomId(buildCustomId(ACTION_ID, "closeroom"))
+      .setLabel("Clore le salon")
+      .setStyle(ButtonStyle.Secondary),
+  );
+  return {
+    content:
+      "Ce salon sera supprimé dans moins d'une heure. Prolongez-le de 24 h ou clôturez-le maintenant.",
+    components: [row],
+    allowedMentions: { parse: [] },
+  };
+}
+
 function verdictPayload(container, resolved) {
   const parts = container.components.filter(
     (part) => part.type !== ComponentType.ActionRow,
@@ -258,6 +279,7 @@ module.exports = {
   TRANSCRIPT_NOTICE,
   VERDICT_COLOR,
   closeRow,
+  reminderMessage,
   verdictPayload,
   contestChannelName,
   moderatorRoleIds,

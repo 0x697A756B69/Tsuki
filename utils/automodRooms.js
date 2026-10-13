@@ -1,6 +1,6 @@
 const { clearContestChannel } = require("./automodLogs");
 const { getAutomodSettings } = require("./automodSettings");
-const { archiveTranscript } = require("./automodJustice");
+const { archiveTranscript, reminderMessage } = require("./automodJustice");
 
 const ROOM_LIFETIME = 24 * 60 * 60 * 1000;
 const REMINDER_LEAD = 60 * 60 * 1000;
@@ -80,6 +80,19 @@ async function sweepRooms(bot, now = Date.now()) {
   return rooms.length;
 }
 
+async function remindRooms(bot, now = Date.now()) {
+  const rooms = getRoomsToRemind(bot.db, now);
+  for (const room of rooms) {
+    markReminded(bot.db, room.ref);
+    const guild = await bot.guilds.fetch(room.ref.guildId).catch(() => null);
+    const channel = await guild?.channels
+      .fetch(room.contestChannel)
+      .catch(() => null);
+    await channel?.send(reminderMessage()).catch(() => {});
+  }
+  return rooms.length;
+}
+
 async function closeMemberRooms(bot, guildId, userId) {
   const rooms = getMemberRooms(bot.db, guildId, userId);
   for (const room of rooms)
@@ -99,5 +112,6 @@ module.exports = {
   getMemberRooms,
   closeRoom,
   sweepRooms,
+  remindRooms,
   closeMemberRooms,
 };

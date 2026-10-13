@@ -10,6 +10,7 @@ const {
   setJudged,
   clearContestChannel,
 } = require("../utils/automodLogs");
+const { extendRoom } = require("../utils/automodRooms");
 const { NO_WARNING } = require("../utils/automodContest");
 const {
   verdictPayload,
@@ -170,6 +171,18 @@ module.exports = defineComponent({
       return interaction.channel
         .delete(`AutoMod : salon clos par ${interaction.user.tag}`)
         .catch(() => {});
+    }
+
+    if (action === "extendroom") {
+      if (!room) return refuse(interaction, "Ce salon n'est plus actif.");
+      if (room.judgedAt === null)
+        return refuse(interaction, "La contestation n'est pas encore jugée.");
+      extendRoom(db, room.ref);
+      return interaction.update({
+        content: `Suppression repoussée de 24 h par <@${interaction.user.id}>.`,
+        components: [],
+        allowedMentions: { parse: [] },
+      });
     }
 
     const member = MEMBER_ACTIONS.includes(action)

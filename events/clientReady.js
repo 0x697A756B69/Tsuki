@@ -1,6 +1,6 @@
 const { scanVoice } = require("../utils/voiceScan");
 const { purgeLogs } = require("../utils/automodLogs");
-const { sweepRooms } = require("../utils/automodRooms");
+const { sweepRooms, remindRooms } = require("../utils/automodRooms");
 const { sweepDeletedChannels } = require("../utils/channelCleanup");
 const { purgeRaidLogs } = require("../utils/raidLog");
 const { sweepRaids } = require("../utils/raidAlert");
@@ -32,6 +32,13 @@ module.exports = async (bot) => {
   if (!bot.raidTimer)
     bot.raidTimer = setInterval(
       () => sweepRaids(bot).catch((err) => console.error("[raid sweep]", err)),
+      SCAN_INTERVAL,
+    );
+
+  if (!bot.roomTimer)
+    bot.roomTimer = setInterval(
+      () =>
+        remindRooms(bot).catch((err) => console.error("[room reminder]", err)),
       SCAN_INTERVAL,
     );
 
