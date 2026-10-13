@@ -9,6 +9,7 @@ const {
 const {
   MUTE_DENIED,
   denyMuteRole,
+  uncoveredChannels,
   ensureMuteRole,
 } = require("../utils/muteRole");
 const channelCreate = require("../events/channelCreate");
@@ -163,4 +164,48 @@ test("channelCreate ignores channels outside a server", async () => {
   await channelCreate({ db }, channel);
 
   assert.deepEqual(channel.edits, []);
+});
+
+test("two simultaneous ensureMuteRole create a single role", async () => {
+  const { db, guild, created } = createFixture();
+  const settings = getAutomodSettings(db, "g");
+  const [first, second] = await Promise.all([
+    ensureMuteRole(db, guild, settings),
+    ensureMuteRole(db, guild, settings),
+  ]);
+
+  assert.equal(created.length, 1);
+  assert.equal(first, "new");
+  assert.equal(second, "new");
+});
+
+test("a crash after the creation does not lose the role", async () => {
+  const broken = createChannel("c1");
+  broken.permissionOverwrites.edit = () => {
+    throw new Error("crash");
+  };
+  const { db, guild } = createFixture({ channels: [broken] });
+  await ensureMuteRole(db, guild, getAutomodSettings(db, "g")).catch(
+    () => null,
+  );
+
+  assert.equal(getAutomodSettings(db, "g").muteRole, "new");
+});
+
+test("uncoveredChannels counts the channels without a rule for the role", () => {
+  const covered = createChannel("c1", { existing: ["mute"] });
+  const open = createChannel("c2");
+  const { guild } = createFixture({
+    channels: [covered, open, { id: "thread" }],
+  });
+
+  assert.equal(uncoveredChannels(guild, "mute"), 1);
+});
+
+test("uncoveredChannels is zero when every channel is covered", () => {
+  const { guild } = createFixture({
+    channels: [createChannel("c1", { existing: ["mute"] })],
+  });
+
+  assert.equal(uncoveredChannels(guild, "mute"), 0);
 });

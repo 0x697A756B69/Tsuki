@@ -9,7 +9,6 @@ module.exports = async (bot, member) => {
   const settings = getRaidSettings(bot.db, member.guild.id);
   if (!settings.enabled) return;
 
-  bot.raidMemory ??= new Map();
   const now = Date.now();
   const result = observeJoin(
     bot.db,

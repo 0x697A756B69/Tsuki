@@ -5,12 +5,15 @@ const { sweepDeletedChannels } = require("../utils/channelCleanup");
 const { purgeRaidLogs } = require("../utils/raidLog");
 const { sweepRaids } = require("../utils/raidAlert");
 const { sweepMutes } = require("../utils/muteSweep");
+const { every } = require("../utils/every");
 
 const SCAN_INTERVAL = 60 * 1000;
 const PURGE_INTERVAL = 60 * 60 * 1000;
 
 module.exports = async (bot) => {
   console.log(`Logged in as ${bot.user.tag}`);
+
+  bot.raidMemory ??= new Map();
 
   if (!bot.cleanupDone) {
     bot.cleanupDone = true;
@@ -19,38 +22,16 @@ module.exports = async (bot) => {
     );
   }
 
-  if (!bot.purgeTimer) {
-    const purge = () => {
-      purgeLogs(bot).catch((err) => console.error("[automod purge]", err));
-      sweepRooms(bot).catch((err) => console.error("[automod rooms]", err));
-      purgeRaidLogs(bot.db);
-    };
-    purge();
-    bot.purgeTimer = setInterval(purge, PURGE_INTERVAL);
-  }
-
-  if (!bot.raidTimer)
-    bot.raidTimer = setInterval(
-      () => sweepRaids(bot).catch((err) => console.error("[raid sweep]", err)),
-      SCAN_INTERVAL,
-    );
-
-  if (!bot.roomTimer)
-    bot.roomTimer = setInterval(
-      () =>
-        remindRooms(bot).catch((err) => console.error("[room reminder]", err)),
-      SCAN_INTERVAL,
-    );
-
-  if (!bot.muteTimer)
-    bot.muteTimer = setInterval(
-      () => sweepMutes(bot).catch((err) => console.error("[mute sweep]", err)),
-      SCAN_INTERVAL,
-    );
-
-  if (bot.voiceTimer) return;
-  bot.voiceTimer = setInterval(
-    () => scanVoice(bot).catch((err) => console.error("[voice scan]", err)),
-    SCAN_INTERVAL,
-  );
+  if (bot.timers) return;
+  bot.timers = {
+    purgeLogs: every("automod purge", PURGE_INTERVAL, () => purgeLogs(bot)),
+    purgeRooms: every("automod rooms", PURGE_INTERVAL, () => sweepRooms(bot)),
+    purgeRaid: every("raid purge", PURGE_INTERVAL, () => purgeRaidLogs(bot.db)),
+    raid: every("raid sweep", SCAN_INTERVAL, () => sweepRaids(bot)),
+    rooms: every("room reminder", SCAN_INTERVAL, () => remindRooms(bot)),
+    mutes: every("mute sweep", SCAN_INTERVAL, () => sweepMutes(bot)),
+    voice: every("voice scan", SCAN_INTERVAL, () => scanVoice(bot)),
+  };
+  for (const name of ["purgeLogs", "purgeRooms", "purgeRaid"])
+    bot.timers[name].run();
 };

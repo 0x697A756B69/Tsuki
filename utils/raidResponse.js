@@ -1,5 +1,7 @@
 const { isSuspect } = require("./joinSignals");
-const { updateRaidSettings } = require("./raidSettings");
+const { getRaidSettings, updateRaidSettings } = require("./raidSettings");
+const { oncePerGuild } = require("./oncePerGuild");
+const { getEntry } = require("./raidWatch");
 
 const MINUTE = 60 * 1000;
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];
@@ -31,19 +33,27 @@ function planResponse({ tier, settings, recent, handled, freed = new Set() }) {
   return { action, targets };
 }
 
-async function ensureQuarantineRole(db, guild, settings) {
-  if (settings.quarantineRole && guild.roles.cache.has(settings.quarantineRole))
-    return settings.quarantineRole;
+async function createQuarantineRole(db, guild) {
+  const current = getRaidSettings(db, guild.id).quarantineRole;
+  if (current && guild.roles.cache.has(current)) return current;
   const role = await guild.roles
     .create({ name: ROLE_NAME, permissions: [], reason: REASON })
     .catch(() => null);
   if (!role) return null;
+  updateRaidSettings(db, guild.id, { quarantineRole: role.id }, "tsuki");
   for (const channel of guild.channels.cache.values())
     await channel.permissionOverwrites
       ?.edit(role, { ViewChannel: false })
       .catch(() => null);
-  updateRaidSettings(db, guild.id, { quarantineRole: role.id }, "tsuki");
   return role.id;
+}
+
+async function ensureQuarantineRole(db, guild, settings) {
+  if (settings.quarantineRole && guild.roles.cache.has(settings.quarantineRole))
+    return settings.quarantineRole;
+  return oncePerGuild("quarantine", guild.id, () =>
+    createQuarantineRole(db, guild),
+  );
 }
 
 async function applyAction(guild, userId, action, settings, roleId) {
@@ -62,10 +72,7 @@ async function applyAction(guild, userId, action, settings, roleId) {
 }
 
 async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
-  bot.raidMemory ??= new Map();
-  const entry = bot.raidMemory.get(guild.id);
-  entry.handled ??= new Map();
-  entry.freed ??= new Set();
+  const entry = getEntry(bot.db, bot.raidMemory, guild.id);
   if (evaluation.tier === "calm") entry.handled.clear();
 
   const { action, targets } = planResponse({
@@ -84,10 +91,21 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
   };
   if (targets.length === 0 || settings.observation) return response;
 
+  const previous = new Map(
+    targets.map((userId) => [userId, entry.handled.get(userId)]),
+  );
+  const release = (userId) => {
+    const before = previous.get(userId);
+    if (before === undefined) entry.handled.delete(userId);
+    else entry.handled.set(userId, before);
+  };
+  for (const userId of targets) entry.handled.set(userId, action);
+
   let roleId = null;
   if (action === "quarantine") {
     roleId = await ensureQuarantineRole(bot.db, guild, settings);
     if (roleId === null) {
+      targets.forEach(release);
       response.failed.push(...targets);
       return response;
     }
@@ -95,9 +113,9 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
   for (const userId of targets) {
     try {
       await applyAction(guild, userId, action, settings, roleId);
-      entry.handled.set(userId, action);
       response.done.push(userId);
     } catch {
+      release(userId);
       response.failed.push(userId);
     }
   }

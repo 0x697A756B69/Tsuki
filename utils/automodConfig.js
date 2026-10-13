@@ -14,6 +14,7 @@ const { getLadder } = require("./warnLadder");
 const panel = require("./automodPanel");
 const { renderRaidView } = require("./raidPanel");
 const { getRaidSettings } = require("./raidSettings");
+const { uncoveredChannels } = require("./muteRole");
 
 const MAX_WORDS = 1000;
 const MAX_WORD_LENGTH = 60;
@@ -238,7 +239,14 @@ function sectionView(name, interaction, db) {
     validity: () => panel.renderValidityView({ settings }),
     contest: () => panel.renderContestView({ settings }),
     justice: () => panel.renderJusticeView({ settings }),
-    mute: () => panel.renderMuteView({ settings }),
+    mute: () =>
+      panel.renderMuteView({
+        settings,
+        uncovered:
+          settings.muteType === "role" && settings.muteRole && interaction.guild
+            ? uncoveredChannels(interaction.guild, settings.muteRole)
+            : 0,
+      }),
     logs: () => panel.renderLogsView({ settings }),
     observation: () => panel.renderObservationView({ settings }),
     exemptions: () =>

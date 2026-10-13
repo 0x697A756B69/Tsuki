@@ -503,3 +503,20 @@ test("every section view brings back to the welcome page", () => {
     assert.equal(back.label, "Retour à l'accueil");
   }
 });
+
+test("the mute view warns about channels the role could not reach", () => {
+  const settings = { ...defaults, muteType: "role", muteRole: "77" };
+
+  assert.doesNotMatch(
+    render(renderMuteView({ settings })).text,
+    /pas pu être appliqué/,
+  );
+  assert.match(
+    render(renderMuteView({ settings, uncovered: 1 })).text,
+    /à 1 salon,/,
+  );
+  assert.match(
+    render(renderMuteView({ settings, uncovered: 3 })).text,
+    /à 3 salons,/,
+  );
+});

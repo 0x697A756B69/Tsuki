@@ -15,11 +15,7 @@ function groupOf(entry, settings) {
 }
 
 function prepare(bot, guildId) {
-  bot.raidMemory ??= new Map();
-  const entry = getEntry(bot.db, bot.raidMemory, guildId);
-  entry.handled ??= new Map();
-  entry.freed ??= new Set();
-  return entry;
+  return getEntry(bot.db, bot.raidMemory, guildId);
 }
 
 async function undo(guild, userId, action, settings) {

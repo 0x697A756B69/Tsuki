@@ -1,4 +1,8 @@
-const { updateAutomodSettings } = require("./automodSettings");
+const {
+  getAutomodSettings,
+  updateAutomodSettings,
+} = require("./automodSettings");
+const { oncePerGuild } = require("./oncePerGuild");
 
 const ROLE_NAME = "Muet";
 const REASON = "Tsuki : rôle muet";
@@ -14,23 +18,45 @@ const MUTE_DENIED = {
 async function denyMuteRole(channel, roleId) {
   const overwrites = channel.permissionOverwrites;
   if (!overwrites || overwrites.cache?.has(roleId)) return false;
-  return overwrites.edit(roleId, MUTE_DENIED, { reason: REASON }).then(
-    () => true,
-    () => false,
-  );
+  try {
+    await overwrites.edit(roleId, MUTE_DENIED, { reason: REASON });
+    return true;
+  } catch {
+    return false;
+  }
+}
+
+function uncoveredChannels(guild, roleId) {
+  let count = 0;
+  for (const channel of guild.channels.cache.values()) {
+    const overwrites = channel.permissionOverwrites;
+    if (overwrites && !overwrites.cache?.has(roleId)) count += 1;
+  }
+  return count;
+}
+
+async function createMuteRole(db, guild) {
+  const current = getAutomodSettings(db, guild.id).muteRole;
+  if (current && guild.roles.cache.has(current)) return current;
+  const role = await guild.roles
+    .create({ name: ROLE_NAME, permissions: [], reason: REASON })
+    .catch(() => null);
+  if (!role) return null;
+  updateAutomodSettings(db, guild.id, { muteRole: role.id }, "tsuki");
+  for (const channel of guild.channels.cache.values())
+    await denyMuteRole(channel, role.id);
+  return role.id;
 }
 
 async function ensureMuteRole(db, guild, settings) {
   if (settings.muteRole && guild.roles.cache.has(settings.muteRole))
     return settings.muteRole;
-  const role = await guild.roles
-    .create({ name: ROLE_NAME, permissions: [], reason: REASON })
-    .catch(() => null);
-  if (!role) return null;
-  for (const channel of guild.channels.cache.values())
-    await denyMuteRole(channel, role.id);
-  updateAutomodSettings(db, guild.id, { muteRole: role.id }, "tsuki");
-  return role.id;
+  return oncePerGuild("mute", guild.id, () => createMuteRole(db, guild));
 }
 
-module.exports = { MUTE_DENIED, denyMuteRole, ensureMuteRole };
+module.exports = {
+  MUTE_DENIED,
+  denyMuteRole,
+  uncoveredChannels,
+  ensureMuteRole,
+};

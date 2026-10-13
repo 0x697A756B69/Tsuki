@@ -5,7 +5,7 @@ const migrate = require("../loaders/migrate");
 const { updateRaidSettings } = require("../utils/raidSettings");
 const { MINUTE } = require("../utils/raidDetector");
 const { getJoinsSince, getLastTier, recordTier } = require("../utils/raidLog");
-const { observeJoin, refreshRaid } = require("../utils/raidWatch");
+const { getEntry, observeJoin, refreshRaid } = require("../utils/raidWatch");
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1700000000000;
@@ -185,4 +185,16 @@ test("refreshRaid keeps each guild apart", () => {
   const other = refreshRaid(db, memory, "other", settings, NOW);
   assert.equal(other.evaluation.count, 0);
   assert.equal(other.evaluation.tier, "calm");
+});
+
+test("getEntry creates a complete entry once per guild", () => {
+  const db = new DatabaseSync(":memory:");
+  migrate(db);
+  const memory = new Map();
+  const entry = getEntry(db, memory, "g");
+  assert.deepEqual(
+    { ...entry },
+    { recent: [], state: null, handled: new Map(), freed: new Set() },
+  );
+  assert.equal(getEntry(db, memory, "g"), entry);
 });
