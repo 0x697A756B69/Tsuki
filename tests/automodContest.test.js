@@ -5,7 +5,8 @@ const { AutoModerationActionType, ComponentType } = require("discord.js");
 const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { buildLogMessage, getLog } = require("../utils/automodLogs");
+const { getLog } = require("../utils/automodLogs");
+const { buildLogMessage } = require("../utils/automodLogView");
 const {
   CONTEST_ID,
   CONTEST_COLOR,

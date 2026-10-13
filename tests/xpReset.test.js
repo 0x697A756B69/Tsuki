@@ -1,19 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { PermissionFlagsBits } = require("discord.js");
-const migrate = require("../loaders/migrate");
 const { addXp, getTotalXp } = require("../utils/xp");
 const { setReward } = require("../utils/rewards");
 const { totalXpForLevel } = require("../utils/levels");
 const reset = require("../commands/xp/reset");
 const xpReset = require("../components/xp-reset");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 function commandInteraction(type) {
   const calls = [];

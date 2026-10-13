@@ -1,17 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
-const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const {
-  ACTION_ID,
-  buildLogMessage,
-  addLog,
-  getLog,
-  markContested,
-} = require("../utils/automodLogs");
+const { addLog, getLog, markContested } = require("../utils/automodLogs");
+const { ACTION_ID, buildLogMessage } = require("../utils/automodLogView");
 const { contestedPayload } = require("../utils/automodContest");
 const {
   ACTIONS,
@@ -23,15 +16,10 @@ const { buildContestMessage } = require("../utils/automodJustice");
 const { setContestChannel } = require("../utils/automodLogs");
 const { ROOM_EXTENSION } = require("../utils/automodRooms");
 const component = require("../components/automod-action");
+const { createDatabase } = require("./helpers/database");
 
 const { ManageMessages, ModerateMembers, BanMembers } = PermissionFlagsBits;
 const ALL = [ManageMessages, ModerateMembers, BanMembers];
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function insertWarning(db, id = "WARN-1", guild = "g", user = "u") {
   db.prepare(
@@ -588,4 +576,17 @@ test("the room cannot be extended before the verdict or outside a room", async (
 
 test("extendroom is a moderator action", () => {
   assert.equal(ACTIONS.extendroom.permission, ManageMessages);
+});
+
+test("a failed action says why, and the message is still closed", async () => {
+  const target = fakeMember("u", [], 1, {
+    timeout: async () => {
+      throw new Error("Missing Permissions");
+    },
+  });
+  const { calls, run } = setup({ target });
+  await run("timeout", "u");
+
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+  assert.match(calls.follow[0].content, /permissions ou hiérarchie/);
 });

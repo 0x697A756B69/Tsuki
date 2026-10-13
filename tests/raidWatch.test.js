@@ -2,6 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
+const { createDatabase } = require("./helpers/database");
 const { updateRaidSettings } = require("../utils/raidSettings");
 const { MINUTE } = require("../utils/raidDetector");
 const { getJoinsSince, getLastTier, recordTier } = require("../utils/raidLog");
@@ -9,12 +10,6 @@ const { getEntry, observeJoin, refreshRaid } = require("../utils/raidWatch");
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1700000000000;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function createSettings(db, changes = {}) {
   return updateRaidSettings(

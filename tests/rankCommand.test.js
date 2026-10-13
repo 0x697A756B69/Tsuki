@@ -1,8 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { createCanvas } = require("@napi-rs/canvas");
-const migrate = require("../loaders/migrate");
 const { addXp } = require("../utils/xp");
 const {
   getRankCardData,
@@ -11,12 +9,7 @@ const {
 } = require("../utils/rankCommand");
 const rank = require("../commands/rank");
 const r = require("../commands/r");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 test("getRankCardData gathers level, progress and position", () => {
   const db = createDatabase();

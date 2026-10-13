@@ -4,6 +4,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
+const { createDatabase } = require("./helpers/database");
 const {
   toDay,
   getTotalXp,
@@ -15,12 +16,6 @@ const {
   countRanked,
   getRank,
 } = require("../utils/xp");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 test("migrate converts the old xp table into total XP", () => {
   const db = new DatabaseSync(":memory:");

@@ -3,6 +3,7 @@ const { MINUTE } = require("./raidDetector");
 const { recordTier } = require("./raidLog");
 const { syncLockdown } = require("./raidLockdown");
 const { getEntry } = require("./raidWatch");
+const { describeFailure } = require("./failure");
 
 const RELEASABLE = ["timeout", "quarantine"];
 
@@ -42,15 +43,16 @@ function describeGroup(bot, guildId, settings) {
 
 async function freeGroup(bot, guild, settings) {
   const entry = prepare(bot, guild.id);
-  const result = { freed: [], failed: [] };
+  const result = { freed: [], failed: [], causes: [] };
   for (const [userId, action] of [...entry.handled]) {
     if (!RELEASABLE.includes(action)) continue;
     try {
       await undo(guild, userId, action, settings);
       entry.handled.delete(userId);
       result.freed.push(userId);
-    } catch {
+    } catch (err) {
       result.failed.push(userId);
+      result.causes.push(describeFailure(err));
     }
   }
   for (const join of entry.recent) entry.freed.add(join.user);
@@ -60,14 +62,15 @@ async function freeGroup(bot, guild, settings) {
 async function banGroup(bot, guild, settings) {
   const { users } = describeGroup(bot, guild.id, settings);
   const entry = prepare(bot, guild.id);
-  const result = { banned: [], failed: [] };
+  const result = { banned: [], failed: [], causes: [] };
   for (const userId of users) {
     try {
       await guild.members.ban(userId, { reason: "Tsuki : raid confirmé" });
       entry.handled.set(userId, "ban");
       result.banned.push(userId);
-    } catch {
+    } catch (err) {
       result.failed.push(userId);
+      result.causes.push(describeFailure(err));
     }
   }
   return result;

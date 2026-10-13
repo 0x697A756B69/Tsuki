@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   DEFAULT_LADDER,
   getLadder,
@@ -15,14 +13,9 @@ const {
   formatDuration,
   describeStep,
 } = require("../utils/warnLadder");
+const { createDatabase } = require("./helpers/database");
 
 const DAY = 24 * 60 * 60 * 1000;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function addWarn(db, id, user, date) {
   db.prepare(

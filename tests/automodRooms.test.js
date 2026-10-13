@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   addLog,
   getLog,
@@ -23,14 +21,9 @@ const {
   closeMemberRooms,
 } = require("../utils/automodRooms");
 const guildMemberRemove = require("../events/guildMemberRemove");
+const { createDatabase } = require("./helpers/database");
 
 const NOW = 100 * ROOM_LIFETIME;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function room(db, messageId, { userId = "u", judgedAt = null } = {}) {
   const ref = { guildId: "g", channelId: "logs", messageId };

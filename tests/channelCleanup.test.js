@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const { addMessage } = require("../utils/messageCount");
 const { setModifier, getModifiers } = require("../utils/modifiers");
 const {
@@ -10,12 +8,7 @@ const {
   sweepDeletedChannels,
 } = require("../utils/channelCleanup");
 const channelDelete = require("../events/channelDelete");
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
+const { createDatabase } = require("./helpers/database");
 
 function counted(db, guildId) {
   return db

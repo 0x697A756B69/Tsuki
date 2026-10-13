@@ -7,7 +7,7 @@ const {
   PermissionsBitField,
 } = require("discord.js");
 const { RULE_NAMES } = require("../utils/automodRules");
-const { ACTION_ID, buildLogMessage } = require("../utils/automodLogs");
+const { ACTION_ID, buildLogMessage } = require("../utils/automodLogView");
 const { CONTEST_COLOR, contestedPayload } = require("../utils/automodContest");
 const {
   contestChannelName,

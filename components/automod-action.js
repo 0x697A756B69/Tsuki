@@ -2,14 +2,13 @@ const { MessageFlags } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { canModerate } = require("../utils/hierarchy");
 const {
-  ACTION_ID,
-  markResolved,
   getLog,
   getLogByContestChannel,
   setContestStatus,
   setJudged,
   clearContestChannel,
 } = require("../utils/automodLogs");
+const { ACTION_ID, markResolved } = require("../utils/automodLogView");
 const { extendRoom } = require("../utils/automodRooms");
 const { NO_WARNING } = require("../utils/automodContest");
 const {
@@ -25,6 +24,7 @@ const {
 } = require("../utils/automodActions");
 const { issueWarning, retractWarning } = require("../utils/warnSanctions");
 const { verdictNotice, sendNotice } = require("../utils/moderationNotice");
+const { describeFailure } = require("../utils/failure");
 
 const MEMBER_ACTIONS = [
   "remove",
@@ -278,11 +278,12 @@ module.exports = defineComponent({
       await interaction.update(
         resolvedPayload(interaction.message, interaction.user.id, action),
       );
-    await perform(bot, interaction, db, action, args, member, ref).catch(() =>
-      interaction.followUp({
-        content: "L'action a échoué, le message est classé quand même.",
-        flags: MessageFlags.Ephemeral,
-      }),
+    await perform(bot, interaction, db, action, args, member, ref).catch(
+      (err) =>
+        interaction.followUp({
+          content: `L'action a échoué (${describeFailure(err)}), le message est classé quand même.`,
+          flags: MessageFlags.Ephemeral,
+        }),
     );
   },
 });

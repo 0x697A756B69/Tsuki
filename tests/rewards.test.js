@@ -1,7 +1,5 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
-const migrate = require("../loaders/migrate");
 const {
   getRewards,
   setReward,
@@ -13,6 +11,7 @@ const {
 } = require("../utils/rewards");
 const { addXp } = require("../utils/xp");
 const { totalXpForLevel } = require("../utils/levels");
+const { createDatabase } = require("./helpers/database");
 
 const REWARDS = [
   { level: 5, role: "regular" },
@@ -31,12 +30,6 @@ function fakeMember({ held = [], guildRoles = REWARDS.map((r) => r.role) }) {
       remove: async (roles) => calls.push(["remove", roles]),
     },
   };
-}
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
 }
 
 test("rewards are listed by level", () => {

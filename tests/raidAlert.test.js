@@ -1,8 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { DatabaseSync } = require("node:sqlite");
 const { MessageFlags } = require("discord.js");
-const migrate = require("../loaders/migrate");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { updateRaidSettings } = require("../utils/raidSettings");
 const { MINUTE } = require("../utils/raidDetector");
@@ -14,14 +12,9 @@ const {
   sendRaidAlert,
   sweepRaids,
 } = require("../utils/raidAlert");
+const { createDatabase } = require("./helpers/database");
 
 const NOW = 1700000000000;
-
-function createDatabase() {
-  const db = new DatabaseSync(":memory:");
-  migrate(db);
-  return db;
-}
 
 function render(changes = {}) {
   const message = buildRaidAlert({
@@ -318,4 +311,19 @@ test("sweepRaids lifts the lockdown once the raid is over", async () => {
     db.prepare("SELECT COUNT(*) AS n FROM raid_lockdowns").get().n,
     0,
   );
+});
+
+test("buildRaidAlert tells the cause of the failures", () => {
+  const json = render({
+    response: {
+      action: "ban",
+      observed: false,
+      planned: ["3"],
+      done: [],
+      failed: ["3"],
+      causes: ["membre introuvable"],
+    },
+  });
+
+  assert.match(json, /Échec.*(membre introuvable)/);
 });
