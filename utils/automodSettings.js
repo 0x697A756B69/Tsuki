@@ -1,80 +1,24 @@
-const COLUMNS = {
-  logChannel: "log_channel",
-  spamEnabled: "spam_enabled",
-  mentionsEnabled: "mentions_enabled",
-  mentionLimit: "mention_limit",
-  observation: "observation",
-  contestHours: "contest_hours",
-  escalationMinutes: "escalation_minutes",
-  reasonWords: "reason_words",
-  reasonSpam: "reason_spam",
-  reasonMentions: "reason_mentions",
-  warnValidDays: "warn_valid_days",
-  justiceCategory: "justice_category",
-  keepTranscript: "keep_transcript",
-  muteType: "mute_type",
-  muteRole: "mute_role",
+const { defineSettings } = require("./defineSettings");
+
+const { get, update } = defineSettings("automod_settings", {
+  logChannel: ["log_channel", "id"],
+  spamEnabled: ["spam_enabled", "flag"],
+  mentionsEnabled: ["mentions_enabled", "flag"],
+  mentionLimit: ["mention_limit", "int"],
+  observation: ["observation", "flag"],
+  contestHours: ["contest_hours", "int"],
+  escalationMinutes: ["escalation_minutes", "int"],
+  reasonWords: ["reason_words", "text"],
+  reasonSpam: ["reason_spam", "text"],
+  reasonMentions: ["reason_mentions", "text"],
+  warnValidDays: ["warn_valid_days", "int"],
+  justiceCategory: ["justice_category", "id"],
+  keepTranscript: ["keep_transcript", "flag"],
+  muteType: ["mute_type", "text"],
+  muteRole: ["mute_role", "id"],
+});
+
+module.exports = {
+  getAutomodSettings: get,
+  updateAutomodSettings: update,
 };
-
-function toSettings(row) {
-  return {
-    logChannel: row.log_channel === null ? null : String(row.log_channel),
-    spamEnabled: Number(row.spam_enabled) === 1,
-    mentionsEnabled: Number(row.mentions_enabled) === 1,
-    mentionLimit: Number(row.mention_limit),
-    observation: Number(row.observation) === 1,
-    contestHours: Number(row.contest_hours),
-    escalationMinutes: Number(row.escalation_minutes),
-    reasonWords: String(row.reason_words),
-    reasonSpam: String(row.reason_spam),
-    reasonMentions: String(row.reason_mentions),
-    warnValidDays: Number(row.warn_valid_days),
-    justiceCategory:
-      row.justice_category === null ? null : String(row.justice_category),
-    keepTranscript: Number(row.keep_transcript) === 1,
-    muteType: String(row.mute_type),
-    muteRole: row.mute_role === null ? null : String(row.mute_role),
-    updatedBy: row.updated_by === null ? null : String(row.updated_by),
-    updatedAt: row.updated_at === null ? null : Number(row.updated_at),
-  };
-}
-
-function getAutomodSettings(db, guildId) {
-  const select = db.prepare("SELECT * FROM automod_settings WHERE guild = ?");
-  let row = select.get(guildId);
-  if (!row) {
-    db.prepare("INSERT INTO automod_settings (guild) VALUES (?)").run(guildId);
-    row = select.get(guildId);
-  }
-  return toSettings(row);
-}
-
-function updateAutomodSettings(
-  db,
-  guildId,
-  changes,
-  authorId,
-  date = Date.now(),
-) {
-  const entries = Object.entries(changes);
-  for (const [key] of entries)
-    if (!(key in COLUMNS)) throw new TypeError(`Unknown setting: ${key}`);
-
-  getAutomodSettings(db, guildId);
-  const assignments = [
-    ...entries.map(([key]) => `${COLUMNS[key]} = ?`),
-    "updated_by = ?",
-    "updated_at = ?",
-  ].join(", ");
-  db.prepare(`UPDATE automod_settings SET ${assignments} WHERE guild = ?`).run(
-    ...entries.map(([key, value]) =>
-      typeof value === "boolean" ? Number(value) : value,
-    ),
-    authorId,
-    date,
-    guildId,
-  );
-  return getAutomodSettings(db, guildId);
-}
-
-module.exports = { getAutomodSettings, updateAutomodSettings };
