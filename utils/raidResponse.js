@@ -1,5 +1,6 @@
 const { isSuspect } = require("./joinSignals");
 const { updateRaidSettings } = require("./raidSettings");
+const { getEntry } = require("./raidWatch");
 
 const MINUTE = 60 * 1000;
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];
@@ -62,10 +63,7 @@ async function applyAction(guild, userId, action, settings, roleId) {
 }
 
 async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
-  bot.raidMemory ??= new Map();
-  const entry = bot.raidMemory.get(guild.id);
-  entry.handled ??= new Map();
-  entry.freed ??= new Set();
+  const entry = getEntry(bot.db, bot.raidMemory, guild.id);
   if (evaluation.tier === "calm") entry.handled.clear();
 
   const { action, targets } = planResponse({

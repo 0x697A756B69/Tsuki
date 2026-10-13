@@ -9,6 +9,8 @@ function getEntry(db, memory, guildId) {
     entry = {
       recent: [],
       state: last === null ? null : { tier: last.tier, heldAt: last.at },
+      handled: new Map(),
+      freed: new Set(),
     };
     memory.set(guildId, entry);
   }

@@ -42,7 +42,7 @@ function createBot({ raid = {}, logChannel = "log" } = {}) {
       ]),
     },
   };
-  return { bot: { db }, guild, sent };
+  return { bot: { db, raidMemory: new Map() }, guild, sent };
 }
 
 function member(guild, index, { bot = false, avatar = "hash" } = {}) {

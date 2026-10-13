@@ -12,6 +12,8 @@ const PURGE_INTERVAL = 60 * 60 * 1000;
 module.exports = async (bot) => {
   console.log(`Logged in as ${bot.user.tag}`);
 
+  bot.raidMemory ??= new Map();
+
   if (!bot.cleanupDone) {
     bot.cleanupDone = true;
     sweepDeletedChannels(bot).catch((err) =>
