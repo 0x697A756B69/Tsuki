@@ -26,6 +26,15 @@ async function denyMuteRole(channel, roleId) {
   }
 }
 
+function uncoveredChannels(guild, roleId) {
+  let count = 0;
+  for (const channel of guild.channels.cache.values()) {
+    const overwrites = channel.permissionOverwrites;
+    if (overwrites && !overwrites.cache?.has(roleId)) count += 1;
+  }
+  return count;
+}
+
 async function createMuteRole(db, guild) {
   const current = getAutomodSettings(db, guild.id).muteRole;
   if (current && guild.roles.cache.has(current)) return current;
@@ -45,4 +54,9 @@ async function ensureMuteRole(db, guild, settings) {
   return oncePerGuild("mute", guild.id, () => createMuteRole(db, guild));
 }
 
-module.exports = { MUTE_DENIED, denyMuteRole, ensureMuteRole };
+module.exports = {
+  MUTE_DENIED,
+  denyMuteRole,
+  uncoveredChannels,
+  ensureMuteRole,
+};

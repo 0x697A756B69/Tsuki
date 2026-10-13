@@ -9,6 +9,7 @@ const {
 const {
   MUTE_DENIED,
   denyMuteRole,
+  uncoveredChannels,
   ensureMuteRole,
 } = require("../utils/muteRole");
 const channelCreate = require("../events/channelCreate");
@@ -189,4 +190,22 @@ test("a crash after the creation does not lose the role", async () => {
   );
 
   assert.equal(getAutomodSettings(db, "g").muteRole, "new");
+});
+
+test("uncoveredChannels counts the channels without a rule for the role", () => {
+  const covered = createChannel("c1", { existing: ["mute"] });
+  const open = createChannel("c2");
+  const { guild } = createFixture({
+    channels: [covered, open, { id: "thread" }],
+  });
+
+  assert.equal(uncoveredChannels(guild, "mute"), 1);
+});
+
+test("uncoveredChannels is zero when every channel is covered", () => {
+  const { guild } = createFixture({
+    channels: [createChannel("c1", { existing: ["mute"] })],
+  });
+
+  assert.equal(uncoveredChannels(guild, "mute"), 0);
 });

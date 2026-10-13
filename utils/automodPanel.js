@@ -360,7 +360,13 @@ function renderJusticeView({ settings }) {
   return panel(container);
 }
 
-function renderMuteView({ settings }) {
+function uncoveredNotice(count) {
+  if (count === 0) return "";
+  return `
+Attention : le rôle n'a pas pu être appliqué à ${count} salon${count > 1 ? "s" : ""}, les membres y restent libres d'écrire. Vérifie mes permissions.`;
+}
+
+function renderMuteView({ settings, uncovered = 0 }) {
   const role = settings.muteType === "role";
   const container = section(
     "Sourdine",
@@ -371,7 +377,7 @@ function renderMuteView({ settings }) {
       setting(
         "Rôle muet",
         role
-          ? `Activé : le membre reçoit ${settings.muteRole ? `<@&${settings.muteRole}>` : "le rôle Muet, créé au premier usage"} et peut encore écrire dans son salon de contestation.`
+          ? `Activé : le membre reçoit ${settings.muteRole ? `<@&${settings.muteRole}>` : "le rôle Muet, créé au premier usage"} et peut encore écrire dans son salon de contestation.${uncoveredNotice(uncovered)}`
           : "Désactivé : le membre est mis en sourdine par Discord et ne peut plus écrire nulle part.",
         toggle("mute-toggle", role),
       ),
