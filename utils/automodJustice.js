@@ -11,7 +11,7 @@ const {
   TextDisplayBuilder,
 } = require("discord.js");
 const { CONTEST_COLOR, reviewRow } = require("./automodContest");
-const { ACTION_ID, excerpt, resolvedNotice } = require("./automodLogs");
+const { ACTION_ID, excerpt, resolvedNotice } = require("./automodLogView");
 const { buildCustomId } = require("./customId");
 
 const NAME_PREFIX = "contestation-";

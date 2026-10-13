@@ -5,7 +5,7 @@ const {
   MessageFlags,
   PermissionFlagsBits,
 } = require("discord.js");
-const { ACTION_ID } = require("./automodLogs");
+const { ACTION_ID } = require("./automodLogView");
 const { buildCustomId } = require("./customId");
 
 const ACTIONS = {

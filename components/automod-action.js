@@ -2,14 +2,13 @@ const { MessageFlags } = require("discord.js");
 const defineComponent = require("../utils/defineComponent");
 const { canModerate } = require("../utils/hierarchy");
 const {
-  ACTION_ID,
-  markResolved,
   getLog,
   getLogByContestChannel,
   setContestStatus,
   setJudged,
   clearContestChannel,
 } = require("../utils/automodLogs");
+const { ACTION_ID, markResolved } = require("../utils/automodLogView");
 const { extendRoom } = require("../utils/automodRooms");
 const { NO_WARNING } = require("../utils/automodContest");
 const {

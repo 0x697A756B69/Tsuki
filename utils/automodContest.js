@@ -12,7 +12,7 @@ const {
   TextInputStyle,
 } = require("discord.js");
 const { buildCustomId, parseCustomId } = require("./customId");
-const { ACTION_ID } = require("./automodLogs");
+const { ACTION_ID } = require("./automodLogView");
 
 const CONTEST_ID = "automod-contest";
 const CONTEST_COLOR = 0x8b5cf6;

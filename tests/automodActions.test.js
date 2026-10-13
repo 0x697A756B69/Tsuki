@@ -5,13 +5,8 @@ const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
 const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const {
-  ACTION_ID,
-  buildLogMessage,
-  addLog,
-  getLog,
-  markContested,
-} = require("../utils/automodLogs");
+const { addLog, getLog, markContested } = require("../utils/automodLogs");
+const { ACTION_ID, buildLogMessage } = require("../utils/automodLogView");
 const { contestedPayload } = require("../utils/automodContest");
 const {
   ACTIONS,
