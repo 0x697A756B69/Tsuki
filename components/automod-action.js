@@ -10,6 +10,7 @@ const {
   setJudged,
   clearContestChannel,
 } = require("../utils/automodLogs");
+const { extendRoom } = require("../utils/automodRooms");
 const { NO_WARNING } = require("../utils/automodContest");
 const {
   verdictPayload,
@@ -94,6 +95,12 @@ async function perform(bot, interaction, db, action, args, member, ref) {
             reason: `AutoMod : contestation acceptée par ${user.tag}`,
           })
         : { lifted: null };
+    if (retracted.failed)
+      await interaction.followUp({
+        content:
+          "La sanction n'a pas pu être levée : l'avertissement est conservé. Réessaie depuis la liste des avertissements.",
+        flags: MessageFlags.Ephemeral,
+      });
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);
@@ -164,6 +171,18 @@ module.exports = defineComponent({
       return interaction.channel
         .delete(`AutoMod : salon clos par ${interaction.user.tag}`)
         .catch(() => {});
+    }
+
+    if (action === "extendroom") {
+      if (!room) return refuse(interaction, "Ce salon n'est plus actif.");
+      if (room.judgedAt === null)
+        return refuse(interaction, "La contestation n'est pas encore jugée.");
+      extendRoom(db, room.ref);
+      return interaction.update({
+        content: `Suppression repoussée de 24 h par <@${interaction.user.id}>.`,
+        components: [],
+        allowedMentions: { parse: [] },
+      });
     }
 
     const member = MEMBER_ACTIONS.includes(action)

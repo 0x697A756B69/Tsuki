@@ -21,6 +21,11 @@ function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
 }
 
+function liftFailure(count) {
+  const plural = count > 1 ? "s" : "";
+  return `${count} avertissement${plural} conservé${plural} : la sanction n'a pas pu être levée (permissions ou hiérarchie). Réessaie depuis la liste.`;
+}
+
 module.exports = defineComponent({
   id: "warnlist",
 
@@ -115,6 +120,7 @@ module.exports = defineComponent({
     await interaction.deferUpdate();
     const lifted = [];
     const removedWarnings = [];
+    let failed = 0;
     for (const warning of selected) {
       const result = await retractWarning({
         db,
@@ -124,6 +130,7 @@ module.exports = defineComponent({
         member,
         reason: `Avertissement retiré par ${interaction.user.tag}`,
       });
+      if (result.failed) failed += 1;
       if (!result.removed) continue;
       removedWarnings.push(warning);
       if (result.lifted) lifted.push(result.lifted);
@@ -146,8 +153,8 @@ module.exports = defineComponent({
           lifted,
         }),
       ));
-    if (purging)
-      return interaction.editReply(
+    if (purging) {
+      await interaction.editReply(
         purgedView({
           user,
           purged: removedWarnings,
@@ -157,6 +164,13 @@ module.exports = defineComponent({
           authorId,
         }),
       );
+      if (failed > 0)
+        await interaction.followUp({
+          content: liftFailure(failed),
+          flags: MessageFlags.Ephemeral,
+        });
+      return;
+    }
     await interaction.editReply(
       removedView({
         user,
@@ -167,5 +181,10 @@ module.exports = defineComponent({
         authorId,
       }),
     );
+    if (failed > 0)
+      await interaction.followUp({
+        content: liftFailure(failed),
+        flags: MessageFlags.Ephemeral,
+      });
   },
 });

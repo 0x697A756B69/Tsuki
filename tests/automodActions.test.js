@@ -21,6 +21,7 @@ const {
 } = require("../utils/automodActions");
 const { buildContestMessage } = require("../utils/automodJustice");
 const { setContestChannel } = require("../utils/automodLogs");
+const { ROOM_EXTENSION } = require("../utils/automodRooms");
 const component = require("../components/automod-action");
 
 const { ManageMessages, ModerateMembers, BanMembers } = PermissionFlagsBits;
@@ -557,4 +558,34 @@ test("banning from the room bans, records the judge and deletes the room", async
 
 test("closeroom is a moderator action", () => {
   assert.equal(ACTIONS.closeroom.permission, ManageMessages);
+});
+
+test("extending the room postpones its deletion after the verdict", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("refuse", "u");
+  await run("extendroom");
+  assert.equal(
+    db.prepare("SELECT room_extra FROM automod_logs").get().room_extra,
+    ROOM_EXTENSION,
+  );
+  assert.equal(calls.roomDeleted.length, 0);
+  assert.match(JSON.stringify(calls.updates.at(-1)), /repoussée de 24 h/);
+});
+
+test("the room cannot be extended before the verdict or outside a room", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("extendroom");
+  assert.match(calls.replies[0].content, /pas encore jugée/);
+  assert.equal(
+    db.prepare("SELECT room_extra FROM automod_logs").get().room_extra,
+    0,
+  );
+
+  const stray = setup();
+  await stray.run("extendroom");
+  assert.match(stray.calls.replies[0].content, /plus actif/);
+});
+
+test("extendroom is a moderator action", () => {
+  assert.equal(ACTIONS.extendroom.permission, ManageMessages);
 });

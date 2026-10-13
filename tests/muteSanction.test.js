@@ -32,7 +32,13 @@ function createDatabase({ muteType = "role", muteRole = "mute" } = {}) {
 
 function createMember(
   calls = [],
-  { hasRole = false, failAdd = false, timestamp = null } = {},
+  {
+    hasRole = false,
+    failAdd = false,
+    failRemove = false,
+    timestamp = null,
+    onAdd = null,
+  } = {},
 ) {
   return {
     moderatable: true,
@@ -42,10 +48,14 @@ function createMember(
     roles: {
       cache: new Map(hasRole ? [["mute", { id: "mute" }]] : []),
       add: async (id, reason) => {
+        onAdd?.();
         if (failAdd) throw new Error("Missing Permissions");
         calls.push(["add", id, reason]);
       },
-      remove: async (id, reason) => calls.push(["remove", id, reason]),
+      remove: async (id, reason) => {
+        if (failRemove) throw new Error("Missing Permissions");
+        calls.push(["remove", id, reason]);
+      },
     },
     timeout: async (ms, reason) => {
       calls.push(["timeout", ms, reason]);
@@ -330,4 +340,106 @@ test("retractWarning removes the mute role when the warning is lifted", async ()
 
   assert.deepEqual(result, { removed: true, lifted: "mute" });
   assert.deepEqual(calls, [["remove", "mute", "Retiré"]]);
+});
+
+function savedUntil(db, id) {
+  return db.prepare("SELECT timeout_until FROM warns WHERE id = ?").get(id)
+    ?.timeout_until;
+}
+
+test("retractWarning keeps the warning when the mute role cannot be removed", async () => {
+  const db = createDatabase();
+  insertWarning(db, {
+    id: "WARN-1",
+    guildId: "g",
+    userId: "u",
+    authorId: "mod",
+    reason: "Spam",
+    date: 1_000,
+  });
+  const until = Date.now() + 10 * MINUTE;
+  noteSanction(db, "WARN-1", "timeout", until);
+
+  const result = await retractWarning({
+    db,
+    guild: createGuild(),
+    userId: "u",
+    warningId: "WARN-1",
+    member: createMember([], { hasRole: true, failRemove: true }),
+    reason: "Retiré",
+  });
+
+  assert.deepEqual(result, { removed: false, lifted: null, failed: true });
+  assert.equal(savedUntil(db, "WARN-1"), until);
+});
+
+test(
+  "enforceWarning notes the mute end before giving the role",
+  { todo: true },
+  async () => {
+    const db = createDatabase();
+    const warning = registerWarning(db, {
+      id: "WARN-1",
+      guildId: "g",
+      userId: "u",
+      authorId: "mod",
+      reason: "Spam",
+      date: 1_000,
+    });
+    let seen = null;
+
+    await enforceWarning({
+      db,
+      guild: createGuild(),
+      user: null,
+      member: createMember([], {
+        onAdd: () => {
+          seen = savedUntil(db, "WARN-1");
+        },
+      }),
+      warning,
+      now: 1_000,
+    });
+
+    assert.equal(seen, 1_000 + 10 * MINUTE);
+  },
+);
+
+test("enforceWarning forgets the mute end when the role cannot be added", async () => {
+  const db = createDatabase();
+  const warning = registerWarning(db, {
+    id: "WARN-1",
+    guildId: "g",
+    userId: "u",
+    authorId: "mod",
+    reason: "Spam",
+    date: 1_000,
+  });
+
+  const { applied } = await enforceWarning({
+    db,
+    guild: createGuild(),
+    user: null,
+    member: createMember([], { failAdd: true }),
+    warning,
+    now: 1_000,
+  });
+
+  assert.equal(applied, null);
+  assert.equal(savedUntil(db, "WARN-1"), null);
+});
+
+test("liftSanction lets Discord errors through", async () => {
+  await assert.rejects(
+    liftSanction({
+      guild: createGuild(),
+      member: createMember([], { hasRole: true, failRemove: true }),
+      userId: "u",
+      warning: { sanction: "timeout", timeoutUntil: Date.now() + MINUTE },
+      reason: "Retiré",
+      now: Date.now(),
+      muteRoleId: "mute",
+    }),
+    /Missing Permissions/,
+  );
 });

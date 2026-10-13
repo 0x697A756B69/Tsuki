@@ -274,6 +274,8 @@ test("logs are stored with identifiers and dates only", () => {
       contest_channel: null,
       judged_by: null,
       judged_at: null,
+      room_extra: 0,
+      room_reminded: 0,
     },
   );
 });
@@ -403,6 +405,8 @@ test("sendLog posts the panel and remembers it", async () => {
       contest_channel: null,
       judged_by: null,
       judged_at: null,
+      room_extra: 0,
+      room_reminded: 0,
     },
   );
 });

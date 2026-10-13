@@ -38,6 +38,10 @@ const ACTIONS = {
     permission: PermissionFlagsBits.ManageMessages,
     label: "salon clos",
   },
+  extendroom: {
+    permission: PermissionFlagsBits.ManageMessages,
+    label: "salon prolongé",
+  },
   ban: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   banok: { permission: PermissionFlagsBits.BanMembers, label: "banni" },
   bancancel: { permission: null, label: "annulé" },
