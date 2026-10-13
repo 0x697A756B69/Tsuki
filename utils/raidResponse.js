@@ -1,5 +1,6 @@
 const { isSuspect } = require("./joinSignals");
-const { updateRaidSettings } = require("./raidSettings");
+const { getRaidSettings, updateRaidSettings } = require("./raidSettings");
+const { oncePerGuild } = require("./oncePerGuild");
 const { getEntry } = require("./raidWatch");
 
 const MINUTE = 60 * 1000;
@@ -32,19 +33,27 @@ function planResponse({ tier, settings, recent, handled, freed = new Set() }) {
   return { action, targets };
 }
 
-async function ensureQuarantineRole(db, guild, settings) {
-  if (settings.quarantineRole && guild.roles.cache.has(settings.quarantineRole))
-    return settings.quarantineRole;
+async function createQuarantineRole(db, guild) {
+  const current = getRaidSettings(db, guild.id).quarantineRole;
+  if (current && guild.roles.cache.has(current)) return current;
   const role = await guild.roles
     .create({ name: ROLE_NAME, permissions: [], reason: REASON })
     .catch(() => null);
   if (!role) return null;
+  updateRaidSettings(db, guild.id, { quarantineRole: role.id }, "tsuki");
   for (const channel of guild.channels.cache.values())
     await channel.permissionOverwrites
       ?.edit(role, { ViewChannel: false })
       .catch(() => null);
-  updateRaidSettings(db, guild.id, { quarantineRole: role.id }, "tsuki");
   return role.id;
+}
+
+async function ensureQuarantineRole(db, guild, settings) {
+  if (settings.quarantineRole && guild.roles.cache.has(settings.quarantineRole))
+    return settings.quarantineRole;
+  return oncePerGuild("quarantine", guild.id, () =>
+    createQuarantineRole(db, guild),
+  );
 }
 
 async function applyAction(guild, userId, action, settings, roleId) {
