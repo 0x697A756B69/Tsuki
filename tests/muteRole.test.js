@@ -164,3 +164,37 @@ test("channelCreate ignores channels outside a server", async () => {
 
   assert.deepEqual(channel.edits, []);
 });
+
+test(
+  "two simultaneous ensureMuteRole create a single role",
+  { todo: true },
+  async () => {
+    const { db, guild, created } = createFixture();
+    const settings = getAutomodSettings(db, "g");
+    const [first, second] = await Promise.all([
+      ensureMuteRole(db, guild, settings),
+      ensureMuteRole(db, guild, settings),
+    ]);
+
+    assert.equal(created.length, 1);
+    assert.equal(first, "new");
+    assert.equal(second, "new");
+  },
+);
+
+test(
+  "a crash after the creation does not lose the role",
+  { todo: true },
+  async () => {
+    const broken = createChannel("c1");
+    broken.permissionOverwrites.edit = () => {
+      throw new Error("crash");
+    };
+    const { db, guild } = createFixture({ channels: [broken] });
+    await ensureMuteRole(db, guild, getAutomodSettings(db, "g")).catch(
+      () => null,
+    );
+
+    assert.equal(getAutomodSettings(db, "g").muteRole, "new");
+  },
+);
