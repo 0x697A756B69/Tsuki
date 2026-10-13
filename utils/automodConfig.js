@@ -12,8 +12,6 @@ const {
 } = require("./warnReasons");
 const { getLadder } = require("./warnLadder");
 const panel = require("./automodPanel");
-const { renderRaidView } = require("./raidPanel");
-const { getRaidSettings } = require("./raidSettings");
 const { uncoveredChannels } = require("./muteRole");
 
 const MAX_WORDS = 1000;
@@ -251,11 +249,6 @@ function sectionView(name, interaction, db) {
     observation: () => panel.renderObservationView({ settings }),
     exemptions: () =>
       panel.renderExemptionsView({ exemptions: getExemptions(db, guildId) }),
-    raid: () =>
-      renderRaidView({
-        settings: getRaidSettings(db, guildId),
-        logChannel: settings.logChannel,
-      }),
   };
   return name in views ? views[name]() : null;
 }

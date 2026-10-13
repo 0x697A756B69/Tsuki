@@ -9,7 +9,7 @@ const {
 } = require("../utils/raidSettings");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { HOME_SECTIONS } = require("../utils/automodPanel");
-const { sectionView } = require("../utils/automodConfig");
+const { raidSectionView } = require("../utils/raidSection");
 const {
   ACTION_OPTIONS,
   LOCKDOWN_OPTIONS,
@@ -85,9 +85,9 @@ test("the AutoMod home lists the anti-raid section", () => {
   assert.ok(HOME_SECTIONS.some((section) => section.value === "raid"));
 });
 
-test("sectionView builds the anti-raid view", () => {
+test("raidSectionView builds the anti-raid view", () => {
   const db = createDatabase();
-  const view = sectionView("raid", /** @type {any} */ ({ guildId: "g" }), db);
+  const view = raidSectionView(db, "g");
 
   assert.match(json(view), /Anti-raid/);
 });

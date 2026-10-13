@@ -1,10 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const {
-  xpPerMinute,
-  minutesToLevel,
-  formatDuration,
-} = require("../utils/estimate");
+const { xpPerMinute, minutesToLevel } = require("../utils/estimate");
 
 const defaults = { xpMin: 10, xpMax: 20, cooldown: 60 };
 
@@ -29,13 +25,4 @@ test("minutesToLevel is infinite when no XP can be earned", () => {
     minutesToLevel({ ...defaults, xpMin: 0, xpMax: 0 }, 10),
     Infinity,
   );
-});
-
-test("formatDuration picks a readable unit", () => {
-  assert.equal(formatDuration(0.2), "1 min");
-  assert.equal(formatDuration(45), "45 min");
-  assert.equal(formatDuration(312), "5 h");
-  assert.equal(formatDuration(47 * 60), "47 h");
-  assert.equal(formatDuration(5 * 24 * 60), "5 j");
-  assert.equal(formatDuration(Infinity), "jamais");
 });

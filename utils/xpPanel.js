@@ -17,7 +17,8 @@ const {
 const { buildCustomId } = require("./customId");
 const { formatAnnouncement } = require("./announce");
 const { rewardRoleFor } = require("./rewards");
-const { xpPerMinute, minutesToLevel, formatDuration } = require("./estimate");
+const { xpPerMinute, minutesToLevel } = require("./estimate");
+const { formatDuration } = require("./formatDuration");
 
 const ACCENT_COLOR = 0x7f77dd;
 const PREVIEW_LEVEL = 5;

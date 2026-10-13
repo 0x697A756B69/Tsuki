@@ -36,6 +36,7 @@ const {
   resetReasons,
 } = require("../utils/warnReasons");
 const { getLadder, setLadder, resetLadder } = require("../utils/warnLadder");
+const { raidSectionView } = require("../utils/raidSection");
 
 const REASON_COLUMNS = {
   "reason-words": "reasonWords",
@@ -85,7 +86,11 @@ module.exports = defineComponent({
     const author = interaction.user.id;
     const settings = getAutomodSettings(db, guildId);
     const home = () => mainView(interaction, db);
-    const section = (name) => () => sectionView(name, interaction, db);
+    const open = (name) =>
+      name === "raid"
+        ? raidSectionView(db, guildId)
+        : sectionView(name, interaction, db);
+    const section = (name) => () => open(name);
 
     if (interaction.isButton()) {
       if (action === "back") return interaction.update(home());
@@ -174,7 +179,7 @@ module.exports = defineComponent({
 
     if (interaction.isStringSelectMenu()) {
       if (action === "goto") {
-        const view = sectionView(interaction.values[0], interaction, db);
+        const view = open(interaction.values[0]);
         if (!view) return refuse(interaction, "Ce réglage n'existe pas.");
         return interaction.update(view);
       }
