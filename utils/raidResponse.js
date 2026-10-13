@@ -84,10 +84,21 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
   };
   if (targets.length === 0 || settings.observation) return response;
 
+  const previous = new Map(
+    targets.map((userId) => [userId, entry.handled.get(userId)]),
+  );
+  const release = (userId) => {
+    const before = previous.get(userId);
+    if (before === undefined) entry.handled.delete(userId);
+    else entry.handled.set(userId, before);
+  };
+  for (const userId of targets) entry.handled.set(userId, action);
+
   let roleId = null;
   if (action === "quarantine") {
     roleId = await ensureQuarantineRole(bot.db, guild, settings);
     if (roleId === null) {
+      targets.forEach(release);
       response.failed.push(...targets);
       return response;
     }
@@ -95,9 +106,9 @@ async function respondToRaid(bot, guild, settings, { evaluation, recent }) {
   for (const userId of targets) {
     try {
       await applyAction(guild, userId, action, settings, roleId);
-      entry.handled.set(userId, action);
       response.done.push(userId);
     } catch {
+      release(userId);
       response.failed.push(userId);
     }
   }

@@ -75,7 +75,12 @@ function createFixture({ raid = {}, failing = [], roleExists = false } = {}) {
       ]),
     },
   };
-  const bot = { db, raidMemory: new Map([["g", { recent: [], state: null }]]) };
+  const bot = {
+    db,
+    raidMemory: new Map([
+      ["g", { recent: [], state: null, handled: new Map(), freed: new Set() }],
+    ]),
+  };
   return { db, bot, guild, calls, edits, settings: getRaidSettings(db, "g") };
 }
 
@@ -300,19 +305,41 @@ test("respondToRaid forgets the handled members when calm returns", async () => 
   assert.equal(calls.length, 2);
 });
 
-test(
-  "two simultaneous raid responses act once per member",
-  { todo: true },
-  async () => {
-    const { bot, guild, calls, settings } = createFixture({
-      raid: { alertAction: "timeout" },
-    });
-    const [first, second] = await Promise.all([
-      respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
-      respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
-    ]);
+test("two simultaneous raid responses act once per member", async () => {
+  const { bot, guild, calls, settings } = createFixture({
+    raid: { alertAction: "timeout" },
+  });
+  const [first, second] = await Promise.all([
+    respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
+    respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
+  ]);
 
-    assert.equal(calls.length, 2);
-    assert.equal(first.done.length + second.done.length, 2);
-  },
-);
+  assert.equal(calls.length, 2);
+  assert.equal(first.done.length + second.done.length, 2);
+});
+
+test("a failed action is released so the member can be retried", async () => {
+  const { bot, guild, settings } = createFixture({
+    raid: { alertAction: "timeout" },
+    failing: ["a"],
+  });
+  await respondToRaid(bot, guild, settings, raid("alert", ["a"]));
+  assert.equal(bot.raidMemory.get("g").handled.has("a"), false);
+});
+
+test("a quarantine without a role releases every reserved member", async () => {
+  const { bot, guild, settings } = createFixture({
+    raid: { alertAction: "quarantine" },
+  });
+  guild.roles.create = async () => {
+    throw new Error("Missing Permissions");
+  };
+  const response = await respondToRaid(
+    bot,
+    guild,
+    settings,
+    raid("alert", ["a"], ["b"]),
+  );
+  assert.deepEqual(response.failed, ["a", "b"]);
+  assert.equal(bot.raidMemory.get("g").handled.size, 0);
+});
