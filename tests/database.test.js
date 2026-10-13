@@ -465,3 +465,45 @@ test("resetXp rejects an unknown type and changes nothing", () => {
   assert.throws(() => resetXp(db, "g", "a", "other"), RangeError);
   assert.equal(getTotalXp(db, "g", "a"), 450);
 });
+
+test("migration 028 drops the risk score columns and keeps the data", () => {
+  const db = new DatabaseSync(":memory:");
+  const dir = path.join(__dirname, "../migrations");
+  for (const file of fs.readdirSync(dir).sort())
+    if (Number.parseInt(file, 10) <= 27)
+      db.exec(fs.readFileSync(path.join(dir, file), "utf8"));
+  db.exec("PRAGMA user_version = 27");
+  db.prepare(
+    "INSERT INTO automod_settings (guild, sensitivity, escalation_minutes) VALUES ('g', 8, 90)",
+  ).run();
+  db.prepare(
+    "INSERT INTO automod_logs (guild, channel, message, created_at, user_id, points, trust) VALUES ('g', 'c', 'm', 5, 'u', 3, 0.5)",
+  ).run();
+
+  migrate(db);
+
+  const columns = (table) =>
+    db
+      .prepare(`PRAGMA table_info(${table})`)
+      .all()
+      .map((column) => column.name);
+  for (const name of [
+    "sensitivity",
+    "half_life_days",
+    "points_words",
+    "points_spam",
+    "points_mentions",
+  ])
+    assert.equal(columns("automod_settings").includes(name), false, name);
+  for (const name of ["points", "trust"])
+    assert.equal(columns("automod_logs").includes(name), false, name);
+  assert.equal(
+    db.prepare("SELECT escalation_minutes FROM automod_settings").get()
+      .escalation_minutes,
+    90,
+  );
+  assert.equal(
+    db.prepare("SELECT user_id FROM automod_logs").get().user_id,
+    "u",
+  );
+});
