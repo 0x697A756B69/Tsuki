@@ -3,6 +3,8 @@ const { getAutomodSettings } = require("./automodSettings");
 const { archiveTranscript } = require("./automodJustice");
 
 const ROOM_LIFETIME = 24 * 60 * 60 * 1000;
+const REMINDER_LEAD = 60 * 60 * 1000;
+const ROOM_EXTENSION = 24 * 60 * 60 * 1000;
 const SWEEP_BATCH = 50;
 
 function toRoom(row) {
@@ -19,10 +21,31 @@ function toRoom(row) {
 function getExpiredRooms(db, now = Date.now(), limit = SWEEP_BATCH) {
   return db
     .prepare(
-      "SELECT guild, channel, message, contest_channel FROM automod_logs WHERE contest_channel IS NOT NULL AND judged_at IS NOT NULL AND judged_at <= ? ORDER BY judged_at LIMIT ?",
+      "SELECT guild, channel, message, contest_channel FROM automod_logs WHERE contest_channel IS NOT NULL AND judged_at IS NOT NULL AND judged_at + room_extra <= ? ORDER BY judged_at + room_extra LIMIT ?",
     )
     .all(now - ROOM_LIFETIME, limit)
     .map(toRoom);
+}
+
+function getRoomsToRemind(db, now = Date.now(), limit = SWEEP_BATCH) {
+  return db
+    .prepare(
+      "SELECT guild, channel, message, contest_channel FROM automod_logs WHERE contest_channel IS NOT NULL AND judged_at IS NOT NULL AND room_reminded = 0 AND judged_at + room_extra <= ? AND judged_at + room_extra > ? ORDER BY judged_at + room_extra LIMIT ?",
+    )
+    .all(now - ROOM_LIFETIME + REMINDER_LEAD, now - ROOM_LIFETIME, limit)
+    .map(toRoom);
+}
+
+function markReminded(db, ref) {
+  db.prepare(
+    "UPDATE automod_logs SET room_reminded = 1 WHERE guild = ? AND channel = ? AND message = ?",
+  ).run(ref.guildId, ref.channelId, ref.messageId);
+}
+
+function extendRoom(db, ref) {
+  db.prepare(
+    "UPDATE automod_logs SET room_extra = room_extra + ?, room_reminded = 0 WHERE guild = ? AND channel = ? AND message = ?",
+  ).run(ROOM_EXTENSION, ref.guildId, ref.channelId, ref.messageId);
 }
 
 function getMemberRooms(db, guildId, userId) {
@@ -66,8 +89,13 @@ async function closeMemberRooms(bot, guildId, userId) {
 
 module.exports = {
   ROOM_LIFETIME,
+  REMINDER_LEAD,
+  ROOM_EXTENSION,
   SWEEP_BATCH,
   getExpiredRooms,
+  getRoomsToRemind,
+  markReminded,
+  extendRoom,
   getMemberRooms,
   closeRoom,
   sweepRooms,

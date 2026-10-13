@@ -10,7 +10,12 @@ const {
 } = require("../utils/automodLogs");
 const {
   ROOM_LIFETIME,
+  REMINDER_LEAD,
+  ROOM_EXTENSION,
   getExpiredRooms,
+  getRoomsToRemind,
+  markReminded,
+  extendRoom,
   getMemberRooms,
   closeRoom,
   sweepRooms,
@@ -153,5 +158,41 @@ test("guildMemberRemove closes the room of a leaving member", async () => {
   assert.deepEqual(
     bot.deleted.map((entry) => entry.id),
     ["room-mine"],
+  );
+});
+
+test("getRoomsToRemind returns rooms within the last hour before expiry", () => {
+  const db = createDatabase();
+  room(db, "soon", { judgedAt: NOW - ROOM_LIFETIME + REMINDER_LEAD });
+  room(db, "late", { judgedAt: NOW - ROOM_LIFETIME + 1 });
+  room(db, "far", { judgedAt: NOW - ROOM_LIFETIME + REMINDER_LEAD + 1 });
+  room(db, "expired", { judgedAt: NOW - ROOM_LIFETIME });
+  room(db, "open");
+  assert.deepEqual(
+    getRoomsToRemind(db, NOW)
+      .map((entry) => entry.contestChannel)
+      .sort(),
+    ["room-late", "room-soon"],
+  );
+});
+
+test("markReminded stops a room from being reminded twice", () => {
+  const db = createDatabase();
+  const ref = room(db, "a", { judgedAt: NOW - ROOM_LIFETIME + 1 });
+  markReminded(db, ref);
+  assert.equal(getRoomsToRemind(db, NOW).length, 0);
+});
+
+test("extendRoom delays expiry and allows a new reminder", () => {
+  const db = createDatabase();
+  const ref = room(db, "a", { judgedAt: NOW - ROOM_LIFETIME + 1 });
+  markReminded(db, ref);
+  extendRoom(db, ref);
+  assert.equal(getExpiredRooms(db, NOW + ROOM_LIFETIME - 2).length, 0);
+  assert.equal(getExpiredRooms(db, NOW + ROOM_LIFETIME + 1).length, 1);
+  assert.equal(getRoomsToRemind(db, NOW).length, 0);
+  assert.equal(
+    getRoomsToRemind(db, NOW + ROOM_EXTENSION).length,
+    1,
   );
 });
