@@ -299,3 +299,20 @@ test("respondToRaid forgets the handled members when calm returns", async () => 
 
   assert.equal(calls.length, 2);
 });
+
+test(
+  "two simultaneous raid responses act once per member",
+  { todo: true },
+  async () => {
+    const { bot, guild, calls, settings } = createFixture({
+      raid: { alertAction: "timeout" },
+    });
+    const [first, second] = await Promise.all([
+      respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
+      respondToRaid(bot, guild, settings, raid("alert", ["a"], ["b"])),
+    ]);
+
+    assert.equal(calls.length, 2);
+    assert.equal(first.done.length + second.done.length, 2);
+  },
+);
