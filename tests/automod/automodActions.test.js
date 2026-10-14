@@ -1,0 +1,601 @@
+const test = require("node:test");
+const assert = require("node:assert/strict");
+const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
+const { RULE_NAMES } = require("../../utils/automod/automodRules");
+const {
+  updateAutomodSettings,
+} = require("../../utils/automod/automodSettings");
+const {
+  addLog,
+  getLog,
+  markContested,
+} = require("../../utils/automod/automodLogs");
+const {
+  ACTION_ID,
+  buildLogMessage,
+} = require("../../utils/automod/automodLogView");
+const { contestedPayload } = require("../../utils/automod/automodContest");
+const {
+  ACTIONS,
+  parseAction,
+  missingPermission,
+  banConfirmation,
+} = require("../../utils/automod/automodActions");
+const { buildContestMessage } = require("../../utils/automod/automodJustice");
+const { setContestChannel } = require("../../utils/automod/automodLogs");
+const { ROOM_EXTENSION } = require("../../utils/automod/automodRooms");
+const component = require("../../components/automod-action");
+const { createDatabase } = require("../helpers/database");
+
+const { ManageMessages, ModerateMembers, BanMembers } = PermissionFlagsBits;
+const ALL = [ManageMessages, ModerateMembers, BanMembers];
+
+function insertWarning(db, id = "WARN-1", guild = "g", user = "u") {
+  db.prepare(
+    "INSERT INTO warns (id, guild, user, author, reason, date) VALUES (?, ?, ?, 'bot', 'x', 1)",
+  ).run(id, guild, user);
+}
+
+function countWarns(db) {
+  return db.prepare("SELECT COUNT(*) AS n FROM warns").get().n;
+}
+
+function fakeMember(id, flags = [], position = 1, extra = {}) {
+  return {
+    id,
+    guild: { ownerId: "owner" },
+    permissions: new PermissionsBitField(flags),
+    roles: {
+      highest: {
+        position,
+        comparePositionTo(other) {
+          return this.position - other.position;
+        },
+      },
+    },
+    moderatable: true,
+    bannable: true,
+    timeout: async () => {},
+    ...extra,
+  };
+}
+
+/** @returns {any} */
+function logMessage(changes) {
+  const message = buildLogMessage({
+    ruleKey: "spam",
+    ruleName: RULE_NAMES.spam,
+    userId: "u",
+    channelId: "c",
+    warningTotal: 1,
+    warningId: "WARN-1",
+    messageId: "m",
+    content: "texte",
+    date: 1_000_000,
+    ...changes,
+  });
+  return { id: "LOG", components: message.components };
+}
+
+/** @param {any} [options] */
+function setup({
+  moderator,
+  target,
+  flags,
+  message = logMessage(),
+  room = false,
+} = {}) {
+  const db = createDatabase();
+  const calls = {
+    updates: [],
+    replies: [],
+    follow: [],
+    bans: [],
+    deleted: [],
+    dms: [],
+    logEdits: [],
+    roomDeleted: [],
+  };
+  const timeouts = [];
+  const member =
+    target === null
+      ? null
+      : (target ??
+        fakeMember("u", [], 1, {
+          timeout: async (...args) => timeouts.push(args),
+        }));
+  const bot = /** @type {any} */ ({
+    utils: { createId: async (prefix) => `${prefix}-9` },
+    users: {
+      fetch: async () => ({
+        send: async (text) => calls.dms.push(JSON.stringify(text)),
+      }),
+    },
+  });
+  const interaction = /** @type {any} */ ({
+    isButton: () => true,
+    user: { id: "mod", tag: "mod#0" },
+    member: moderator ?? fakeMember("mod", ALL, 5),
+    memberPermissions: new PermissionsBitField(flags ?? ALL),
+    message,
+    channel: { messages: { fetch: async () => message } },
+    guildId: "g",
+    channelId: "log",
+    guild: {
+      id: "g",
+      name: "Serveur",
+      members: {
+        fetch: async () => member ?? Promise.reject(new Error("unknown")),
+      },
+      channels: {
+        fetch: async () => ({
+          messages: { delete: async (id) => calls.deleted.push(id) },
+        }),
+      },
+      bans: { create: async (...args) => calls.bans.push(args) },
+    },
+    update: async (payload) => calls.updates.push(payload),
+    reply: async (payload) => calls.replies.push(payload),
+    followUp: async (payload) => calls.follow.push(payload),
+    deferUpdate: async () => calls.updates.push("deferred"),
+    editReply: async (payload) => calls.updates.push(payload),
+  });
+  if (room) {
+    const log = {
+      id: "LOG",
+      components: logMessage().components,
+      edit: async (payload) => calls.logEdits.push(payload),
+    };
+    interaction.channelId = "room";
+    interaction.channel = {
+      messages: { fetch: async () => message },
+      delete: async () => calls.roomDeleted.push(true),
+    };
+    interaction.guild.channels.fetch = async () => ({
+      isTextBased: () => true,
+      messages: { fetch: async () => log },
+    });
+  }
+  const run = (...params) => component.run(bot, interaction, params, db);
+  return { db, calls, timeouts, run, message };
+}
+
+test("every action needs its permission, and cancelling needs none", () => {
+  assert.equal(ACTIONS.remove.permission, ManageMessages);
+  assert.equal(ACTIONS.warn.permission, ManageMessages);
+  assert.equal(ACTIONS.delete.permission, ManageMessages);
+  assert.equal(ACTIONS.close.permission, ManageMessages);
+  assert.equal(ACTIONS.timeout.permission, ModerateMembers);
+  assert.equal(ACTIONS.accept.permission, ManageMessages);
+  assert.equal(ACTIONS.refuse.permission, ManageMessages);
+  assert.equal(ACTIONS.ban.permission, BanMembers);
+  assert.equal(ACTIONS.banok.permission, BanMembers);
+  assert.equal(ACTIONS.bancancel.permission, null);
+});
+
+test("parseAction splits the action from its params", () => {
+  assert.deepEqual(parseAction(["remove", "u", "WARN-1"]), {
+    action: "remove",
+    args: ["u", "WARN-1"],
+  });
+  assert.equal(parseAction(["nope", "u"]), null);
+  assert.equal(parseAction(["toString"]), null);
+  assert.equal(parseAction([]), null);
+});
+
+test("missingPermission names the permission that is missing", () => {
+  const none = new PermissionsBitField([]);
+  assert.match(missingPermission("remove", none), /Gérer les messages/);
+  assert.match(missingPermission("timeout", none), /Modérer les membres/);
+  assert.match(missingPermission("ban", none), /Bannir des membres/);
+  assert.equal(missingPermission("bancancel", none), null);
+  assert.equal(
+    missingPermission("ban", new PermissionsBitField([BanMembers])),
+    null,
+  );
+});
+
+test("banConfirmation is an ephemeral prompt with confirm and cancel", () => {
+  const prompt = banConfirmation("u", "LOG");
+  const row = prompt.components[0].toJSON();
+  assert.deepEqual(
+    /** @type {any[]} */ (row.components).map((button) => button.custom_id),
+    [`${ACTION_ID}:banok:u:LOG`, `${ACTION_ID}:bancancel`],
+  );
+  assert.match(prompt.content, /<@u>/);
+  assert.ok(prompt.flags);
+});
+
+test("a click without the permission is refused and changes nothing", async () => {
+  const { db, calls, run } = setup({ flags: [] });
+  insertWarning(db);
+  await run("remove", "u", "WARN-1");
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /Gérer les messages/);
+  assert.equal(countWarns(db), 1);
+});
+
+test("an unknown button answers that it is no longer active", async () => {
+  const { calls, run } = setup();
+  await run("nope");
+  assert.match(calls.replies[0].content, /plus actif/);
+});
+
+test("remove deletes the warning and marks the log as handled", async () => {
+  const { db, calls, run } = setup();
+  insertWarning(db);
+  await run("remove", "u", "WARN-1");
+  assert.equal(countWarns(db), 0);
+  const json = JSON.stringify(calls.updates[0].components[0]);
+  assert.match(json, /Traité par <@mod> : avertissement retiré/);
+  assert.doesNotMatch(json, /"type":1[,}]/);
+});
+
+test("close only marks the log as handled", async () => {
+  const { db, calls, run } = setup();
+  insertWarning(db);
+  await run("close");
+  assert.equal(countWarns(db), 1);
+  assert.match(JSON.stringify(calls.updates[0]), /: classé/);
+});
+
+test("warn adds a warning written by the moderator", async () => {
+  const message = logMessage({ observed: true, warningId: null });
+  const { db, calls, run } = setup({ message });
+  await run("warn", "u");
+  const row = db.prepare("SELECT * FROM warns").get();
+  assert.equal(row.author, "mod");
+  assert.equal(row.id, "WARN-9");
+  assert.equal(calls.dms.length, 1);
+  assert.match(JSON.stringify(calls.updates[0]), /avertissement ajouté/);
+});
+
+test("delete removes the offending message", async () => {
+  const message = logMessage({ observed: true });
+  const { calls, run } = setup({ message });
+  await run("delete", "c", "m");
+  assert.deepEqual(calls.deleted, ["m"]);
+  assert.match(JSON.stringify(calls.updates[0]), /message supprimé/);
+});
+
+test("timeout uses the escalation duration of the server", async () => {
+  const { db, calls, timeouts, run } = setup();
+  updateAutomodSettings(db, "g", { escalationMinutes: 15 }, "admin");
+  await run("timeout", "u");
+  assert.equal(timeouts[0][0], 15 * 60 * 1000);
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+});
+
+test("timeout refuses a member who is gone or out of reach", async () => {
+  const gone = setup({ target: null });
+  await gone.run("timeout", "u");
+  assert.equal(gone.calls.updates.length, 0);
+  assert.match(gone.calls.replies[0].content, /pas sur le serveur/);
+
+  const target = fakeMember("u", [], 1, { moderatable: false });
+  const out = setup({ target });
+  await out.run("timeout", "u");
+  assert.equal(out.calls.updates.length, 0);
+  assert.match(out.calls.replies[0].content, /Je ne peux pas/);
+});
+
+test("a moderator cannot act on someone of equal or higher rank", async () => {
+  const target = fakeMember("u", ALL, 5);
+  const { db, calls, run } = setup({ target });
+  insertWarning(db);
+  await run("remove", "u", "WARN-1");
+  await run("warn", "u");
+  await run("timeout", "u");
+  await run("ban", "u");
+  assert.equal(calls.updates.length, 0);
+  assert.equal(calls.replies.length, 4);
+  assert.match(calls.replies[0].content, /Tu ne peux pas/);
+  assert.equal(countWarns(db), 1);
+});
+
+test("ban asks for a confirmation before doing anything", async () => {
+  const { calls, run } = setup();
+  await run("ban", "u");
+  assert.equal(calls.bans.length, 0);
+  assert.equal(calls.updates.length, 0);
+  assert.equal(
+    calls.replies[0].components[0].toJSON().components[0].custom_id,
+    `${ACTION_ID}:banok:u:LOG`,
+  );
+});
+
+test("confirming the ban bans the member and marks the log", async () => {
+  const { calls, run, message } = setup();
+  message.edit = async (payload) => calls.updates.push(payload);
+  await run("banok", "u", "LOG");
+  assert.equal(calls.bans.length, 1);
+  assert.equal(calls.bans[0][0], "u");
+  assert.match(JSON.stringify(calls.updates[1]), /Traité par <@mod> : banni/);
+  assert.match(calls.updates[2].content, /banni/);
+});
+
+test("confirming the ban twice bans only once", async () => {
+  const { calls, run, message } = setup();
+  message.edit = async (payload) => {
+    calls.updates.push(payload);
+    message.components = [{ toJSON: () => payload.components[0] }];
+  };
+  await run("banok", "u", "LOG");
+  await run("banok", "u", "LOG");
+  assert.equal(calls.bans.length, 1);
+  assert.match(calls.updates.at(-1).content, /déjà été traité/);
+});
+
+test("cancelling the ban leaves the log alone", async () => {
+  const { calls, run } = setup({ flags: [] });
+  await run("bancancel");
+  assert.equal(calls.bans.length, 0);
+  assert.match(calls.updates[0].content, /annulé/);
+});
+
+const REF = { guildId: "g", channelId: "log", messageId: "LOG" };
+
+function contested({ timeoutUntil = null, contest = true } = {}) {
+  const payload = contestedPayload(logMessage().components[0].toJSON(), {
+    reason: "faux positif",
+  });
+  const message = {
+    id: "LOG",
+    components: [{ toJSON: () => payload.components[0] }],
+  };
+  return { message, timeoutUntil, contest };
+}
+
+const FUTURE = Date.now() + 3_600_000;
+
+function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
+  const { message } = contested();
+  const timeouts = [];
+  const target = fakeMember("u", [], 1, {
+    communicationDisabledUntilTimestamp: memberUntil,
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const context = setup({ message, target });
+  insertWarning(context.db);
+  if (timeoutUntil !== null)
+    context.db
+      .prepare("UPDATE warns SET sanction = 'timeout', timeout_until = ?")
+      .run(timeoutUntil);
+  addLog(context.db, { ...REF, userId: "u", date: 1_000 });
+  markContested(context.db, REF, 2_000);
+  return { ...context, timeouts };
+}
+
+test("accepting a contest removes the warning and tells the member", async () => {
+  const { db, calls, run } = setupContest();
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 0);
+  assert.equal(getLog(db, REF).contestStatus, "accepted");
+  assert.match(
+    JSON.stringify(calls.updates[0]),
+    /Traité par <@mod> : contestation acceptée/,
+  );
+  assert.match(calls.dms[0], /acceptée/);
+});
+
+test("accepting lifts the timeout Tsuki set", async () => {
+  const { calls, timeouts, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(timeouts[0][0], null);
+  assert.match(calls.dms[0], /sourdine est levée/);
+});
+
+test("accepting keeps a timeout set by hand", async () => {
+  const { calls, timeouts, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE + 1,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(timeouts.length, 0);
+  assert.doesNotMatch(calls.dms[0], /sourdine/);
+});
+
+test("accepting without a warning only settles the contest", async () => {
+  const { db, run } = setupContest();
+  await run("accept", "u", "-");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "accepted");
+});
+
+test("refusing a contest keeps the warning", async () => {
+  const { db, calls, timeouts, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+  });
+  await run("refuse", "u");
+  assert.equal(countWarns(db), 1);
+  assert.equal(timeouts.length, 0);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.match(calls.dms[0], /refusée/);
+  assert.match(JSON.stringify(calls.updates[0]), /contestation refusée/);
+});
+
+test("a contest already settled cannot be settled again", async () => {
+  const { db, calls, run } = setupContest();
+  await run("refuse", "u");
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.match(calls.replies.at(-1).content, /déjà été traitée/);
+});
+
+test("a contest review respects the hierarchy", async () => {
+  const message = contested().message;
+  const strong = setup({
+    message,
+    target: fakeMember("u", ALL, 5),
+  });
+  insertWarning(strong.db);
+  addLog(strong.db, { ...REF, userId: "u", date: 1_000 });
+  markContested(strong.db, REF, 2_000);
+  await strong.run("accept", "u", "WARN-1");
+  assert.equal(countWarns(strong.db), 1);
+  assert.match(strong.calls.replies[0].content, /Tu ne peux pas modérer/);
+});
+
+test("banning from a contest works like the other bans", async () => {
+  const { calls, run } = setupContest();
+  await run("ban", "u");
+  assert.match(JSON.stringify(calls.replies[0]), /Bannir <@u>/);
+});
+
+function setupRoom({ timeoutUntil = null, memberUntil = null } = {}) {
+  const message = {
+    id: "ROOM",
+    components: buildContestMessage({
+      userId: "u",
+      rule: "Spam",
+      warningId: "WARN-1",
+      sanction: "Aucune",
+      reason: null,
+      blocked: "texte",
+    }).components,
+  };
+  const timeouts = [];
+  const target = fakeMember("u", [], 1, {
+    communicationDisabledUntilTimestamp: memberUntil,
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const context = setup({ message, target, room: true });
+  insertWarning(context.db);
+  if (timeoutUntil !== null)
+    context.db
+      .prepare("UPDATE warns SET sanction = 'timeout', timeout_until = ?")
+      .run(timeoutUntil);
+  addLog(context.db, { ...REF, userId: "u", date: 1_000 });
+  markContested(context.db, REF, 2_000);
+  setContestChannel(context.db, REF, "room");
+  return { ...context, timeouts };
+}
+
+test("accepting in the room writes the verdict there and in the log", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 0);
+  const log = getLog(db, REF);
+  assert.equal(log.contestStatus, "accepted");
+  assert.equal(log.judgedBy, "mod");
+  assert.ok(log.judgedAt !== null);
+  const room = JSON.stringify(calls.updates[0]);
+  assert.match(room, /Traité par <@mod> : contestation acceptée/);
+  assert.match(room, /closeroom/);
+  assert.doesNotMatch(room, /automod-action:accept/);
+  assert.match(
+    JSON.stringify(calls.logEdits[0]),
+    /Traité par <@mod> : contestation acceptée/,
+  );
+  assert.match(calls.dms[0], /acceptée/);
+});
+
+test("refusing in the room keeps the warning and records the judge", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("refuse", "u");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.equal(getLog(db, REF).judgedBy, "mod");
+  assert.match(JSON.stringify(calls.updates[0]), /contestation refusée/);
+  assert.match(calls.dms[0], /refusée/);
+});
+
+test("a contest judged in the room cannot be judged again", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("refuse", "u");
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "refused");
+  assert.match(calls.replies.at(-1).content, /déjà été traitée/);
+});
+
+test("the room cannot be closed before the verdict", async () => {
+  const { calls, run } = setupRoom();
+  await run("closeroom");
+  assert.equal(calls.roomDeleted.length, 0);
+  assert.match(calls.replies[0].content, /pas encore jugée/);
+});
+
+test("closing the room after the verdict deletes it", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("refuse", "u");
+  await run("closeroom");
+  assert.equal(calls.roomDeleted.length, 1);
+  assert.equal(getLog(db, REF).contestChannel, null);
+  assert.equal(getLog(db, REF).judgedBy, "mod");
+});
+
+test("closing needs the moderator permission and a known room", async () => {
+  const denied = setupRoom();
+  await denied.run("refuse", "u");
+  const none = setup({ flags: [] });
+  await none.run("closeroom");
+  assert.match(none.calls.replies[0].content, /Gérer les messages/);
+
+  const stray = setup();
+  await stray.run("closeroom");
+  assert.match(stray.calls.replies[0].content, /plus actif/);
+  assert.equal(stray.calls.roomDeleted.length, 0);
+});
+
+test("banning from the room bans, records the judge and deletes the room", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("banok", "u", "ROOM");
+  assert.equal(calls.bans.length, 1);
+  assert.equal(calls.roomDeleted.length, 1);
+  assert.equal(getLog(db, REF).judgedBy, "mod");
+  assert.equal(getLog(db, REF).contestChannel, null);
+  assert.match(JSON.stringify(calls.logEdits[0]), /Traité par <@mod> : banni/);
+});
+
+test("closeroom is a moderator action", () => {
+  assert.equal(ACTIONS.closeroom.permission, ManageMessages);
+});
+
+test("extending the room postpones its deletion after the verdict", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("refuse", "u");
+  await run("extendroom");
+  assert.equal(
+    db.prepare("SELECT room_extra FROM automod_logs").get().room_extra,
+    ROOM_EXTENSION,
+  );
+  assert.equal(calls.roomDeleted.length, 0);
+  assert.match(JSON.stringify(calls.updates.at(-1)), /repoussée de 24 h/);
+});
+
+test("the room cannot be extended before the verdict or outside a room", async () => {
+  const { db, calls, run } = setupRoom();
+  await run("extendroom");
+  assert.match(calls.replies[0].content, /pas encore jugée/);
+  assert.equal(
+    db.prepare("SELECT room_extra FROM automod_logs").get().room_extra,
+    0,
+  );
+
+  const stray = setup();
+  await stray.run("extendroom");
+  assert.match(stray.calls.replies[0].content, /plus actif/);
+});
+
+test("extendroom is a moderator action", () => {
+  assert.equal(ACTIONS.extendroom.permission, ManageMessages);
+});
+
+test("a failed action says why, and the message is still closed", async () => {
+  const target = fakeMember("u", [], 1, {
+    timeout: async () => {
+      throw new Error("Missing Permissions");
+    },
+  });
+  const { calls, run } = setup({ target });
+  await run("timeout", "u");
+
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+  assert.match(calls.follow[0].content, /permissions ou hiérarchie/);
+});
