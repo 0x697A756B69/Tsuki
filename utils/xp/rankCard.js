@@ -1,7 +1,7 @@
 const path = require("node:path");
 const { createCanvas, loadImage, GlobalFonts } = require("@napi-rs/canvas");
 
-const assets = path.join(__dirname, "..", "assets");
+const assets = path.join(__dirname, "..", "..", "assets");
 const FONT = "Bricolage";
 const WIDTH = 1500;
 const HEIGHT = 500;

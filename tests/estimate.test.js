@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { xpPerMinute, minutesToLevel } = require("../utils/estimate");
+const { xpPerMinute, minutesToLevel } = require("../utils/xp/estimate");
 
 const defaults = { xpMin: 10, xpMax: 20, cooldown: 60 };
 

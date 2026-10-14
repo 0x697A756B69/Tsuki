@@ -8,9 +8,9 @@ const {
   syncRewardRoles,
   updateRewardRoles,
   resyncRewardRoles,
-} = require("../utils/rewards");
-const { addXp } = require("../utils/xp");
-const { totalXpForLevel } = require("../utils/levels");
+} = require("../utils/xp/rewards");
+const { addXp } = require("../utils/xp/xp");
+const { totalXpForLevel } = require("../utils/xp/levels");
 const { createDatabase } = require("./helpers/database");
 
 const REWARDS = [

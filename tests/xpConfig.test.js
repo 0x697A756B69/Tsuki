@@ -6,7 +6,7 @@ const {
   parseCardAccent,
   parseRewardLevel,
   rewardRoleError,
-} = require("../utils/xpConfig");
+} = require("../utils/xp/xpConfig");
 
 test("parseGains reads valid values", () => {
   assert.deepEqual(parseGains({ min: "15", max: " 25 ", cooldown: "30" }), {

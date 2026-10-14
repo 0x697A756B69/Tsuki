@@ -14,11 +14,11 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId } = require("./core/customId");
+const { buildCustomId } = require("../core/customId");
 const { formatAnnouncement } = require("./announce");
 const { rewardRoleFor } = require("./rewards");
 const { xpPerMinute, minutesToLevel } = require("./estimate");
-const { formatDuration } = require("./core/formatDuration");
+const { formatDuration } = require("../core/formatDuration");
 
 const ACCENT_COLOR = 0x7f77dd;
 const PREVIEW_LEVEL = 5;

@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { voiceEligibleMembers } = require("../utils/voice");
+const { voiceEligibleMembers } = require("../utils/xp/voice");
 
 function member(id, options = {}) {
   return {

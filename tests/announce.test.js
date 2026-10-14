@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { formatAnnouncement, announceLevelUp } = require("../utils/announce");
+const { formatAnnouncement, announceLevelUp } = require("../utils/xp/announce");
 
 function fakeChannel() {
   const sent = [];

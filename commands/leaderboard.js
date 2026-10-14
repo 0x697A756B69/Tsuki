@@ -1,5 +1,5 @@
 const defineCommand = require("../utils/core/defineCommand");
-const { buildLeaderboardMessage } = require("../utils/leaderboardCommand");
+const { buildLeaderboardMessage } = require("../utils/xp/leaderboardCommand");
 
 module.exports = defineCommand({
   name: "leaderboard",

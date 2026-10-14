@@ -7,7 +7,7 @@ const {
   formatAdjustment,
   renderResetConfirm,
   formatResetDone,
-} = require("../utils/xpAdmin");
+} = require("../utils/xp/xpAdmin");
 
 test("checkMember refuses missing members and bots", () => {
   assert.match(checkMember(null), /pas sur le serveur/);

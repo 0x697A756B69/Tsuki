@@ -1,11 +1,11 @@
 const { randomInt } = require("node:crypto");
-const { getSettings } = require("../utils/settings");
-const { addXp } = require("../utils/xp");
-const { createMessageXpTracker } = require("../utils/messageXp");
-const { getModifiers, computeMultiplier } = require("../utils/modifiers");
-const { announceLevelUp } = require("../utils/announce");
-const { updateRewardRoles } = require("../utils/rewards");
-const { addMessage } = require("../utils/messageCount");
+const { getSettings } = require("../utils/xp/settings");
+const { addXp } = require("../utils/xp/xp");
+const { createMessageXpTracker } = require("../utils/xp/messageXp");
+const { getModifiers, computeMultiplier } = require("../utils/xp/modifiers");
+const { announceLevelUp } = require("../utils/xp/announce");
+const { updateRewardRoles } = require("../utils/xp/rewards");
+const { addMessage } = require("../utils/xp/messageCount");
 const { isContestChannel } = require("../utils/automodLogs");
 
 const tracker = createMessageXpTracker();

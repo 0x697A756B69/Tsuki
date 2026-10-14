@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   meaningfulText,
   createMessageXpTracker,
-} = require("../utils/messageXp");
+} = require("../utils/xp/messageXp");
 
 const MINUTE = 60 * 1000;
 

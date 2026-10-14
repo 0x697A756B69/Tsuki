@@ -8,7 +8,7 @@ const {
   getBarRatio,
   truncateText,
   fitFontSize,
-} = require("../utils/rankCard");
+} = require("../utils/xp/rankCard");
 
 function createAvatar() {
   const canvas = createCanvas(64, 64);

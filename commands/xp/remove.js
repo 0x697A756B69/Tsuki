@@ -1,12 +1,12 @@
 const { MessageFlags } = require("discord.js");
 const defineSubcommand = require("../../utils/core/defineSubcommand");
-const { addXp } = require("../../utils/xp");
-const { updateRewardRoles } = require("../../utils/rewards");
+const { addXp } = require("../../utils/xp/xp");
+const { updateRewardRoles } = require("../../utils/xp/rewards");
 const {
   checkMember,
   checkAmount,
   formatAdjustment,
-} = require("../../utils/xpAdmin");
+} = require("../../utils/xp/xpAdmin");
 
 module.exports = defineSubcommand({
   name: "retirer",

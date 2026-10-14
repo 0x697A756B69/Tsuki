@@ -5,7 +5,7 @@ const {
   ButtonStyle,
   StringSelectMenuBuilder,
 } = require("discord.js");
-const { buildCustomId } = require("./core/customId");
+const { buildCustomId } = require("../core/customId");
 const { getSettings } = require("./settings");
 const { getTopMembers, getTopChannels, getActivity } = require("./leaderboard");
 

@@ -1,4 +1,4 @@
-const { scanVoice } = require("../utils/voiceScan");
+const { scanVoice } = require("../utils/xp/voiceScan");
 const { purgeLogs } = require("../utils/automodLogs");
 const { sweepRooms, remindRooms } = require("../utils/automodRooms");
 const { sweepDeletedChannels } = require("../utils/core/channelCleanup");

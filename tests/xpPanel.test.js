@@ -18,7 +18,7 @@ const {
   renderResyncConfirm,
   renderResyncProgress,
   renderResyncReport,
-} = require("../utils/xpPanel");
+} = require("../utils/xp/xpPanel");
 
 const defaults = {
   announceMode: "current",

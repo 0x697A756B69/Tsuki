@@ -4,7 +4,7 @@ const {
   getModifiers,
   setModifier,
   computeMultiplier,
-} = require("../utils/modifiers");
+} = require("../utils/xp/modifiers");
 const { createDatabase } = require("./helpers/database");
 
 function modifiers({ role = {}, channel = {} } = {}) {

@@ -1,12 +1,12 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { createCanvas } = require("@napi-rs/canvas");
-const { addXp } = require("../utils/xp");
+const { addXp } = require("../utils/xp/xp");
 const {
   getRankCardData,
   formatNoXp,
   getCardColors,
-} = require("../utils/rankCommand");
+} = require("../utils/xp/rankCommand");
 const rank = require("../commands/rank");
 const r = require("../commands/r");
 const { createDatabase } = require("./helpers/database");

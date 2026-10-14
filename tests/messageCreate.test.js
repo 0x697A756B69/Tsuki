@@ -3,10 +3,10 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const messageCreate = require("../events/messageCreate");
-const { updateSettings } = require("../utils/settings");
-const { setModifier } = require("../utils/modifiers");
-const { setReward } = require("../utils/rewards");
-const { addXp } = require("../utils/xp");
+const { updateSettings } = require("../utils/xp/settings");
+const { setModifier } = require("../utils/xp/modifiers");
+const { setReward } = require("../utils/xp/rewards");
+const { addXp } = require("../utils/xp/xp");
 const { addLog, setContestChannel } = require("../utils/automodLogs");
 
 const granted = [];

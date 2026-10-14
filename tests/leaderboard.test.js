@@ -5,7 +5,7 @@ const {
   getTopMembers,
   getTopChannels,
   getActivity,
-} = require("../utils/leaderboard");
+} = require("../utils/xp/leaderboard");
 const { createDatabase } = require("./helpers/database");
 
 const NOW = new Date("2026-10-08T10:00:00Z");

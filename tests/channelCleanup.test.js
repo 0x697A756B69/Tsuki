@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { addMessage } = require("../utils/messageCount");
-const { setModifier, getModifiers } = require("../utils/modifiers");
+const { addMessage } = require("../utils/xp/messageCount");
+const { setModifier, getModifiers } = require("../utils/xp/modifiers");
 const {
   purgeChannel,
   findMissingChannels,

@@ -2,11 +2,11 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
-const { scanVoice } = require("../utils/voiceScan");
-const { updateSettings } = require("../utils/settings");
-const { setModifier } = require("../utils/modifiers");
-const { setReward } = require("../utils/rewards");
-const { addXp } = require("../utils/xp");
+const { scanVoice } = require("../utils/xp/voiceScan");
+const { updateSettings } = require("../utils/xp/settings");
+const { setModifier } = require("../utils/xp/modifiers");
+const { setReward } = require("../utils/xp/rewards");
+const { addXp } = require("../utils/xp/xp");
 
 const granted = [];
 const announced = [];

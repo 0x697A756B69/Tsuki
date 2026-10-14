@@ -15,7 +15,7 @@ const {
   previewReset,
   countRanked,
   getRank,
-} = require("../utils/xp");
+} = require("../utils/xp/xp");
 
 test("migrate converts the old xp table into total XP", () => {
   const db = new DatabaseSync(":memory:");

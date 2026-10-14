@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { addVoiceMinute } = require("../utils/voiceCount");
+const { addVoiceMinute } = require("../utils/xp/voiceCount");
 const { createDatabase } = require("./helpers/database");
 
 function rows(db) {

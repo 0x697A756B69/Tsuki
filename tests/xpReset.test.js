@@ -1,9 +1,9 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { PermissionFlagsBits } = require("discord.js");
-const { addXp, getTotalXp } = require("../utils/xp");
-const { setReward } = require("../utils/rewards");
-const { totalXpForLevel } = require("../utils/levels");
+const { addXp, getTotalXp } = require("../utils/xp/xp");
+const { setReward } = require("../utils/xp/rewards");
+const { totalXpForLevel } = require("../utils/xp/levels");
 const reset = require("../commands/xp/reset");
 const xpReset = require("../components/xp-reset");
 const { createDatabase } = require("./helpers/database");

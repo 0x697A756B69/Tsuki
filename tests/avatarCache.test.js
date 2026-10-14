@@ -5,7 +5,7 @@ const {
   MAX_ENTRIES,
   loadAvatar,
   clearAvatars,
-} = require("../utils/avatarCache");
+} = require("../utils/xp/avatarCache");
 
 function createLoader() {
   const calls = [];

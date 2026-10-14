@@ -4,7 +4,7 @@ const {
   xpToNextLevel,
   totalXpForLevel,
   getLevelProgress,
-} = require("../utils/levels");
+} = require("../utils/xp/levels");
 
 test("xpToNextLevel follows 5N² + 50N + 100", () => {
   assert.equal(xpToNextLevel(0), 100);

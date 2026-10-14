@@ -4,7 +4,7 @@ const {
   isPeriod,
   isType,
   buildLeaderboardMessage,
-} = require("../utils/leaderboardCommand");
+} = require("../utils/xp/leaderboardCommand");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });

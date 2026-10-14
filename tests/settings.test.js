@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { getSettings, updateSettings } = require("../utils/settings");
+const { getSettings, updateSettings } = require("../utils/xp/settings");
 const { createDatabase } = require("./helpers/database");
 
 test("getSettings returns the defaults for a new guild", () => {

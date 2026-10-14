@@ -3,7 +3,14 @@ const { createCanvas, loadImage } = require("@napi-rs/canvas");
 const { registerFonts, formatNumber, truncateText } = require("./rankCard");
 const { loadAvatar } = require("./avatarCache");
 
-const images = path.join(__dirname, "..", "assets", "images", "leaderboard");
+const images = path.join(
+  __dirname,
+  "..",
+  "..",
+  "assets",
+  "images",
+  "leaderboard",
+);
 const FONT = "Bricolage";
 const WIDTH = 1500;
 const HEIGHT = 1000;

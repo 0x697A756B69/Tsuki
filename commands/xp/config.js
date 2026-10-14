@@ -1,6 +1,6 @@
 const { MessageFlags } = require("discord.js");
 const defineSubcommand = require("../../utils/core/defineSubcommand");
-const { mainView } = require("../../utils/xpConfig");
+const { mainView } = require("../../utils/xp/xpConfig");
 
 module.exports = defineSubcommand({
   name: "config",

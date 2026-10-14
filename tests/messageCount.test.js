@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { addMessage } = require("../utils/messageCount");
+const { addMessage } = require("../utils/xp/messageCount");
 const { createDatabase } = require("./helpers/database");
 
 function rows(db) {

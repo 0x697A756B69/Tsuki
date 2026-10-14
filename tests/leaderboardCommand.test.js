@@ -3,7 +3,7 @@ const { ButtonStyle } = require("discord.js");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
-const { updateSettings } = require("../utils/settings");
+const { updateSettings } = require("../utils/xp/settings");
 const { parseCustomId } = require("../utils/core/customId");
 const {
   isPeriod,
@@ -12,7 +12,7 @@ const {
   resolveNames,
   buildLeaderboardControls,
   buildLeaderboardMessage,
-} = require("../utils/leaderboardCommand");
+} = require("../utils/xp/leaderboardCommand");
 const leaderboard = require("../commands/leaderboard");
 const lb = require("../commands/lb");
 const component = require("../components/leaderboard");

@@ -12,7 +12,7 @@ const {
   getActivityTitle,
   getPeriodLabel,
   getTypeLabel,
-} = require("../utils/leaderboardCard");
+} = require("../utils/xp/leaderboardCard");
 
 const members = Array.from({ length: 10 }, (_, index) => ({
   name: `member${index + 1}`,
