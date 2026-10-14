@@ -1,15 +1,15 @@
 const Discord = require("discord.js");
 const ms = require("ms");
-const { canModerate } = require("../utils/moderation/hierarchy");
+const { canModerate } = require("../../utils/moderation/hierarchy");
 const {
   timeoutNotice,
   sendNotice,
   closedDmLine,
-} = require("../utils/moderation/moderationNotice");
+} = require("../../utils/moderation/moderationNotice");
 
 const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "timeout",

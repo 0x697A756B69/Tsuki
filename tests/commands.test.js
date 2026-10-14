@@ -22,7 +22,11 @@ function args(group, subcommand) {
 }
 
 test("loads simple commands and folders", () => {
-  assert.deepEqual([...load().keys()].sort(), ["admin", "ping"]);
+  assert.deepEqual([...load().keys()].sort(), ["admin", "ping", "pong"]);
+});
+
+test("loads commands from a domain folder without an index", () => {
+  assert.equal(load().get("pong").name, "pong");
 });
 
 test("builds subcommands and groups", () => {

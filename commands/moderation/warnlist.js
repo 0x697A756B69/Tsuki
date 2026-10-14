@@ -1,9 +1,9 @@
 const Discord = require("discord.js");
-const { getAutomodSettings } = require("../utils/automod/automodSettings");
-const { listWarnings } = require("../utils/moderation/warnSanctions");
-const { warnlistView } = require("../utils/moderation/warnlistPanel");
+const { getAutomodSettings } = require("../../utils/automod/automodSettings");
+const { listWarnings } = require("../../utils/moderation/warnSanctions");
+const { warnlistView } = require("../../utils/moderation/warnlistPanel");
 
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "warnlist",

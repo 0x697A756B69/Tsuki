@@ -13,8 +13,8 @@ const {
   buildLeaderboardControls,
   buildLeaderboardMessage,
 } = require("../utils/xp/leaderboardCommand");
-const leaderboard = require("../commands/leaderboard");
-const lb = require("../commands/lb");
+const leaderboard = require("../commands/general/leaderboard");
+const lb = require("../commands/general/lb");
 const component = require("../components/leaderboard");
 
 const NOW = new Date("2026-10-08T10:00:00Z");

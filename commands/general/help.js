@@ -1,6 +1,6 @@
 const Discord = require("discord.js");
 
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "help",

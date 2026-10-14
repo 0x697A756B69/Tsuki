@@ -1,10 +1,10 @@
 const Discord = require("discord.js");
-const { canModerate } = require("../utils/moderation/hierarchy");
-const { issueWarning } = require("../utils/moderation/warnSanctions");
-const { describeStep } = require("../utils/moderation/warnLadder");
-const { closedDmLine } = require("../utils/moderation/moderationNotice");
+const { canModerate } = require("../../utils/moderation/hierarchy");
+const { issueWarning } = require("../../utils/moderation/warnSanctions");
+const { describeStep } = require("../../utils/moderation/warnLadder");
+const { closedDmLine } = require("../../utils/moderation/moderationNotice");
 
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "warn",

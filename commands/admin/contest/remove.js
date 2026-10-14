@@ -1,5 +1,5 @@
-const defineSubcommand = require("../../utils/core/defineSubcommand");
-const { runWitness } = require("../../utils/automod/automodWitnessRun");
+const defineSubcommand = require("../../../utils/core/defineSubcommand");
+const { runWitness } = require("../../../utils/automod/automodWitnessRun");
 
 module.exports = defineSubcommand({
   name: "remove",

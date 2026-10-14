@@ -7,8 +7,8 @@ const {
   formatNoXp,
   getCardColors,
 } = require("../utils/xp/rankCommand");
-const rank = require("../commands/rank");
-const r = require("../commands/r");
+const rank = require("../commands/general/rank");
+const r = require("../commands/general/r");
 const { createDatabase } = require("./helpers/database");
 
 test("getRankCardData gathers level, progress and position", () => {

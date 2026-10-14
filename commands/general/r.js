@@ -1,4 +1,4 @@
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 const rank = require("./rank");
 
 module.exports = defineCommand({

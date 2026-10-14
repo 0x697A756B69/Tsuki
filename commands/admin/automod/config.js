@@ -1,10 +1,10 @@
 const { MessageFlags } = require("discord.js");
-const defineSubcommand = require("../../utils/core/defineSubcommand");
-const { mainView } = require("../../utils/xp/xpConfig");
+const defineSubcommand = require("../../../utils/core/defineSubcommand");
+const { mainView } = require("../../../utils/automod/automodConfig");
 
 module.exports = defineSubcommand({
   name: "config",
-  description: "Ouvrir le panneau de réglages des niveaux.",
+  description: "Ouvrir le panneau de réglages de l'AutoMod.",
 
   async run(bot, interaction, args, db) {
     await interaction.reply({

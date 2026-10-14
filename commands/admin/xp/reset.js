@@ -1,7 +1,7 @@
 const { MessageFlags } = require("discord.js");
-const defineSubcommand = require("../../utils/core/defineSubcommand");
-const { previewReset } = require("../../utils/xp/xp");
-const { renderResetConfirm } = require("../../utils/xp/xpAdmin");
+const defineSubcommand = require("../../../utils/core/defineSubcommand");
+const { previewReset } = require("../../../utils/xp/xp");
+const { renderResetConfirm } = require("../../../utils/xp/xpAdmin");
 
 module.exports = defineSubcommand({
   name: "reset",

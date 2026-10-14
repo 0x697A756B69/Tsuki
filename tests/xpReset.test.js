@@ -4,7 +4,7 @@ const { PermissionFlagsBits } = require("discord.js");
 const { addXp, getTotalXp } = require("../utils/xp/xp");
 const { setReward } = require("../utils/xp/rewards");
 const { totalXpForLevel } = require("../utils/xp/levels");
-const reset = require("../commands/xp/reset");
+const reset = require("../commands/admin/xp/reset");
 const xpReset = require("../components/xp-reset");
 const { createDatabase } = require("./helpers/database");
 

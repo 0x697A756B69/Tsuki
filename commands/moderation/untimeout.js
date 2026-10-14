@@ -1,31 +1,31 @@
 const Discord = require("discord.js");
-const { canModerate } = require("../utils/moderation/hierarchy");
+const { canModerate } = require("../../utils/moderation/hierarchy");
 const {
-  banNotice,
+  untimeoutNotice,
   sendNotice,
   closedDmLine,
-} = require("../utils/moderation/moderationNotice");
+} = require("../../utils/moderation/moderationNotice");
 
-const defineCommand = require("../utils/core/defineCommand");
+const defineCommand = require("../../utils/core/defineCommand");
 
 module.exports = defineCommand({
-  name: "ban",
-  description: "Bannir un utilisateur avec une raison.",
-  permission: Discord.PermissionFlagsBits.BanMembers,
+  name: "untimeout",
+  description: "Lever l'exclusion temporaire d'un membre.",
+  permission: Discord.PermissionFlagsBits.ModerateMembers,
   category: "Modération",
   dm: false,
   options: [
     {
       type: "user",
       name: "membre",
-      description: "L'utilisateur à bannir.",
+      description: "Le membre à réintégrer.",
       required: true,
       autocomplete: false,
     },
     {
       type: "string",
       name: "raison",
-      description: "La raison du bannissement.",
+      description: "La raison de la levée.",
       required: false,
       autocomplete: false,
     },
@@ -37,42 +37,42 @@ module.exports = defineCommand({
     const reason = args.getString("raison") ?? "❌";
     const ephemeral = Discord.MessageFlags.Ephemeral;
 
-    if (message.user.id === user.id)
+    if (!member)
       return message.reply({
-        content: "Tu ne peux pas te bannir !",
+        content: "Ce membre n'est pas sur le serveur !",
         flags: ephemeral,
       });
-    if (member && !canModerate(message.member, member))
+    if (!member.isCommunicationDisabled())
       return message.reply({
-        content: "Tu ne peux pas bannir ce membre !",
+        content: "Ce membre n'est pas exclu temporairement !",
         flags: ephemeral,
       });
-    if (member && !member.bannable)
+    if (!canModerate(message.member, member))
       return message.reply({
-        content: "Je ne peux pas bannir ce membre !",
+        content: "Tu ne peux pas réintégrer ce membre !",
         flags: ephemeral,
       });
-    if (await message.guild.bans.fetch(user.id).catch(() => null))
+    if (!member.moderatable)
       return message.reply({
-        content: "Cet utilisateur est déjà banni(e) !",
+        content: "Je ne peux pas réintégrer ce membre !",
         flags: ephemeral,
       });
 
     await message.deferReply();
 
+    await member.timeout(null, reason);
+
     const delivered = await sendNotice(
       user,
-      banNotice({
+      untimeoutNotice({
         guildName: message.guild.name,
         reason,
         moderator: message.user.tag,
       }),
     );
 
-    await message.guild.bans.create(user.id, { reason });
-
     await message.editReply(
-      `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
+      `<:timeout:1035248378495381504> ${user} n'est plus exclu(e) temporairement.\n` +
         `> **Modérateur :** ${message.user}\n` +
         `> **Raison :** \`${reason}\`` +
         closedDmLine(delivered),
