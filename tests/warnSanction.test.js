@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { setLadder } = require("../utils/warnLadder");
+const { setLadder } = require("../utils/moderation/warnLadder");
 const {
   insertWarning,
   noteSanction,
@@ -16,7 +16,7 @@ const {
   issueWarning,
   retractWarning,
   warningSanction,
-} = require("../utils/warnSanctions");
+} = require("../utils/moderation/warnSanctions");
 const { createDatabase } = require("./helpers/database");
 
 const DAY = 24 * 60 * 60 * 1000;

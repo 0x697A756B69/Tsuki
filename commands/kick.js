@@ -1,5 +1,5 @@
 const Discord = require("discord.js");
-const { canModerate } = require("../utils/hierarchy");
+const { canModerate } = require("../utils/moderation/hierarchy");
 
 const defineCommand = require("../utils/core/defineCommand");
 

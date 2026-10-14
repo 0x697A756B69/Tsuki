@@ -1,8 +1,8 @@
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("./automodSettings");
-const { oncePerGuild } = require("./core/oncePerGuild");
+} = require("../automodSettings");
+const { oncePerGuild } = require("../core/oncePerGuild");
 
 const ROLE_NAME = "Muet";
 const REASON = "Tsuki : rôle muet";

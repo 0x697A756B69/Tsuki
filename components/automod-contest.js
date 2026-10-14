@@ -24,7 +24,7 @@ const {
   logSummary,
   buildContestMessage,
 } = require("../utils/automodJustice");
-const { warningSanction } = require("../utils/warnSanctions");
+const { warningSanction } = require("../utils/moderation/warnSanctions");
 
 async function openContestChannel(bot, guild, settings, details) {
   if (settings.justiceCategory === null) return null;

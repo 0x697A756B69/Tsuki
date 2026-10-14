@@ -1,4 +1,4 @@
-const transaction = require("./core/transaction");
+const transaction = require("../core/transaction");
 
 const DAY = 24 * 60 * 60 * 1000;
 const MAX_STEPS = 10;

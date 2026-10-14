@@ -12,7 +12,7 @@ const {
   expiresAt,
   formatDuration,
   describeStep,
-} = require("../utils/warnLadder");
+} = require("../utils/moderation/warnLadder");
 const { createDatabase } = require("./helpers/database");
 
 const DAY = 24 * 60 * 60 * 1000;

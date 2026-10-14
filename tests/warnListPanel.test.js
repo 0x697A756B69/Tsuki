@@ -3,7 +3,10 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { MessageFlags } = require("discord.js");
-const { insertWarning, noteSanction } = require("../utils/warnSanctions");
+const {
+  insertWarning,
+  noteSanction,
+} = require("../utils/moderation/warnSanctions");
 const {
   PAGE_SIZE,
   pageCount,
@@ -17,7 +20,7 @@ const {
   removedView,
   purgeView,
   purgedView,
-} = require("../utils/warnlistPanel");
+} = require("../utils/moderation/warnlistPanel");
 const component = require("../components/warnlist");
 
 const DAY = 24 * 60 * 60 * 1000;

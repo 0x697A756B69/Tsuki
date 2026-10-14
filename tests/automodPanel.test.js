@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { ChannelType, ComponentType } = require("discord.js");
-const { DEFAULT_LADDER } = require("../utils/warnLadder");
-const { DEFAULT_REASONS } = require("../utils/warnReasons");
+const { DEFAULT_LADDER } = require("../utils/moderation/warnLadder");
+const { DEFAULT_REASONS } = require("../utils/moderation/warnReasons");
 const {
   HOME_SECTIONS,
   describeLadder,

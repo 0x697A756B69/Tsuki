@@ -1,7 +1,7 @@
 const Discord = require("discord.js");
 const { getAutomodSettings } = require("../utils/automodSettings");
-const { listWarnings } = require("../utils/warnSanctions");
-const { warnlistView } = require("../utils/warnlistPanel");
+const { listWarnings } = require("../utils/moderation/warnSanctions");
+const { warnlistView } = require("../utils/moderation/warnlistPanel");
 
 const defineCommand = require("../utils/core/defineCommand");
 

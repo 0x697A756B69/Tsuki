@@ -6,7 +6,7 @@ const {
   expiresAt,
   countActiveWarnings,
 } = require("./warnLadder");
-const { getAutomodSettings } = require("./automodSettings");
+const { getAutomodSettings } = require("../automodSettings");
 const { warnNotice, sendNotice } = require("./moderationNotice");
 const { ensureMuteRole } = require("./muteRole");
 

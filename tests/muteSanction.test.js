@@ -6,7 +6,7 @@ const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("../utils/automodSettings");
-const { setLadder } = require("../utils/warnLadder");
+const { setLadder } = require("../utils/moderation/warnLadder");
 const {
   insertWarning,
   noteSanction,
@@ -17,7 +17,7 @@ const {
   liftSanction,
   enforceWarning,
   retractWarning,
-} = require("../utils/warnSanctions");
+} = require("../utils/moderation/warnSanctions");
 
 const MINUTE = 60 * 1000;
 const STEP = { sanction: "timeout", minutes: 10 };

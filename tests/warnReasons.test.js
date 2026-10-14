@@ -6,7 +6,7 @@ const {
   getReasons,
   setReasons,
   resetReasons,
-} = require("../utils/warnReasons");
+} = require("../utils/moderation/warnReasons");
 const { createDatabase } = require("./helpers/database");
 
 test("getReasons returns the default list for a new guild", () => {

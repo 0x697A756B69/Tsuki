@@ -17,7 +17,7 @@ const {
   announceClosedDm,
   CLOSED_DELETE_DELAY,
   CONTEST_DELETE_DELAY,
-} = require("../utils/moderationNotice");
+} = require("../utils/moderation/moderationNotice");
 
 const TIMEOUT_NEXT = { warns: 3, sanction: "timeout", minutes: 60 };
 
@@ -294,7 +294,7 @@ test("closedDmLine only speaks when the member was not reached", () => {
 });
 
 test("unwarnNotice is green and says what was lifted", () => {
-  const { unwarnNotice } = require("../utils/moderationNotice");
+  const { unwarnNotice } = require("../utils/moderation/moderationNotice");
   const one = unwarnNotice({
     guildName: "Serveur",
     moderator: "Izuki",

@@ -34,8 +34,12 @@ const {
   getReasons,
   setReasons,
   resetReasons,
-} = require("../utils/warnReasons");
-const { getLadder, setLadder, resetLadder } = require("../utils/warnLadder");
+} = require("../utils/moderation/warnReasons");
+const {
+  getLadder,
+  setLadder,
+  resetLadder,
+} = require("../utils/moderation/warnLadder");
 const { raidSectionView } = require("../utils/raid/raidSection");
 
 const REASON_COLUMNS = {

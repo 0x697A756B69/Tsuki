@@ -3,12 +3,15 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { insertWarning, noteSanction } = require("../utils/warnSanctions");
+const {
+  insertWarning,
+  noteSanction,
+} = require("../utils/moderation/warnSanctions");
 const {
   FIRST_WINDOW,
   expiredMutes,
   sweepMutes,
-} = require("../utils/muteSweep");
+} = require("../utils/moderation/muteSweep");
 
 const NOW = 1_700_000_000_000;
 const MINUTE = 60 * 1000;

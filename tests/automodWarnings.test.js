@@ -6,7 +6,7 @@ const migrate = require("../loaders/migrate");
 const { RULE_NAMES } = require("../utils/automodRules");
 const { getRuleKey, ruleReason } = require("../utils/automodWarnings");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { setLadder } = require("../utils/warnLadder");
+const { setLadder } = require("../utils/moderation/warnLadder");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
 
 const BOT = "bot";

@@ -1,4 +1,4 @@
-const transaction = require("./core/transaction");
+const transaction = require("../core/transaction");
 
 const DEFAULT_REASONS = [
   "Insultes",

@@ -1,6 +1,6 @@
 const { MessageFlags } = require("discord.js");
 const defineComponent = require("../utils/core/defineComponent");
-const { canModerate } = require("../utils/hierarchy");
+const { canModerate } = require("../utils/moderation/hierarchy");
 const {
   getLog,
   getLogByContestChannel,
@@ -22,8 +22,14 @@ const {
   missingPermission,
   banConfirmation,
 } = require("../utils/automodActions");
-const { issueWarning, retractWarning } = require("../utils/warnSanctions");
-const { verdictNotice, sendNotice } = require("../utils/moderationNotice");
+const {
+  issueWarning,
+  retractWarning,
+} = require("../utils/moderation/warnSanctions");
+const {
+  verdictNotice,
+  sendNotice,
+} = require("../utils/moderation/moderationNotice");
 const { describeFailure } = require("../utils/core/failure");
 
 const MEMBER_ACTIONS = [

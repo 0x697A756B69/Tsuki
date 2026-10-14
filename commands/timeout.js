@@ -1,11 +1,11 @@
 const Discord = require("discord.js");
 const ms = require("ms");
-const { canModerate } = require("../utils/hierarchy");
+const { canModerate } = require("../utils/moderation/hierarchy");
 const {
   timeoutNotice,
   sendNotice,
   closedDmLine,
-} = require("../utils/moderationNotice");
+} = require("../utils/moderation/moderationNotice");
 
 const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 

@@ -1,10 +1,16 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/core/defineComponent");
-const { canModerate } = require("../utils/hierarchy");
+const { canModerate } = require("../utils/moderation/hierarchy");
 const { getAutomodSettings } = require("../utils/automodSettings");
-const { unwarnNotice, sendNotice } = require("../utils/moderationNotice");
-const { sendRemovalLog } = require("../utils/warnRemovalLog");
-const { listWarnings, retractWarning } = require("../utils/warnSanctions");
+const {
+  unwarnNotice,
+  sendNotice,
+} = require("../utils/moderation/moderationNotice");
+const { sendRemovalLog } = require("../utils/moderation/warnRemovalLog");
+const {
+  listWarnings,
+  retractWarning,
+} = require("../utils/moderation/warnSanctions");
 const {
   maskOf,
   pickWarnings,
@@ -13,7 +19,7 @@ const {
   removedView,
   purgeView,
   purgedView,
-} = require("../utils/warnlistPanel");
+} = require("../utils/moderation/warnlistPanel");
 
 const ACTIONS = ["page", "select", "ok", "purge", "purgeok"];
 

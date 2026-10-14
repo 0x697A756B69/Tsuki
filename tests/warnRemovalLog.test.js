@@ -4,7 +4,7 @@ const { MessageFlags } = require("discord.js");
 const {
   removalLogMessage,
   sendRemovalLog,
-} = require("../utils/warnRemovalLog");
+} = require("../utils/moderation/warnRemovalLog");
 
 function content(message) {
   return message.components[0].toJSON().components[0].content;

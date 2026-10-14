@@ -4,7 +4,7 @@ const { sweepRooms, remindRooms } = require("../utils/automodRooms");
 const { sweepDeletedChannels } = require("../utils/core/channelCleanup");
 const { purgeRaidLogs } = require("../utils/raid/raidLog");
 const { sweepRaids } = require("../utils/raid/raidAlert");
-const { sweepMutes } = require("../utils/muteSweep");
+const { sweepMutes } = require("../utils/moderation/muteSweep");
 const { every } = require("../utils/core/every");
 
 const SCAN_INTERVAL = 60 * 1000;

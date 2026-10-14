@@ -11,7 +11,7 @@ const {
   denyMuteRole,
   uncoveredChannels,
   ensureMuteRole,
-} = require("../utils/muteRole");
+} = require("../utils/moderation/muteRole");
 const channelCreate = require("../events/channelCreate");
 
 function createChannel(id, { existing = [], failing = false } = {}) {
