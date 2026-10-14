@@ -1,5 +1,5 @@
 const { ActionRowBuilder, ButtonBuilder, ButtonStyle } = require("discord.js");
-const { buildCustomId } = require("./customId");
+const { buildCustomId } = require("./core/customId");
 
 function checkMember(member) {
   if (!member) return "Ce membre n'est pas sur le serveur.";

@@ -1,4 +1,4 @@
-const defineCommand = require("../utils/defineCommand");
+const defineCommand = require("../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "ping",

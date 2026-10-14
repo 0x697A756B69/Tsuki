@@ -1,6 +1,10 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { KINDS, describeFailure, summarizeCauses } = require("../utils/failure");
+const {
+  KINDS,
+  describeFailure,
+  summarizeCauses,
+} = require("../utils/core/failure");
 
 test("describeFailure recognises a permission or hierarchy refusal", () => {
   assert.equal(describeFailure({ code: 50013 }), KINDS.permissions);

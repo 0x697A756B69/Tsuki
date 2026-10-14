@@ -3,7 +3,7 @@ const { MINUTE } = require("./raidDetector");
 const { recordTier } = require("./raidLog");
 const { syncLockdown } = require("./raidLockdown");
 const { getEntry } = require("./raidWatch");
-const { describeFailure } = require("./failure");
+const { describeFailure } = require("./core/failure");
 
 const RELEASABLE = ["timeout", "quarantine"];
 

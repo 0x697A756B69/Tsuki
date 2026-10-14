@@ -1,4 +1,4 @@
-const transaction = require("./transaction");
+const transaction = require("./core/transaction");
 const { getLevelProgress } = require("./levels");
 
 function getRewards(db, guildId) {

@@ -1,8 +1,8 @@
 const { isSuspect } = require("./joinSignals");
 const { getRaidSettings, updateRaidSettings } = require("./raidSettings");
-const { oncePerGuild } = require("./oncePerGuild");
+const { oncePerGuild } = require("./core/oncePerGuild");
 const { getEntry } = require("./raidWatch");
-const { describeFailure } = require("./failure");
+const { describeFailure } = require("./core/failure");
 
 const MINUTE = 60 * 1000;
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
-const { defineSettings } = require("../utils/defineSettings");
+const { defineSettings } = require("../utils/core/defineSettings");
 
 const { get, update } = defineSettings("things", {
   label: ["label", "text"],

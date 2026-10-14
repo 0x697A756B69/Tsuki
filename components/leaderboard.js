@@ -1,5 +1,5 @@
 const { MessageFlags } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const {
   isPeriod,
   isType,

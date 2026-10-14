@@ -16,7 +16,7 @@ const {
   freeGroup,
   liftRaid,
 } = require("../utils/raidControl");
-const { KINDS } = require("../utils/failure");
+const { KINDS } = require("../utils/core/failure");
 
 const NOW = 1700000000000;
 

@@ -5,7 +5,7 @@ const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const migrate = require("../loaders/migrate");
 const { updateRaidSettings } = require("../utils/raidSettings");
 const { MINUTE } = require("../utils/raidDetector");
-const { parseCustomId } = require("../utils/customId");
+const { parseCustomId } = require("../utils/core/customId");
 const {
   RAID_ACTION_ID,
   RAID_ACTIONS,

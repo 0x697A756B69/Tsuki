@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { oncePerGuild } = require("../utils/oncePerGuild");
+const { oncePerGuild } = require("../utils/core/oncePerGuild");
 
 test("oncePerGuild shares one running task between callers", async () => {
   let runs = 0;

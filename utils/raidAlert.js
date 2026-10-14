@@ -11,7 +11,7 @@ const { getRaidSettings } = require("./raidSettings");
 const { MODE_LABELS, getLockdown, syncLockdown } = require("./raidLockdown");
 const { ACTION_LABELS } = require("./raidResponse");
 const { refreshRaid } = require("./raidWatch");
-const { KINDS, summarizeCauses } = require("./failure");
+const { KINDS, summarizeCauses } = require("./core/failure");
 
 const TITLES = {
   calm: "Retour au calme",

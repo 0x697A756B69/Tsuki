@@ -1,4 +1,4 @@
-const defineComponent = require("../../../utils/defineComponent");
+const defineComponent = require("../../../utils/core/defineComponent");
 
 module.exports = defineComponent({
   id: "echo",

@@ -12,7 +12,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId } = require("./customId");
+const { buildCustomId } = require("./core/customId");
 const { SIGNAL_LABELS } = require("./joinSignals");
 const { enabledSignals } = require("./raidConfig");
 

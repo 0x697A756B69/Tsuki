@@ -1,5 +1,5 @@
 const { MessageFlags } = require("discord.js");
-const defineSubcommand = require("../../utils/defineSubcommand");
+const defineSubcommand = require("../../utils/core/defineSubcommand");
 const { previewReset } = require("../../utils/xp");
 const { renderResetConfirm } = require("../../utils/xpAdmin");
 

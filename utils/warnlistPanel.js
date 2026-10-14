@@ -8,7 +8,7 @@ const {
   StringSelectMenuBuilder,
   TextDisplayBuilder,
 } = require("discord.js");
-const { buildCustomId } = require("./customId");
+const { buildCustomId } = require("./core/customId");
 const { closedDmLine } = require("./moderationNotice");
 
 const ACCENT_COLOR = 0x7f77dd;

@@ -4,7 +4,7 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { updateSettings } = require("../utils/settings");
-const { parseCustomId } = require("../utils/customId");
+const { parseCustomId } = require("../utils/core/customId");
 const {
   isPeriod,
   isType,

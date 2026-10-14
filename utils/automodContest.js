@@ -11,7 +11,7 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId, parseCustomId } = require("./customId");
+const { buildCustomId, parseCustomId } = require("./core/customId");
 const { ACTION_ID } = require("./automodLogView");
 
 const CONTEST_ID = "automod-contest";

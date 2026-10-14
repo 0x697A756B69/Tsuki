@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { formatDuration } = require("../utils/formatDuration");
+const { formatDuration } = require("../utils/core/formatDuration");
 
 test("formatDuration picks a readable unit", () => {
   assert.equal(formatDuration(0.2), "1 min");

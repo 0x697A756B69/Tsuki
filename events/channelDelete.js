@@ -1,4 +1,4 @@
-const { purgeChannel } = require("../utils/channelCleanup");
+const { purgeChannel } = require("../utils/core/channelCleanup");
 
 module.exports = async (bot, channel) => {
   if (!channel.guildId) return;

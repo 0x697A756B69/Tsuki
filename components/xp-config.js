@@ -1,5 +1,5 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const { getSettings, updateSettings } = require("../utils/settings");
 const { getModifiers, setModifier } = require("../utils/modifiers");
 const {

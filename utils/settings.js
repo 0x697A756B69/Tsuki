@@ -1,4 +1,4 @@
-const { defineSettings } = require("./defineSettings");
+const { defineSettings } = require("./core/defineSettings");
 
 const { get, update } = defineSettings("guild_settings", {
   announceMode: ["announce_mode", "text"],

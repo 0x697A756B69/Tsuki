@@ -1,5 +1,5 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const { previewReset, resetXp } = require("../utils/xp");
 const { getLevelProgress } = require("../utils/levels");
 const { formatResetDone } = require("../utils/xpAdmin");

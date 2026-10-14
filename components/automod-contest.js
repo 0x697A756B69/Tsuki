@@ -1,5 +1,5 @@
 const { ChannelType } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const { getAutomodSettings } = require("../utils/automodSettings");
 const {
   getLog,

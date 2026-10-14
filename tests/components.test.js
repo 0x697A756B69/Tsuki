@@ -4,7 +4,7 @@ const path = require("node:path");
 const { Collection } = require("discord.js");
 const loadComponents = require("../loaders/loadComponents");
 const interactionCreate = require("../events/interactionCreate");
-const { buildCustomId, parseCustomId } = require("../utils/customId");
+const { buildCustomId, parseCustomId } = require("../utils/core/customId");
 
 test.mock.method(console, "log", () => {});
 test.mock.method(console, "error", () => {});

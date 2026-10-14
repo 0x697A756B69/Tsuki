@@ -5,7 +5,7 @@ const {
   MessageFlags,
   PermissionFlagsBits,
 } = require("discord.js");
-const { buildCustomId } = require("./customId");
+const { buildCustomId } = require("./core/customId");
 
 const RAID_ACTION_ID = "raid-action";
 

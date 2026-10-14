@@ -15,8 +15,8 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId } = require("./customId");
-const { formatDuration } = require("./formatDuration");
+const { buildCustomId } = require("./core/customId");
+const { formatDuration } = require("./core/formatDuration");
 const { describeStep } = require("./warnLadder");
 
 const ACCENT_COLOR = 0xe5484d;

@@ -9,7 +9,7 @@ const {
 
 const MAX_DURATION = 28 * 24 * 60 * 60 * 1000;
 
-const defineCommand = require("../utils/defineCommand");
+const defineCommand = require("../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "timeout",

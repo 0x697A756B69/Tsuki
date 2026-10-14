@@ -1,5 +1,5 @@
 const { AttachmentBuilder, MessageFlags } = require("discord.js");
-const defineCommand = require("../utils/defineCommand");
+const defineCommand = require("../utils/core/defineCommand");
 const { checkMember } = require("../utils/xpAdmin");
 const { getSettings } = require("../utils/settings");
 const {

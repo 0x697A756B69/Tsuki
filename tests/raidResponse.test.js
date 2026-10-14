@@ -12,7 +12,7 @@ const {
   planResponse,
   respondToRaid,
 } = require("../utils/raidResponse");
-const { KINDS } = require("../utils/failure");
+const { KINDS } = require("../utils/core/failure");
 
 const settingsBase = {
   scope: "all",

@@ -3,7 +3,7 @@ const { getAutomodSettings } = require("../utils/automodSettings");
 const { listWarnings } = require("../utils/warnSanctions");
 const { warnlistView } = require("../utils/warnlistPanel");
 
-const defineCommand = require("../utils/defineCommand");
+const defineCommand = require("../utils/core/defineCommand");
 
 module.exports = defineCommand({
   name: "warnlist",

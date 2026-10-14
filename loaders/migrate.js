@@ -1,6 +1,6 @@
 const fs = require("node:fs");
 const path = require("node:path");
-const transaction = require("../utils/transaction");
+const transaction = require("../utils/core/transaction");
 
 const dir = path.join(__dirname, "../migrations");
 

@@ -1,5 +1,5 @@
 const { MessageFlags } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const {
   RAID_ACTION_ID,
   banGroupConfirmation,
@@ -14,7 +14,7 @@ const {
   liftRaid,
 } = require("../utils/raidControl");
 const { getRaidSettings } = require("../utils/raidSettings");
-const { KINDS, summarizeCauses } = require("../utils/failure");
+const { KINDS, summarizeCauses } = require("../utils/core/failure");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });

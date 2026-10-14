@@ -6,7 +6,7 @@ const {
   purgeChannel,
   findMissingChannels,
   sweepDeletedChannels,
-} = require("../utils/channelCleanup");
+} = require("../utils/core/channelCleanup");
 const channelDelete = require("../events/channelDelete");
 const { createDatabase } = require("./helpers/database");
 

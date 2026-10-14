@@ -1,5 +1,5 @@
 const { getLevelProgress } = require("./levels");
-const transaction = require("./transaction");
+const transaction = require("./core/transaction");
 
 const dayFormat = new Intl.DateTimeFormat("en-CA", {
   timeZone: "Europe/Paris",

@@ -6,7 +6,7 @@ const {
   PermissionFlagsBits,
 } = require("discord.js");
 const { ACTION_ID } = require("./automodLogView");
-const { buildCustomId } = require("./customId");
+const { buildCustomId } = require("./core/customId");
 
 const ACTIONS = {
   remove: {

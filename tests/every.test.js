@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { every } = require("../utils/every");
+const { every } = require("../utils/core/every");
 
 function silence(t) {
   const logs = [];

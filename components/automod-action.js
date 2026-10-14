@@ -1,5 +1,5 @@
 const { MessageFlags } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const { canModerate } = require("../utils/hierarchy");
 const {
   getLog,
@@ -24,7 +24,7 @@ const {
 } = require("../utils/automodActions");
 const { issueWarning, retractWarning } = require("../utils/warnSanctions");
 const { verdictNotice, sendNotice } = require("../utils/moderationNotice");
-const { describeFailure } = require("../utils/failure");
+const { describeFailure } = require("../utils/core/failure");
 
 const MEMBER_ACTIONS = [
   "remove",
