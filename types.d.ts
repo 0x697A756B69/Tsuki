@@ -1,7 +1,7 @@
 import type { Collection } from "discord.js";
 import type { DatabaseSync } from "node:sqlite";
-import type { Command } from "./utils/defineCommand";
-import type { Component } from "./utils/defineComponent";
+import type { Command } from "./utils/core/defineCommand";
+import type { Component } from "./utils/core/defineComponent";
 
 declare module "discord.js" {
   interface Client {

@@ -1,25 +1,28 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
-const { getAutomodSettings } = require("../utils/automodSettings");
+const defineComponent = require("../utils/core/defineComponent");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   ACTION_SETTINGS,
   parseRaidModal,
   parseTimeoutMinutes,
   signalChanges,
   toggleRaid,
-} = require("../utils/raidConfig");
-const { formatSimulation, simulateRaid } = require("../utils/raidSimulation");
+} = require("../utils/raid/raidConfig");
+const {
+  formatSimulation,
+  simulateRaid,
+} = require("../utils/raid/raidSimulation");
 const {
   CONFIG_ID,
   renderRaidResponseView,
   renderRaidView,
   renderThresholdsModal,
   renderTimeoutModal,
-} = require("../utils/raidPanel");
+} = require("../utils/raid/raidPanel");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];
 const LOCKDOWNS = ["off", "invites", "verification"];

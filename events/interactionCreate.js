@@ -1,5 +1,5 @@
 const { MessageFlags } = require("discord.js");
-const { parseCustomId } = require("../utils/customId");
+const { parseCustomId } = require("../utils/core/customId");
 
 async function reply(interaction, content) {
   const payload = { content, flags: MessageFlags.Ephemeral };

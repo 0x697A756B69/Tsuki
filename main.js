@@ -23,7 +23,7 @@ const bot = new Client({
 
 bot.commands = new Collection();
 bot.components = new Collection();
-bot.utils = { createId: require("./utils/createId") };
+bot.utils = { createId: require("./utils/core/createId") };
 bot.db = loadDatabase();
 
 process.on("unhandledRejection", (err) =>

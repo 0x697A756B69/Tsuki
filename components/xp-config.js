@@ -1,13 +1,13 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
-const { getSettings, updateSettings } = require("../utils/settings");
-const { getModifiers, setModifier } = require("../utils/modifiers");
+const defineComponent = require("../utils/core/defineComponent");
+const { getSettings, updateSettings } = require("../utils/xp/settings");
+const { getModifiers, setModifier } = require("../utils/xp/modifiers");
 const {
   getRewards,
   setReward,
   removeReward,
   resyncRewardRoles,
-} = require("../utils/rewards");
+} = require("../utils/xp/rewards");
 const {
   MULTIPLIER_PRESETS,
   renderAnnounceView,
@@ -25,7 +25,7 @@ const {
   renderVoiceModal,
   renderCardModal,
   renderRewardModal,
-} = require("../utils/xpPanel");
+} = require("../utils/xp/xpPanel");
 const {
   GAIN_FIELDS,
   mainView,
@@ -34,7 +34,7 @@ const {
   parseCardAccent,
   parseRewardLevel,
   rewardRoleError,
-} = require("../utils/xpConfig");
+} = require("../utils/xp/xpConfig");
 
 const resyncing = new Set();
 

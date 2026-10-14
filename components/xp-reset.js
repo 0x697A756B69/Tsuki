@@ -1,9 +1,9 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
-const { previewReset, resetXp } = require("../utils/xp");
-const { getLevelProgress } = require("../utils/levels");
-const { formatResetDone } = require("../utils/xpAdmin");
-const { updateRewardRoles } = require("../utils/rewards");
+const defineComponent = require("../utils/core/defineComponent");
+const { previewReset, resetXp } = require("../utils/xp/xp");
+const { getLevelProgress } = require("../utils/xp/levels");
+const { formatResetDone } = require("../utils/xp/xpAdmin");
+const { updateRewardRoles } = require("../utils/xp/rewards");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });

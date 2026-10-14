@@ -1,30 +1,36 @@
 const { MessageFlags } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
-const { canModerate } = require("../utils/hierarchy");
+const defineComponent = require("../utils/core/defineComponent");
+const { canModerate } = require("../utils/moderation/hierarchy");
 const {
   getLog,
   getLogByContestChannel,
   setContestStatus,
   setJudged,
   clearContestChannel,
-} = require("../utils/automodLogs");
-const { ACTION_ID, markResolved } = require("../utils/automodLogView");
-const { extendRoom } = require("../utils/automodRooms");
-const { NO_WARNING } = require("../utils/automodContest");
+} = require("../utils/automod/automodLogs");
+const { ACTION_ID, markResolved } = require("../utils/automod/automodLogView");
+const { extendRoom } = require("../utils/automod/automodRooms");
+const { NO_WARNING } = require("../utils/automod/automodContest");
 const {
   verdictPayload,
   archiveTranscript,
-} = require("../utils/automodJustice");
-const { getAutomodSettings } = require("../utils/automodSettings");
+} = require("../utils/automod/automodJustice");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   ACTIONS,
   parseAction,
   missingPermission,
   banConfirmation,
-} = require("../utils/automodActions");
-const { issueWarning, retractWarning } = require("../utils/warnSanctions");
-const { verdictNotice, sendNotice } = require("../utils/moderationNotice");
-const { describeFailure } = require("../utils/failure");
+} = require("../utils/automod/automodActions");
+const {
+  issueWarning,
+  retractWarning,
+} = require("../utils/moderation/warnSanctions");
+const {
+  verdictNotice,
+  sendNotice,
+} = require("../utils/moderation/moderationNotice");
+const { describeFailure } = require("../utils/core/failure");
 
 const MEMBER_ACTIONS = [
   "remove",

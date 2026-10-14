@@ -1,10 +1,10 @@
 const { MessageFlags } = require("discord.js");
-const defineComponent = require("../utils/defineComponent");
+const defineComponent = require("../utils/core/defineComponent");
 const {
   isPeriod,
   isType,
   buildLeaderboardMessage,
-} = require("../utils/leaderboardCommand");
+} = require("../utils/xp/leaderboardCommand");
 
 function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });

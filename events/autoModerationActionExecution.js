@@ -1,10 +1,13 @@
 const { AutoModerationActionType } = require("discord.js");
-const { getAutomodSettings } = require("../utils/automodSettings");
-const { getRuleKey, ruleReason } = require("../utils/automodWarnings");
-const { sendLog } = require("../utils/automodLogs");
-const { contestRow } = require("../utils/automodContest");
-const { registerWarning, enforceWarning } = require("../utils/warnSanctions");
-const { announceClosedDm } = require("../utils/moderationNotice");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
+const { getRuleKey, ruleReason } = require("../utils/automod/automodWarnings");
+const { sendLog } = require("../utils/automod/automodLogs");
+const { contestRow } = require("../utils/automod/automodContest");
+const {
+  registerWarning,
+  enforceWarning,
+} = require("../utils/moderation/warnSanctions");
+const { announceClosedDm } = require("../utils/moderation/moderationNotice");
 
 module.exports = async (bot, execution) => {
   const rule =

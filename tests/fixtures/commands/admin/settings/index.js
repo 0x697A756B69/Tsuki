@@ -1,4 +1,4 @@
-const defineGroup = require("../../../../../utils/defineGroup");
+const defineGroup = require("../../../../../utils/core/defineGroup");
 
 module.exports = defineGroup({
   name: "settings",

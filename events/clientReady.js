@@ -1,11 +1,11 @@
-const { scanVoice } = require("../utils/voiceScan");
-const { purgeLogs } = require("../utils/automodLogs");
-const { sweepRooms, remindRooms } = require("../utils/automodRooms");
-const { sweepDeletedChannels } = require("../utils/channelCleanup");
-const { purgeRaidLogs } = require("../utils/raidLog");
-const { sweepRaids } = require("../utils/raidAlert");
-const { sweepMutes } = require("../utils/muteSweep");
-const { every } = require("../utils/every");
+const { scanVoice } = require("../utils/xp/voiceScan");
+const { purgeLogs } = require("../utils/automod/automodLogs");
+const { sweepRooms, remindRooms } = require("../utils/automod/automodRooms");
+const { sweepDeletedChannels } = require("../utils/core/channelCleanup");
+const { purgeRaidLogs } = require("../utils/raid/raidLog");
+const { sweepRaids } = require("../utils/raid/raidAlert");
+const { sweepMutes } = require("../utils/moderation/muteSweep");
+const { every } = require("../utils/core/every");
 
 const SCAN_INTERVAL = 60 * 1000;
 const PURGE_INTERVAL = 60 * 60 * 1000;

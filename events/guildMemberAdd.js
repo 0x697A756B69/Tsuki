@@ -1,8 +1,8 @@
-const { getRaidSettings } = require("../utils/raidSettings");
-const { observeJoin } = require("../utils/raidWatch");
-const { announceRaid } = require("../utils/raidAlert");
-const { respondToRaid } = require("../utils/raidResponse");
-const { syncLockdown } = require("../utils/raidLockdown");
+const { getRaidSettings } = require("../utils/raid/raidSettings");
+const { observeJoin } = require("../utils/raid/raidWatch");
+const { announceRaid } = require("../utils/raid/raidAlert");
+const { respondToRaid } = require("../utils/raid/raidResponse");
+const { syncLockdown } = require("../utils/raid/raidLockdown");
 
 module.exports = async (bot, member) => {
   if (member.user.bot) return;

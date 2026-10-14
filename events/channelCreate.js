@@ -1,5 +1,5 @@
-const { getAutomodSettings } = require("../utils/automodSettings");
-const { denyMuteRole } = require("../utils/muteRole");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
+const { denyMuteRole } = require("../utils/moderation/muteRole");
 
 module.exports = async (bot, channel) => {
   if (!channel.guildId) return;

@@ -48,9 +48,17 @@ function loadGroup(dir) {
   };
 }
 
-module.exports = (bot, dir = root) => {
+function isGroup(dir) {
+  return fs.existsSync(path.join(dir, "index.js"));
+}
+
+module.exports = function loadCommands(bot, dir = root) {
   for (const entry of fs.readdirSync(dir, { withFileTypes: true })) {
     const file = path.join(dir, entry.name);
+    if (entry.isDirectory() && !isGroup(file)) {
+      loadCommands(bot, file);
+      continue;
+    }
     const command = entry.isDirectory()
       ? loadGroup(file)
       : entry.name.endsWith(".js") && require(file);

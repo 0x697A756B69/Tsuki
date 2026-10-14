@@ -1,4 +1,4 @@
-const defineSubcommand = require("../../../../../utils/defineSubcommand");
+const defineSubcommand = require("../../../../../utils/core/defineSubcommand");
 
 module.exports = defineSubcommand({
   name: "show",
