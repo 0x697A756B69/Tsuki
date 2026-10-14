@@ -6,13 +6,13 @@ const migrate = require("../loaders/migrate");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 const {
   MODE_LABELS,
   getLockdown,
   planLockdown,
   syncLockdown,
-} = require("../utils/raidLockdown");
+} = require("../utils/raid/raidLockdown");
 
 const NOW = 1700000000000;
 const HOUR = 60 * 60 * 1000;

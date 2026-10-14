@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 const { createDatabase } = require("./helpers/database");
 
 test("getRaidSettings returns the defaults for a new guild", () => {

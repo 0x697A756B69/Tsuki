@@ -4,7 +4,7 @@ const {
   SPACING_SECONDS,
   formatSimulation,
   simulateRaid,
-} = require("../utils/raidSimulation");
+} = require("../utils/raid/raidSimulation");
 
 function settings(changes = {}) {
   return {

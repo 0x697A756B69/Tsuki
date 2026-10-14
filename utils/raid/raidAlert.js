@@ -4,14 +4,14 @@ const {
   SeparatorBuilder,
   TextDisplayBuilder,
 } = require("discord.js");
-const { getAutomodSettings } = require("./automodSettings");
+const { getAutomodSettings } = require("../automodSettings");
 const { SIGNAL_LABELS, isSuspect } = require("./joinSignals");
 const { buildRaidButtons } = require("./raidButtons");
 const { getRaidSettings } = require("./raidSettings");
 const { MODE_LABELS, getLockdown, syncLockdown } = require("./raidLockdown");
 const { ACTION_LABELS } = require("./raidResponse");
 const { refreshRaid } = require("./raidWatch");
-const { KINDS, summarizeCauses } = require("./core/failure");
+const { KINDS, summarizeCauses } = require("../core/failure");
 
 const TITLES = {
   calm: "Retour au calme",

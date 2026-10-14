@@ -5,13 +5,13 @@ const migrate = require("../loaders/migrate");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 const {
   ACTIONS,
   actionFor,
   planResponse,
   respondToRaid,
-} = require("../utils/raidResponse");
+} = require("../utils/raid/raidResponse");
 const { KINDS } = require("../utils/core/failure");
 
 const settingsBase = {

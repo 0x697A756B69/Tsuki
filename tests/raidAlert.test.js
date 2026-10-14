@@ -2,16 +2,16 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { MessageFlags } = require("discord.js");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { updateRaidSettings } = require("../utils/raidSettings");
-const { MINUTE } = require("../utils/raidDetector");
-const { getLastTier, recordTier } = require("../utils/raidLog");
+const { updateRaidSettings } = require("../utils/raid/raidSettings");
+const { MINUTE } = require("../utils/raid/raidDetector");
+const { getLastTier, recordTier } = require("../utils/raid/raidLog");
 const {
   MAX_LISTED,
   TITLES,
   buildRaidAlert,
   sendRaidAlert,
   sweepRaids,
-} = require("../utils/raidAlert");
+} = require("../utils/raid/raidAlert");
 const { createDatabase } = require("./helpers/database");
 
 const NOW = 1700000000000;

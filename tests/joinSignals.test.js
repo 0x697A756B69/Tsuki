@@ -6,7 +6,7 @@ const {
   getJoinSignals,
   isSuspect,
   normalizeName,
-} = require("../utils/joinSignals");
+} = require("../utils/raid/joinSignals");
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1700000000000;

@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const migrate = require("../loaders/migrate");
-const { updateRaidSettings } = require("../utils/raidSettings");
-const { MINUTE } = require("../utils/raidDetector");
+const { updateRaidSettings } = require("../utils/raid/raidSettings");
+const { MINUTE } = require("../utils/raid/raidDetector");
 const { parseCustomId } = require("../utils/core/customId");
 const {
   RAID_ACTION_ID,
@@ -13,8 +13,8 @@ const {
   buildRaidButtons,
   missingRaidPermission,
   parseRaidAction,
-} = require("../utils/raidButtons");
-const { buildRaidAlert } = require("../utils/raidAlert");
+} = require("../utils/raid/raidButtons");
+const { buildRaidAlert } = require("../utils/raid/raidAlert");
 const component = require("../components/raid-action");
 
 const NOW = Date.now();

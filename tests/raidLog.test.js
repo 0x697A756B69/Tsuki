@@ -7,7 +7,7 @@ const {
   recordTier,
   getLastTier,
   purgeRaidLogs,
-} = require("../utils/raidLog");
+} = require("../utils/raid/raidLog");
 const { createDatabase } = require("./helpers/database");
 
 const NOW = 1700000000000;

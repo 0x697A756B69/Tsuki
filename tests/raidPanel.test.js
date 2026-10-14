@@ -6,10 +6,10 @@ const migrate = require("../loaders/migrate");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 const { updateAutomodSettings } = require("../utils/automodSettings");
 const { HOME_SECTIONS } = require("../utils/automodPanel");
-const { raidSectionView } = require("../utils/raidSection");
+const { raidSectionView } = require("../utils/raid/raidSection");
 const {
   ACTION_OPTIONS,
   LOCKDOWN_OPTIONS,
@@ -17,7 +17,7 @@ const {
   renderRaidView,
   renderThresholdsModal,
   renderTimeoutModal,
-} = require("../utils/raidPanel");
+} = require("../utils/raid/raidPanel");
 const component = require("../components/raid-config");
 
 function createDatabase({ logChannel = "log" } = {}) {

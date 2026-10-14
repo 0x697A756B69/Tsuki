@@ -12,7 +12,7 @@ const {
   parseTimeoutMinutes,
   signalChanges,
   toggleRaid,
-} = require("../utils/raidConfig");
+} = require("../utils/raid/raidConfig");
 
 test("parseRaidWindow accepts 1 to 60 minutes", () => {
   assert.deepEqual(parseRaidWindow("10"), { windowMinutes: 10 });

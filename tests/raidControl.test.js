@@ -5,17 +5,17 @@ const migrate = require("../loaders/migrate");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
-const { MINUTE } = require("../utils/raidDetector");
-const { getLastTier } = require("../utils/raidLog");
-const { planResponse } = require("../utils/raidResponse");
+} = require("../utils/raid/raidSettings");
+const { MINUTE } = require("../utils/raid/raidDetector");
+const { getLastTier } = require("../utils/raid/raidLog");
+const { planResponse } = require("../utils/raid/raidResponse");
 const {
   banGroup,
   describeGroup,
   extendRaid,
   freeGroup,
   liftRaid,
-} = require("../utils/raidControl");
+} = require("../utils/raid/raidControl");
 const { KINDS } = require("../utils/core/failure");
 
 const NOW = 1700000000000;

@@ -36,7 +36,7 @@ const {
   resetReasons,
 } = require("../utils/warnReasons");
 const { getLadder, setLadder, resetLadder } = require("../utils/warnLadder");
-const { raidSectionView } = require("../utils/raidSection");
+const { raidSectionView } = require("../utils/raid/raidSection");
 
 const REASON_COLUMNS = {
   "reason-words": "reasonWords",

@@ -3,10 +3,18 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { createDatabase } = require("./helpers/database");
-const { updateRaidSettings } = require("../utils/raidSettings");
-const { MINUTE } = require("../utils/raidDetector");
-const { getJoinsSince, getLastTier, recordTier } = require("../utils/raidLog");
-const { getEntry, observeJoin, refreshRaid } = require("../utils/raidWatch");
+const { updateRaidSettings } = require("../utils/raid/raidSettings");
+const { MINUTE } = require("../utils/raid/raidDetector");
+const {
+  getJoinsSince,
+  getLastTier,
+  recordTier,
+} = require("../utils/raid/raidLog");
+const {
+  getEntry,
+  observeJoin,
+  refreshRaid,
+} = require("../utils/raid/raidWatch");
 
 const DAY = 24 * 60 * 60 * 1000;
 const NOW = 1700000000000;

@@ -7,7 +7,7 @@ const {
   evaluateRaid,
   rawTier,
   tierRank,
-} = require("../utils/raidDetector");
+} = require("../utils/raid/raidDetector");
 
 const NOW = 1700000000000;
 

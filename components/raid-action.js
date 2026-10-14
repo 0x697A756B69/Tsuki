@@ -5,15 +5,15 @@ const {
   banGroupConfirmation,
   missingRaidPermission,
   parseRaidAction,
-} = require("../utils/raidButtons");
+} = require("../utils/raid/raidButtons");
 const {
   banGroup,
   describeGroup,
   extendRaid,
   freeGroup,
   liftRaid,
-} = require("../utils/raidControl");
-const { getRaidSettings } = require("../utils/raidSettings");
+} = require("../utils/raid/raidControl");
+const { getRaidSettings } = require("../utils/raid/raidSettings");
 const { KINDS, summarizeCauses } = require("../utils/core/failure");
 
 function refuse(interaction, content) {

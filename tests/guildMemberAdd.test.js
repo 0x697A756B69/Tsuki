@@ -3,8 +3,8 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
 const { updateAutomodSettings } = require("../utils/automodSettings");
-const { updateRaidSettings } = require("../utils/raidSettings");
-const { getJoinsSince, getLastTier } = require("../utils/raidLog");
+const { updateRaidSettings } = require("../utils/raid/raidSettings");
+const { getJoinsSince, getLastTier } = require("../utils/raid/raidLog");
 const guildMemberAdd = require("../events/guildMemberAdd");
 
 const DAY = 24 * 60 * 60 * 1000;

@@ -7,19 +7,22 @@ const {
   parseTimeoutMinutes,
   signalChanges,
   toggleRaid,
-} = require("../utils/raidConfig");
-const { formatSimulation, simulateRaid } = require("../utils/raidSimulation");
+} = require("../utils/raid/raidConfig");
+const {
+  formatSimulation,
+  simulateRaid,
+} = require("../utils/raid/raidSimulation");
 const {
   CONFIG_ID,
   renderRaidResponseView,
   renderRaidView,
   renderThresholdsModal,
   renderTimeoutModal,
-} = require("../utils/raidPanel");
+} = require("../utils/raid/raidPanel");
 const {
   getRaidSettings,
   updateRaidSettings,
-} = require("../utils/raidSettings");
+} = require("../utils/raid/raidSettings");
 
 const ACTIONS = ["log", "timeout", "quarantine", "kick", "ban"];
 const LOCKDOWNS = ["off", "invites", "verification"];
