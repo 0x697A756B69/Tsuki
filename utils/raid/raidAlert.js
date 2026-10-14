@@ -4,7 +4,7 @@ const {
   SeparatorBuilder,
   TextDisplayBuilder,
 } = require("discord.js");
-const { getAutomodSettings } = require("../automodSettings");
+const { getAutomodSettings } = require("../automod/automodSettings");
 const { SIGNAL_LABELS, isSuspect } = require("./joinSignals");
 const { buildRaidButtons } = require("./raidButtons");
 const { getRaidSettings } = require("./raidSettings");

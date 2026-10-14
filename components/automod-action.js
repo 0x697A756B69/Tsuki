@@ -7,21 +7,21 @@ const {
   setContestStatus,
   setJudged,
   clearContestChannel,
-} = require("../utils/automodLogs");
-const { ACTION_ID, markResolved } = require("../utils/automodLogView");
-const { extendRoom } = require("../utils/automodRooms");
-const { NO_WARNING } = require("../utils/automodContest");
+} = require("../utils/automod/automodLogs");
+const { ACTION_ID, markResolved } = require("../utils/automod/automodLogView");
+const { extendRoom } = require("../utils/automod/automodRooms");
+const { NO_WARNING } = require("../utils/automod/automodContest");
 const {
   verdictPayload,
   archiveTranscript,
-} = require("../utils/automodJustice");
-const { getAutomodSettings } = require("../utils/automodSettings");
+} = require("../utils/automod/automodJustice");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   ACTIONS,
   parseAction,
   missingPermission,
   banConfirmation,
-} = require("../utils/automodActions");
+} = require("../utils/automod/automodActions");
 const {
   issueWarning,
   retractWarning,

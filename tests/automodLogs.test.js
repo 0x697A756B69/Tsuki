@@ -1,8 +1,8 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { AutoModerationActionType } = require("discord.js");
-const { RULE_NAMES } = require("../utils/automodRules");
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   addLog,
   getLog,
@@ -13,8 +13,8 @@ const {
   deleteLog,
   sendLog,
   purgeLogs,
-} = require("../utils/automodLogs");
-const { ACTION_ID } = require("../utils/automodLogView");
+} = require("../utils/automod/automodLogs");
+const { ACTION_ID } = require("../utils/automod/automodLogView");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
 const { createDatabase } = require("./helpers/database");
 

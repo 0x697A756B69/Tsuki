@@ -1,6 +1,6 @@
 const { scanVoice } = require("../utils/xp/voiceScan");
-const { purgeLogs } = require("../utils/automodLogs");
-const { sweepRooms, remindRooms } = require("../utils/automodRooms");
+const { purgeLogs } = require("../utils/automod/automodLogs");
+const { sweepRooms, remindRooms } = require("../utils/automod/automodRooms");
 const { sweepDeletedChannels } = require("../utils/core/channelCleanup");
 const { purgeRaidLogs } = require("../utils/raid/raidLog");
 const { sweepRaids } = require("../utils/raid/raidAlert");

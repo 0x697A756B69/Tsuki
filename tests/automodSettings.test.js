@@ -3,7 +3,7 @@ const assert = require("node:assert/strict");
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("../utils/automodSettings");
+} = require("../utils/automod/automodSettings");
 const { createDatabase } = require("./helpers/database");
 
 test("getAutomodSettings returns the defaults for a new guild", () => {

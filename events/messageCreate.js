@@ -6,7 +6,7 @@ const { getModifiers, computeMultiplier } = require("../utils/xp/modifiers");
 const { announceLevelUp } = require("../utils/xp/announce");
 const { updateRewardRoles } = require("../utils/xp/rewards");
 const { addMessage } = require("../utils/xp/messageCount");
-const { isContestChannel } = require("../utils/automodLogs");
+const { isContestChannel } = require("../utils/automod/automodLogs");
 
 const tracker = createMessageXpTracker();
 

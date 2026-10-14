@@ -1,7 +1,7 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/core/defineComponent");
 const { canModerate } = require("../utils/moderation/hierarchy");
-const { getAutomodSettings } = require("../utils/automodSettings");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   unwarnNotice,
   sendNotice,

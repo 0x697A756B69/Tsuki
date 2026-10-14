@@ -12,7 +12,7 @@ const {
 } = require("discord.js");
 const { CONTEST_COLOR, reviewRow } = require("./automodContest");
 const { ACTION_ID, excerpt, resolvedNotice } = require("./automodLogView");
-const { buildCustomId } = require("./core/customId");
+const { buildCustomId } = require("../core/customId");
 
 const NAME_PREFIX = "contestation-";
 const NAME_LENGTH = 40;

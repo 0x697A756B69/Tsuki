@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { MessageFlags } = require("discord.js");
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 const { updateRaidSettings } = require("../utils/raid/raidSettings");
 const { MINUTE } = require("../utils/raid/raidDetector");
 const { getLastTier, recordTier } = require("../utils/raid/raidLog");

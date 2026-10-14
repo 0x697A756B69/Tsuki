@@ -1,20 +1,27 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { PermissionFlagsBits, PermissionsBitField } = require("discord.js");
-const { RULE_NAMES } = require("../utils/automodRules");
-const { updateAutomodSettings } = require("../utils/automodSettings");
-const { addLog, getLog, markContested } = require("../utils/automodLogs");
-const { ACTION_ID, buildLogMessage } = require("../utils/automodLogView");
-const { contestedPayload } = require("../utils/automodContest");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
+const {
+  addLog,
+  getLog,
+  markContested,
+} = require("../utils/automod/automodLogs");
+const {
+  ACTION_ID,
+  buildLogMessage,
+} = require("../utils/automod/automodLogView");
+const { contestedPayload } = require("../utils/automod/automodContest");
 const {
   ACTIONS,
   parseAction,
   missingPermission,
   banConfirmation,
-} = require("../utils/automodActions");
-const { buildContestMessage } = require("../utils/automodJustice");
-const { setContestChannel } = require("../utils/automodLogs");
-const { ROOM_EXTENSION } = require("../utils/automodRooms");
+} = require("../utils/automod/automodActions");
+const { buildContestMessage } = require("../utils/automod/automodJustice");
+const { setContestChannel } = require("../utils/automod/automodLogs");
+const { ROOM_EXTENSION } = require("../utils/automod/automodRooms");
 const component = require("../components/automod-action");
 const { createDatabase } = require("./helpers/database");
 

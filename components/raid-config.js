@@ -1,6 +1,6 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
 const defineComponent = require("../utils/core/defineComponent");
-const { getAutomodSettings } = require("../utils/automodSettings");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   ACTION_SETTINGS,
   parseRaidModal,

@@ -1,7 +1,7 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
 const { ButtonStyle, MessageFlags } = require("discord.js");
-const { RULE_NAMES } = require("../utils/automodRules");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
 const {
   ACTION_ID,
   EXCERPT_LENGTH,
@@ -10,7 +10,7 @@ const {
   excerpt,
   buildLogMessage,
   markResolved,
-} = require("../utils/automodLogView");
+} = require("../utils/automod/automodLogView");
 
 function data(changes = {}) {
   return {

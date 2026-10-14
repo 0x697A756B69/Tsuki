@@ -3,8 +3,8 @@ const defineComponent = require("../utils/core/defineComponent");
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("../utils/automodSettings");
-const { syncRules } = require("../utils/automodRules");
+} = require("../utils/automod/automodSettings");
+const { syncRules } = require("../utils/automod/automodRules");
 const {
   renderWordsModal,
   renderMentionLimitModal,
@@ -12,7 +12,7 @@ const {
   renderReasonsModal,
   renderLadderModal,
   renderValidityModal,
-} = require("../utils/automodPanel");
+} = require("../utils/automod/automodPanel");
 const {
   mainView,
   sectionView,
@@ -29,7 +29,7 @@ const {
   getAutomodConfig,
   toggleObservation,
   syncErrorMessage,
-} = require("../utils/automodConfig");
+} = require("../utils/automod/automodConfig");
 const {
   getReasons,
   setReasons,

@@ -4,7 +4,11 @@ const {
   AutoModerationActionType,
   AutoModerationRuleTriggerType,
 } = require("discord.js");
-const { RULE_NAMES, buildRules, syncRules } = require("../utils/automodRules");
+const {
+  RULE_NAMES,
+  buildRules,
+  syncRules,
+} = require("../utils/automod/automodRules");
 
 const BOT = "bot";
 

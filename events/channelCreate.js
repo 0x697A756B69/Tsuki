@@ -1,4 +1,4 @@
-const { getAutomodSettings } = require("../utils/automodSettings");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const { denyMuteRole } = require("../utils/moderation/muteRole");
 
 module.exports = async (bot, channel) => {

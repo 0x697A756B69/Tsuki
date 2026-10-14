@@ -8,7 +8,7 @@ const {
   witnessIds,
   witnessCheck,
   witnessNotice,
-} = require("../utils/automodWitness");
+} = require("../utils/automod/automodWitness");
 
 const ROOM = { userId: "u" };
 const member = (id) => ({ id, type: OverwriteType.Member });

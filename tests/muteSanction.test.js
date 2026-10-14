@@ -5,7 +5,7 @@ const migrate = require("../loaders/migrate");
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("../utils/automodSettings");
+} = require("../utils/automod/automodSettings");
 const { setLadder } = require("../utils/moderation/warnLadder");
 const {
   insertWarning,

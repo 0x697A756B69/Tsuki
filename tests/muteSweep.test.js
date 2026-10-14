@@ -2,7 +2,7 @@ const test = require("node:test");
 const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const migrate = require("../loaders/migrate");
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   insertWarning,
   noteSanction,

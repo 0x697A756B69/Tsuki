@@ -7,7 +7,7 @@ const { updateSettings } = require("../utils/xp/settings");
 const { setModifier } = require("../utils/xp/modifiers");
 const { setReward } = require("../utils/xp/rewards");
 const { addXp } = require("../utils/xp/xp");
-const { addLog, setContestChannel } = require("../utils/automodLogs");
+const { addLog, setContestChannel } = require("../utils/automod/automodLogs");
 
 const granted = [];
 

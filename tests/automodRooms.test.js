@@ -5,7 +5,7 @@ const {
   getLog,
   setContestChannel,
   setJudged,
-} = require("../utils/automodLogs");
+} = require("../utils/automod/automodLogs");
 const {
   ROOM_LIFETIME,
   REMINDER_LEAD,
@@ -19,7 +19,7 @@ const {
   sweepRooms,
   remindRooms,
   closeMemberRooms,
-} = require("../utils/automodRooms");
+} = require("../utils/automod/automodRooms");
 const guildMemberRemove = require("../events/guildMemberRemove");
 const { createDatabase } = require("./helpers/database");
 

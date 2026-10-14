@@ -1,7 +1,7 @@
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("../automodSettings");
+} = require("../automod/automodSettings");
 const { oncePerGuild } = require("../core/oncePerGuild");
 
 const ROLE_NAME = "Muet";

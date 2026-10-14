@@ -1,4 +1,4 @@
-const { defineSettings } = require("./core/defineSettings");
+const { defineSettings } = require("../core/defineSettings");
 
 const { get, update } = defineSettings("automod_settings", {
   logChannel: ["log_channel", "id"],

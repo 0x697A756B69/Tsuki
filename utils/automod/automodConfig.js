@@ -1,18 +1,18 @@
-const transaction = require("./core/transaction");
+const transaction = require("../core/transaction");
 const {
   getAutomodSettings,
   updateAutomodSettings,
 } = require("./automodSettings");
-const { validateLadder, formatDuration } = require("./moderation/warnLadder");
+const { validateLadder, formatDuration } = require("../moderation/warnLadder");
 const {
   cleanReasons,
   getReasons,
   MAX_REASONS,
   MAX_LENGTH,
-} = require("./moderation/warnReasons");
-const { getLadder } = require("./moderation/warnLadder");
+} = require("../moderation/warnReasons");
+const { getLadder } = require("../moderation/warnLadder");
 const panel = require("./automodPanel");
-const { uncoveredChannels } = require("./moderation/muteRole");
+const { uncoveredChannels } = require("../moderation/muteRole");
 
 const MAX_WORDS = 1000;
 const MAX_WORD_LENGTH = 60;

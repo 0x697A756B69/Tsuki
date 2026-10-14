@@ -1,6 +1,6 @@
 const test = require("node:test");
 const assert = require("node:assert/strict");
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 const { setLadder } = require("../utils/moderation/warnLadder");
 const {
   insertWarning,

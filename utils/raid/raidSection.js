@@ -1,4 +1,4 @@
-const { getAutomodSettings } = require("../automodSettings");
+const { getAutomodSettings } = require("../automod/automodSettings");
 const { renderRaidView } = require("./raidPanel");
 const { getRaidSettings } = require("./raidSettings");
 

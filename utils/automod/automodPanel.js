@@ -15,9 +15,9 @@ const {
   TextInputBuilder,
   TextInputStyle,
 } = require("discord.js");
-const { buildCustomId } = require("./core/customId");
-const { formatDuration } = require("./core/formatDuration");
-const { describeStep } = require("./moderation/warnLadder");
+const { buildCustomId } = require("../core/customId");
+const { formatDuration } = require("../core/formatDuration");
+const { describeStep } = require("../moderation/warnLadder");
 
 const ACCENT_COLOR = 0xe5484d;
 const MAX_EXEMPT_ROLES = 20;

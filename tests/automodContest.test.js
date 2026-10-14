@@ -3,10 +3,10 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const { AutoModerationActionType, ComponentType } = require("discord.js");
 const migrate = require("../loaders/migrate");
-const { RULE_NAMES } = require("../utils/automodRules");
-const { updateAutomodSettings } = require("../utils/automodSettings");
-const { getLog } = require("../utils/automodLogs");
-const { buildLogMessage } = require("../utils/automodLogView");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
+const { getLog } = require("../utils/automod/automodLogs");
+const { buildLogMessage } = require("../utils/automod/automodLogView");
 const {
   CONTEST_ID,
   CONTEST_COLOR,
@@ -20,7 +20,7 @@ const {
   renderContestModal,
   parseReason,
   contestedPayload,
-} = require("../utils/automodContest");
+} = require("../utils/automod/automodContest");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
 
 const HOUR = 60 * 60 * 1000;

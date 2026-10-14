@@ -3,9 +3,9 @@ const assert = require("node:assert/strict");
 const { DatabaseSync } = require("node:sqlite");
 const { AutoModerationActionType } = require("discord.js");
 const migrate = require("../loaders/migrate");
-const { RULE_NAMES } = require("../utils/automodRules");
-const { getRuleKey, ruleReason } = require("../utils/automodWarnings");
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
+const { getRuleKey, ruleReason } = require("../utils/automod/automodWarnings");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 const { setLadder } = require("../utils/moderation/warnLadder");
 const autoModerationActionExecution = require("../events/autoModerationActionExecution");
 

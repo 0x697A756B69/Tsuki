@@ -1,11 +1,11 @@
 const { ChannelType } = require("discord.js");
 const defineComponent = require("../utils/core/defineComponent");
-const { getAutomodSettings } = require("../utils/automodSettings");
+const { getAutomodSettings } = require("../utils/automod/automodSettings");
 const {
   getLog,
   markContested,
   setContestChannel,
-} = require("../utils/automodLogs");
+} = require("../utils/automod/automodLogs");
 const {
   CONTEST_ID,
   contestCheck,
@@ -14,7 +14,7 @@ const {
   parseReason,
   contestedPayload,
   reviewTarget,
-} = require("../utils/automodContest");
+} = require("../utils/automod/automodContest");
 const {
   contestChannelName,
   moderatorRoleIds,
@@ -23,7 +23,7 @@ const {
   sanctionLabel,
   logSummary,
   buildContestMessage,
-} = require("../utils/automodJustice");
+} = require("../utils/automod/automodJustice");
 const { warningSanction } = require("../utils/moderation/warnSanctions");
 
 async function openContestChannel(bot, guild, settings, details) {

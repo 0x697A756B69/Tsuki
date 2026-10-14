@@ -16,11 +16,11 @@ const {
   getAutomodConfig,
   toggleObservation,
   syncErrorMessage,
-} = require("../utils/automodConfig");
+} = require("../utils/automod/automodConfig");
 const {
   getAutomodSettings,
   updateAutomodSettings,
-} = require("../utils/automodSettings");
+} = require("../utils/automod/automodSettings");
 const { createDatabase } = require("./helpers/database");
 
 test("parseWords splits on lines and commas and cleans the words", () => {

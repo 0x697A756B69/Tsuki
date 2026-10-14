@@ -606,7 +606,7 @@ test("confirming a purge respects the hierarchy", async () => {
   assert.match(calls.replies[0].content, /ne peux pas modérer/);
 });
 
-const { updateAutomodSettings } = require("../utils/automodSettings");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
 
 function logChannel(sent) {
   return { isTextBased: () => true, send: async (m) => sent.push(m) };

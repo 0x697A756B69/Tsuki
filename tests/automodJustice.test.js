@@ -6,9 +6,15 @@ const {
   PermissionFlagsBits,
   PermissionsBitField,
 } = require("discord.js");
-const { RULE_NAMES } = require("../utils/automodRules");
-const { ACTION_ID, buildLogMessage } = require("../utils/automodLogView");
-const { CONTEST_COLOR, contestedPayload } = require("../utils/automodContest");
+const { RULE_NAMES } = require("../utils/automod/automodRules");
+const {
+  ACTION_ID,
+  buildLogMessage,
+} = require("../utils/automod/automodLogView");
+const {
+  CONTEST_COLOR,
+  contestedPayload,
+} = require("../utils/automod/automodContest");
 const {
   contestChannelName,
   moderatorRoleIds,
@@ -23,7 +29,7 @@ const {
   TRANSCRIPT_NOTICE,
   transcriptFileName,
   formatTranscript,
-} = require("../utils/automodJustice");
+} = require("../utils/automod/automodJustice");
 
 const DETAILS = {
   userId: "u",

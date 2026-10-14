@@ -9,7 +9,7 @@ const {
   TextDisplayBuilder,
 } = require("discord.js");
 const { RULE_LABELS } = require("./automodWarnings");
-const { buildCustomId } = require("./core/customId");
+const { buildCustomId } = require("../core/customId");
 
 const BLOCKED_COLOR = 0xe5484d;
 const OBSERVED_COLOR = 0xf5a524;

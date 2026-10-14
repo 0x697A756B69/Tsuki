@@ -7,8 +7,8 @@ const {
   getRaidSettings,
   updateRaidSettings,
 } = require("../utils/raid/raidSettings");
-const { updateAutomodSettings } = require("../utils/automodSettings");
-const { HOME_SECTIONS } = require("../utils/automodPanel");
+const { updateAutomodSettings } = require("../utils/automod/automodSettings");
+const { HOME_SECTIONS } = require("../utils/automod/automodPanel");
 const { raidSectionView } = require("../utils/raid/raidSection");
 const {
   ACTION_OPTIONS,

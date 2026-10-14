@@ -23,7 +23,7 @@ const {
   renderReasonsModal,
   renderLadderModal,
   renderValidityModal,
-} = require("../utils/automodPanel");
+} = require("../utils/automod/automodPanel");
 
 const defaults = {
   logChannel: null,
