@@ -3,7 +3,7 @@ const { getAutomodSettings } = require("./automodSettings");
 const { archiveTranscript, reminderMessage } = require("./automodJustice");
 
 const ROOM_LIFETIME = 24 * 60 * 60 * 1000;
-const REMINDER_LEAD = 60 * 60 * 1000;
+const HOUR = 60 * 60 * 1000;
 const ROOM_EXTENSION = 24 * 60 * 60 * 1000;
 const SWEEP_BATCH = 50;
 
@@ -30,9 +30,19 @@ function getExpiredRooms(db, now = Date.now(), limit = SWEEP_BATCH) {
 function getRoomsToRemind(db, now = Date.now(), limit = SWEEP_BATCH) {
   return db
     .prepare(
-      "SELECT guild, channel, message, contest_channel FROM automod_logs WHERE contest_channel IS NOT NULL AND judged_at IS NOT NULL AND room_reminded = 0 AND judged_at + room_extra <= ? AND judged_at + room_extra > ? ORDER BY judged_at + room_extra LIMIT ?",
+      `SELECT l.guild, l.channel, l.message, l.contest_channel
+       FROM automod_logs l
+       LEFT JOIN automod_settings s ON s.guild = l.guild
+       WHERE l.contest_channel IS NOT NULL
+         AND l.judged_at IS NOT NULL
+         AND l.room_reminded = 0
+         AND COALESCE(s.reminder_hours, 1) > 0
+         AND l.judged_at + l.room_extra <= ? + COALESCE(s.reminder_hours, 1) * ?
+         AND l.judged_at + l.room_extra > ?
+       ORDER BY l.judged_at + l.room_extra
+       LIMIT ?`,
     )
-    .all(now - ROOM_LIFETIME + REMINDER_LEAD, now - ROOM_LIFETIME, limit)
+    .all(now - ROOM_LIFETIME, HOUR, now - ROOM_LIFETIME, limit)
     .map(toRoom);
 }
 
@@ -102,7 +112,7 @@ async function closeMemberRooms(bot, guildId, userId) {
 
 module.exports = {
   ROOM_LIFETIME,
-  REMINDER_LEAD,
+  HOUR,
   ROOM_EXTENSION,
   SWEEP_BATCH,
   getExpiredRooms,

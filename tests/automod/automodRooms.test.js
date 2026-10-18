@@ -8,7 +8,7 @@ const {
 } = require("../../utils/automod/automodLogs");
 const {
   ROOM_LIFETIME,
-  REMINDER_LEAD,
+  HOUR,
   ROOM_EXTENSION,
   getExpiredRooms,
   getRoomsToRemind,
@@ -21,12 +21,19 @@ const {
   closeMemberRooms,
 } = require("../../utils/automod/automodRooms");
 const guildMemberRemove = require("../../events/guildMemberRemove");
+const {
+  updateAutomodSettings,
+} = require("../../utils/automod/automodSettings");
 const { createDatabase } = require("../helpers/database");
 
 const NOW = 100 * ROOM_LIFETIME;
 
-function room(db, messageId, { userId = "u", judgedAt = null } = {}) {
-  const ref = { guildId: "g", channelId: "logs", messageId };
+function room(
+  db,
+  messageId,
+  { userId = "u", judgedAt = null, guildId = "g" } = {},
+) {
+  const ref = { guildId, channelId: "logs", messageId };
   addLog(db, { ...ref, userId, date: 1 });
   setContestChannel(db, ref, `room-${messageId}`);
   if (judgedAt !== null) setJudged(db, ref, "mod", judgedAt);
@@ -160,9 +167,9 @@ test("guildMemberRemove closes the room of a leaving member", async () => {
 
 test("getRoomsToRemind returns rooms within the last hour before expiry", () => {
   const db = createDatabase();
-  room(db, "soon", { judgedAt: NOW - ROOM_LIFETIME + REMINDER_LEAD });
+  room(db, "soon", { judgedAt: NOW - ROOM_LIFETIME + HOUR });
   room(db, "late", { judgedAt: NOW - ROOM_LIFETIME + 1 });
-  room(db, "far", { judgedAt: NOW - ROOM_LIFETIME + REMINDER_LEAD + 1 });
+  room(db, "far", { judgedAt: NOW - ROOM_LIFETIME + HOUR + 1 });
   room(db, "expired", { judgedAt: NOW - ROOM_LIFETIME });
   room(db, "open");
   assert.deepEqual(
@@ -170,6 +177,28 @@ test("getRoomsToRemind returns rooms within the last hour before expiry", () => 
       .map((entry) => entry.contestChannel)
       .sort(),
     ["room-late", "room-soon"],
+  );
+});
+
+test("getRoomsToRemind follows the reminder delay of the guild", () => {
+  const db = createDatabase();
+  updateAutomodSettings(db, "g", { reminderHours: 6 }, "admin");
+  room(db, "in", { judgedAt: NOW - ROOM_LIFETIME + 6 * HOUR });
+  room(db, "out", { judgedAt: NOW - ROOM_LIFETIME + 6 * HOUR + 1 });
+  assert.deepEqual(
+    getRoomsToRemind(db, NOW).map((entry) => entry.contestChannel),
+    ["room-in"],
+  );
+});
+
+test("getRoomsToRemind skips guilds that turned the reminder off", () => {
+  const db = createDatabase();
+  updateAutomodSettings(db, "off", { reminderHours: 0 }, "admin");
+  room(db, "a", { guildId: "off", judgedAt: NOW - ROOM_LIFETIME + 1 });
+  room(db, "b", { guildId: "on", judgedAt: NOW - ROOM_LIFETIME + 1 });
+  assert.deepEqual(
+    getRoomsToRemind(db, NOW).map((entry) => entry.ref.guildId),
+    ["on"],
   );
 });
 
