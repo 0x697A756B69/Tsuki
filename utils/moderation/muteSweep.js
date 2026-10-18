@@ -22,6 +22,10 @@ function expiredMutes(db, since, now) {
     }));
 }
 
+function activeMute(db, guild, user, now) {
+  return null;
+}
+
 const UNKNOWN_MEMBER = 10007;
 
 async function findMember(guild, userId) {
@@ -59,4 +63,4 @@ async function sweepMutes(bot, now = Date.now()) {
   return lifted;
 }
 
-module.exports = { FIRST_WINDOW, expiredMutes, sweepMutes };
+module.exports = { FIRST_WINDOW, activeMute, expiredMutes, sweepMutes };
