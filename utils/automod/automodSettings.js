@@ -14,6 +14,7 @@ const { get, update } = defineSettings("automod_settings", {
   warnValidDays: ["warn_valid_days", "int"],
   justiceCategory: ["justice_category", "id"],
   keepTranscript: ["keep_transcript", "flag"],
+  reminderHours: ["reminder_hours", "int"],
   muteType: ["mute_type", "text"],
   muteRole: ["mute_role", "id"],
 });

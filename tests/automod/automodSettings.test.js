@@ -21,6 +21,7 @@ test("getAutomodSettings returns the defaults for a new guild", () => {
     warnValidDays: 30,
     justiceCategory: null,
     keepTranscript: false,
+    reminderHours: 1,
     muteType: "timeout",
     muteRole: null,
     updatedBy: null,
@@ -208,4 +209,27 @@ test("automod settings reject an unknown mute type", () => {
   assert.throws(() =>
     updateAutomodSettings(db, "g", { muteType: "ghost" }, "admin"),
   );
+});
+
+test("updateAutomodSettings changes the reminder delay and turns it off", () => {
+  const db = createDatabase();
+  assert.equal(
+    updateAutomodSettings(db, "g", { reminderHours: 6 }, "admin").reminderHours,
+    6,
+  );
+  assert.equal(
+    updateAutomodSettings(db, "g", { reminderHours: 0 }, "admin").reminderHours,
+    0,
+  );
+});
+
+test("the database rejects an invalid reminder delay", () => {
+  const db = createDatabase();
+
+  for (const reminderHours of [-1, 13])
+    assert.throws(() =>
+      updateAutomodSettings(db, "g", { reminderHours }, "admin"),
+    );
+
+  assert.equal(getAutomodSettings(db, "g").reminderHours, 1);
 });
