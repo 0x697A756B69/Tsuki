@@ -133,6 +133,12 @@ function describeContest(settings) {
   return `Fenêtre de ${formatDuration(settings.contestHours * 60)}`;
 }
 
+function describeReminder(settings) {
+  if (settings.reminderHours === 0)
+    return "Désactivé : aucun rappel avant la suppression du salon.";
+  return `Activé : un rappel est posté ${formatDuration(settings.reminderHours * 60)} avant la suppression du salon.`;
+}
+
 function describeHistory(settings) {
   if (settings.updatedBy === null)
     return "-# Réglages par défaut, jamais modifiés";
@@ -355,6 +361,14 @@ function renderJusticeView({ settings }) {
       ),
     )
     .addSeparatorComponents(new SeparatorBuilder())
+    .addSectionComponents(
+      setting(
+        "Rappel avant clôture",
+        describeReminder(settings),
+        button("reminder", "Modifier"),
+      ),
+    )
+    .addSeparatorComponents(new SeparatorBuilder())
     .addActionRowComponents(buttons(clear, backButton()));
 
   return panel(container);
@@ -510,6 +524,24 @@ function renderContestModal({ settings }) {
     );
 }
 
+function renderReminderModal({ settings }) {
+  return new ModalBuilder()
+    .setCustomId(id("save-reminder"))
+    .setTitle("Rappel")
+    .addLabelComponents(
+      new LabelBuilder()
+        .setLabel("Délai avant la suppression (heures)")
+        .setDescription(
+          "Le rappel est posté dans le salon ce temps avant sa suppression. 0 désactive. Jusqu'à 12 heures.",
+        )
+        .setTextInputComponent(
+          field("hours", settings.reminderHours)
+            .setRequired(true)
+            .setMaxLength(2),
+        ),
+    );
+}
+
 function renderReasonsModal({ reasons }) {
   return new ModalBuilder()
     .setCustomId(id("save-reasons"))
@@ -577,6 +609,7 @@ module.exports = {
   renderWordsModal,
   renderMentionLimitModal,
   renderContestModal,
+  renderReminderModal,
   renderReasonsModal,
   renderLadderModal,
   renderValidityModal,

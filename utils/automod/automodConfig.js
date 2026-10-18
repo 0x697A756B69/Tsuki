@@ -18,6 +18,7 @@ const MAX_WORDS = 1000;
 const MAX_WORD_LENGTH = 60;
 const MAX_MENTION_LIMIT = 50;
 const MAX_CONTEST_HOURS = 720;
+const MAX_REMINDER_HOURS = 12;
 const MAX_VALID_DAYS = 365;
 const UNITS = { min: 1, m: 1, h: 60, j: 1440 };
 const EXEMPTION_KINDS = ["role", "channel"];
@@ -60,6 +61,15 @@ function parseContest(value) {
       error: `La durée doit être un entier entre 0 et ${MAX_CONTEST_HOURS} heures.`,
     };
   return { contestHours: Number(hours) };
+}
+
+function parseReminder(value) {
+  const hours = value.trim();
+  if (!/^\d+$/.test(hours) || Number(hours) > MAX_REMINDER_HOURS)
+    return {
+      error: `Le délai doit être un entier entre 0 et ${MAX_REMINDER_HOURS} heures.`,
+    };
+  return { reminderHours: Number(hours) };
 }
 
 function parseValidity(value) {
@@ -261,6 +271,7 @@ module.exports = {
   parseWords,
   parseMentionLimit,
   parseContest,
+  parseReminder,
   parseValidity,
   parseReasons,
   parseLadder,

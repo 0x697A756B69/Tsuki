@@ -9,6 +9,7 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderContestModal,
+  renderReminderModal,
   renderReasonsModal,
   renderLadderModal,
   renderValidityModal,
@@ -19,6 +20,7 @@ const {
   parseWords,
   parseMentionLimit,
   parseContest,
+  parseReminder,
   parseValidity,
   parseReasons,
   parseLadder,
@@ -106,6 +108,8 @@ module.exports = defineComponent({
         return interaction.showModal(renderMentionLimitModal({ settings }));
       if (action === "contest")
         return interaction.showModal(renderContestModal({ settings }));
+      if (action === "reminder")
+        return interaction.showModal(renderReminderModal({ settings }));
       if (action === "validity")
         return interaction.showModal(renderValidityModal({ settings }));
       if (action === "reasons-edit")
@@ -262,6 +266,15 @@ module.exports = defineComponent({
         if (parsed.error) return refuse(interaction, parsed.error);
         updateAutomodSettings(db, guildId, parsed, author);
         return interaction.update(section("contest")());
+      }
+
+      if (action === "save-reminder") {
+        const parsed = parseReminder(
+          interaction.fields.getTextInputValue("hours"),
+        );
+        if (parsed.error) return refuse(interaction, parsed.error);
+        updateAutomodSettings(db, guildId, parsed, author);
+        return interaction.update(section("justice")());
       }
 
       if (action === "save-validity") {

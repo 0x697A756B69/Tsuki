@@ -20,6 +20,7 @@ const {
   renderWordsModal,
   renderMentionLimitModal,
   renderContestModal,
+  renderReminderModal,
   renderReasonsModal,
   renderLadderModal,
   renderValidityModal,
@@ -39,6 +40,7 @@ const defaults = {
   warnValidDays: 30,
   justiceCategory: null,
   keepTranscript: false,
+  reminderHours: 1,
   muteType: "timeout",
   muteRole: null,
   updatedBy: null,
@@ -375,6 +377,27 @@ test("justice view lets you pick a category, remove it and keep the discussion",
   assert.match(set.text, /fichier de la conversation/);
 });
 
+test("justice view describes the reminder and lets you change it", () => {
+  const on = render(renderJusticeView({ settings: defaults }));
+  const off = render(
+    renderJusticeView({ settings: { ...defaults, reminderHours: 0 } }),
+  );
+  const longer = render(
+    renderJusticeView({ settings: { ...defaults, reminderHours: 6 } }),
+  );
+  const edit = (view) =>
+    view
+      .of(ComponentType.Button)
+      .find((b) => b.custom_id === "automod-config:reminder");
+
+  assert.match(on.text, /Rappel avant clôture/);
+  assert.match(on.text, /1 h avant la suppression/);
+  assert.match(longer.text, /6 h avant la suppression/);
+  assert.match(off.text, /Désactivé/);
+  assert.equal(edit(on).label, "Modifier");
+  assert.equal(edit(off).label, "Modifier");
+});
+
 test("mute view switches between the Discord timeout and the mute role", () => {
   const toggle = (view) =>
     view
@@ -425,6 +448,13 @@ test("the modals start with the current values", () => {
     [["hours", "168"]],
   );
   assert.deepEqual(
+    input(renderReminderModal({ settings: defaults })).map((i) => [
+      i.custom_id,
+      i.value,
+    ]),
+    [["hours", "1"]],
+  );
+  assert.deepEqual(
     input(renderValidityModal({ settings: defaults })).map((i) => [
       i.custom_id,
       i.value,
@@ -452,6 +482,7 @@ test("the modals post to the automod component", () => {
     [renderWordsModal({ words: [] }), "save-words"],
     [renderMentionLimitModal({ settings: defaults }), "save-mention-limit"],
     [renderContestModal({ settings: defaults }), "save-contest"],
+    [renderReminderModal({ settings: defaults }), "save-reminder"],
     [renderValidityModal({ settings: defaults }), "save-validity"],
     [renderReasonsModal({ reasons: ["Spam"] }), "save-reasons"],
     [renderLadderModal({ lines: "aucune" }), "save-ladder"],

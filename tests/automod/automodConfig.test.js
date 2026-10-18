@@ -4,6 +4,7 @@ const {
   parseWords,
   parseMentionLimit,
   parseContest,
+  parseReminder,
   parseValidity,
   parseReasons,
   parseLadder,
@@ -146,6 +147,17 @@ test("parseContest reads a window between 0 and 720 hours", () => {
   assert.deepEqual(parseContest(" 48 "), { contestHours: 48 });
   assert.deepEqual(parseContest("0"), { contestHours: 0 });
   assert.deepEqual(parseContest("720"), { contestHours: 720 });
+});
+
+test("parseReminder reads a delay between 0 and 12 hours", () => {
+  assert.deepEqual(parseReminder(" 6 "), { reminderHours: 6 });
+  assert.deepEqual(parseReminder("0"), { reminderHours: 0 });
+  assert.deepEqual(parseReminder("12"), { reminderHours: 12 });
+});
+
+test("parseReminder rejects anything else", () => {
+  for (const value of ["", "13", "-1", "1.5", "une heure"])
+    assert.match(parseReminder(value).error, /entre 0 et 12 heures/);
 });
 
 test("parseContest rejects anything else", () => {
