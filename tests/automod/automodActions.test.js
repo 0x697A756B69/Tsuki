@@ -362,12 +362,19 @@ function contested({ timeoutUntil = null, contest = true } = {}) {
 
 const FUTURE = Date.now() + 3_600_000;
 
-function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
+function setupContest({
+  timeoutUntil = null,
+  memberUntil = null,
+  liftFails = false,
+} = {}) {
   const { message } = contested();
   const timeouts = [];
   const target = fakeMember("u", [], 1, {
     communicationDisabledUntilTimestamp: memberUntil,
-    timeout: async (...args) => timeouts.push(args),
+    timeout: async (...args) => {
+      if (liftFails) throw new Error("Missing Permissions");
+      timeouts.push(args);
+    },
   });
   const context = setup({ message, target });
   insertWarning(context.db);
@@ -401,6 +408,41 @@ test("accepting lifts the timeout Tsuki set", async () => {
   assert.equal(timeouts[0][0], null);
   assert.match(calls.dms[0], /sourdine est levée/);
 });
+
+test(
+  "accepting leaves the contest pending when the sanction cannot be lifted",
+  { todo: true },
+  async () => {
+    const { db, calls, run } = setupContest({
+      timeoutUntil: FUTURE,
+      memberUntil: FUTURE,
+      liftFails: true,
+    });
+    await run("accept", "u", "WARN-1");
+    assert.equal(countWarns(db), 1);
+    assert.equal(getLog(db, REF).contestStatus, "pending");
+    assert.equal(getLog(db, REF).judgedAt, null);
+    assert.equal(calls.updates.length, 0);
+    assert.equal(calls.dms.length, 0);
+    assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
+  },
+);
+
+test(
+  "removing a warning reports a sanction that could not be lifted",
+  { todo: true },
+  async () => {
+    const { db, calls, run } = setupContest({
+      timeoutUntil: FUTURE,
+      memberUntil: FUTURE,
+      liftFails: true,
+    });
+    await run("remove", "u", "WARN-1");
+    assert.equal(countWarns(db), 1);
+    assert.equal(calls.updates.length, 0);
+    assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
+  },
+);
 
 test("accepting keeps a timeout set by hand", async () => {
   const { calls, timeouts, run } = setupContest({

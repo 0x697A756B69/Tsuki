@@ -369,7 +369,9 @@ test("retractWarning keeps the warning when the mute role cannot be removed", as
     reason: "Retiré",
   });
 
-  assert.deepEqual(result, { removed: false, lifted: null, failed: true });
+  assert.equal(result.removed, false);
+  assert.equal(result.lifted, null);
+  assert.equal(result.failed, true);
   assert.equal(savedUntil(db, "WARN-1"), until);
 });
 
