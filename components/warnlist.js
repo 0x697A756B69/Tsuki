@@ -1,4 +1,9 @@
 const { MessageFlags, PermissionFlagsBits } = require("discord.js");
+const {
+  KINDS,
+  describeFailure,
+  summarizeCauses,
+} = require("../utils/core/failure");
 const defineComponent = require("../utils/core/defineComponent");
 const { canModerate } = require("../utils/moderation/hierarchy");
 const { getAutomodSettings } = require("../utils/automod/automodSettings");
@@ -27,9 +32,9 @@ function refuse(interaction, content) {
   return interaction.reply({ content, flags: MessageFlags.Ephemeral });
 }
 
-function liftFailure(count) {
+function liftFailure(count, causes) {
   const plural = count > 1 ? "s" : "";
-  return `${count} avertissement${plural} conservé${plural} : la sanction n'a pas pu être levée (permissions ou hiérarchie). Réessaie depuis la liste.`;
+  return `${count} avertissement${plural} conservé${plural} : la sanction n'a pas pu être levée (${summarizeCauses(causes) || KINDS.permissions}). Réessaie depuis la liste.`;
 }
 
 module.exports = defineComponent({
@@ -127,6 +132,7 @@ module.exports = defineComponent({
     const lifted = [];
     const removedWarnings = [];
     let failed = 0;
+    const causes = [];
     for (const warning of selected) {
       const result = await retractWarning({
         db,
@@ -136,7 +142,10 @@ module.exports = defineComponent({
         member,
         reason: `Avertissement retiré par ${interaction.user.tag}`,
       });
-      if (result.failed) failed += 1;
+      if (result.failed) {
+        failed += 1;
+        causes.push(describeFailure(result.error));
+      }
       if (!result.removed) continue;
       removedWarnings.push(warning);
       if (result.lifted) lifted.push(result.lifted);
@@ -172,7 +181,7 @@ module.exports = defineComponent({
       );
       if (failed > 0)
         await interaction.followUp({
-          content: liftFailure(failed),
+          content: liftFailure(failed, causes),
           flags: MessageFlags.Ephemeral,
         });
       return;
@@ -189,7 +198,7 @@ module.exports = defineComponent({
     );
     if (failed > 0)
       await interaction.followUp({
-        content: liftFailure(failed),
+        content: liftFailure(failed, causes),
         flags: MessageFlags.Ephemeral,
       });
   },
