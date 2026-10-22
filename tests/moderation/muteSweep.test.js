@@ -199,7 +199,6 @@ test("sweepMutes moves on when Discord does not know the member", async () => {
 
 test(
   "activeMute returns the mute role of a member whose mute is still running",
-  { todo: true },
   () => {
     const db = createDatabase();
     mute(db, "W1", "a", NOW + 5 * MINUTE);
@@ -210,7 +209,6 @@ test(
 
 test(
   "activeMute returns null once the mute has ended or never existed",
-  { todo: true },
   () => {
     const db = createDatabase();
     mute(db, "W1", "a", NOW - 5 * MINUTE);
@@ -224,7 +222,6 @@ test(
 
 test(
   "activeMute follows the latest mute and ignores servers using native timeouts",
-  { todo: true },
   () => {
     const db = createDatabase();
     mute(db, "W1", "a", NOW - 5 * MINUTE);

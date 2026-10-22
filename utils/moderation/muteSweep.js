@@ -23,7 +23,21 @@ function expiredMutes(db, since, now) {
 }
 
 function activeMute(db, guild, user, now) {
-  return null;
+  const row = db
+    .prepare(
+      `SELECT s.mute_role AS role
+       FROM warns w
+       JOIN automod_settings s ON s.guild = w.guild
+       WHERE w.guild = ? AND w.user = ?
+         AND s.mute_type = 'role'
+         AND s.mute_role IS NOT NULL
+         AND w.sanction = 'timeout'
+         AND w.timeout_until IS NOT NULL
+       GROUP BY w.guild, w.user
+       HAVING MAX(w.timeout_until) > ?`,
+    )
+    .get(guild, user, now);
+  return row ? String(row.role) : null;
 }
 
 const UNKNOWN_MEMBER = 10007;
