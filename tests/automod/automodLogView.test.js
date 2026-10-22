@@ -95,27 +95,23 @@ function buttons(changes) {
   return row ? /** @type {any[]} */ (row.components) : [];
 }
 
-test(
-  "a blocked log offers remove, timeout, ban and close",
-  { todo: true },
-  () => {
-    const row = buttons({ warningId: "WARN-1" });
-    assert.deepEqual(
-      row.map((button) => button.custom_id),
-      [
-        `${ACTION_ID}:remove:u:WARN-1`,
-        `${ACTION_ID}:timeout:u:WARN-1`,
-        `${ACTION_ID}:ban:u`,
-        `${ACTION_ID}:close`,
-      ],
-    );
-    assert.deepEqual(
-      row.map((button) => button.label),
-      ["Retirer l'avertissement", "Mettre en sourdine", "Bannir", "Classer"],
-    );
-    assert.equal(row[2].style, ButtonStyle.Danger);
-  },
-);
+test("a blocked log offers remove, timeout, ban and close", () => {
+  const row = buttons({ warningId: "WARN-1" });
+  assert.deepEqual(
+    row.map((button) => button.custom_id),
+    [
+      `${ACTION_ID}:remove:u:WARN-1`,
+      `${ACTION_ID}:timeout:u:WARN-1`,
+      `${ACTION_ID}:ban:u`,
+      `${ACTION_ID}:close`,
+    ],
+  );
+  assert.deepEqual(
+    row.map((button) => button.label),
+    ["Retirer l'avertissement", "Mettre en sourdine", "Bannir", "Classer"],
+  );
+  assert.equal(row[2].style, ButtonStyle.Danger);
+});
 
 test("a blocked log without a warning keeps a bare timeout button", () => {
   const ids = buttons().map((button) => button.custom_id);

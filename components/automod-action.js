@@ -23,9 +23,12 @@ const {
   banConfirmation,
 } = require("../utils/automod/automodActions");
 const {
+  applySanction,
   issueWarning,
+  noteSanction,
   retractWarning,
 } = require("../utils/moderation/warnSanctions");
+const { ensureMuteRole } = require("../utils/moderation/muteRole");
 const {
   verdictNotice,
   sendNotice,
@@ -64,6 +67,10 @@ async function fetchLogMessage(guild, ref) {
   const channel = await guild.channels.fetch(ref.channelId).catch(() => null);
   if (!channel?.isTextBased()) return null;
   return channel.messages.fetch(ref.messageId).catch(() => null);
+}
+
+function usesMuteRole(settings, args) {
+  return settings.muteType === "role" && args[1] !== undefined;
 }
 
 async function retract(db, interaction, action, args, member) {
@@ -129,11 +136,28 @@ async function perform(
     const channel = await guild.channels.fetch(args[0]);
     await channel.messages.delete(args[1]);
   } else if (action === "timeout") {
-    const { escalationMinutes } = getAutomodSettings(db, guild.id);
-    await member.timeout(
-      escalationMinutes * 60 * 1000,
-      `AutoMod : sourdine par ${user.tag}`,
-    );
+    const settings = getAutomodSettings(db, guild.id);
+    const reason = `AutoMod : sourdine par ${user.tag}`;
+    if (usesMuteRole(settings, args)) {
+      const muteRoleId = await ensureMuteRole(db, guild, settings);
+      const applied =
+        muteRoleId === null
+          ? null
+          : await applySanction({
+              guild,
+              member,
+              userId: args[0],
+              step: {
+                sanction: "timeout",
+                minutes: settings.escalationMinutes,
+              },
+              reason,
+              now: Date.now(),
+              muteRoleId,
+            });
+      if (applied === null) throw new Error("Missing Permissions");
+      noteSanction(db, args[1], applied.sanction, applied.timeoutUntil);
+    } else await member.timeout(settings.escalationMinutes * 60 * 1000, reason);
   } else if (action === "banok")
     await guild.bans.create(args[0], {
       reason: `AutoMod : banni par ${user.tag}`,
@@ -211,7 +235,12 @@ module.exports = defineComponent({
       return refuse(interaction, "Tu ne peux pas modérer ce membre !");
     if (action === "timeout" && !member)
       return refuse(interaction, "Ce membre n'est pas sur le serveur !");
-    if (action === "timeout" && !member.moderatable)
+    if (
+      action === "timeout" &&
+      !(usesMuteRole(getAutomodSettings(db, interaction.guildId), args)
+        ? member.manageable
+        : member.moderatable)
+    )
       return refuse(
         interaction,
         "Je ne peux pas mettre ce membre en sourdine !",

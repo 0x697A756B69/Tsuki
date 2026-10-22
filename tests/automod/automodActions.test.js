@@ -306,47 +306,39 @@ function useMuteRole(db) {
   );
 }
 
-test(
-  "timeout gives the mute role and notes the end date when the server uses roles",
-  { todo: true },
-  async () => {
-    const added = [];
-    const timeouts = [];
-    const target = roleMember(added, {
-      timeout: async (...args) => timeouts.push(args),
-    });
-    const { db, calls, run } = setup({ target });
-    useMuteRole(db);
-    insertWarning(db);
-    const before = Date.now();
-    await run("timeout", "u", "WARN-1");
-    const row = db.prepare("SELECT * FROM warns").get();
-    assert.deepEqual(
-      added.map((entry) => entry[0]),
-      ["mute"],
-    );
-    assert.equal(timeouts.length, 0);
-    assert.equal(row.sanction, "timeout");
-    assert.ok(Number(row.timeout_until) >= before + 15 * 60 * 1000);
-    assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
-  },
-);
+test("timeout gives the mute role and notes the end date when the server uses roles", async () => {
+  const added = [];
+  const timeouts = [];
+  const target = roleMember(added, {
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const { db, calls, run } = setup({ target });
+  useMuteRole(db);
+  insertWarning(db);
+  const before = Date.now();
+  await run("timeout", "u", "WARN-1");
+  const row = db.prepare("SELECT * FROM warns").get();
+  assert.deepEqual(
+    added.map((entry) => entry[0]),
+    ["mute"],
+  );
+  assert.equal(timeouts.length, 0);
+  assert.equal(row.sanction, "timeout");
+  assert.ok(Number(row.timeout_until) >= before + 15 * 60 * 1000);
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+});
 
-test(
-  "timeout in role mode refuses a member the bot cannot manage",
-  { todo: true },
-  async () => {
-    const added = [];
-    const target = roleMember(added, { manageable: false });
-    const { db, calls, run } = setup({ target });
-    useMuteRole(db);
-    insertWarning(db);
-    await run("timeout", "u", "WARN-1");
-    assert.equal(added.length, 0);
-    assert.equal(calls.updates.length, 0);
-    assert.match(calls.replies[0].content, /Je ne peux pas/);
-  },
-);
+test("timeout in role mode refuses a member the bot cannot manage", async () => {
+  const added = [];
+  const target = roleMember(added, { manageable: false });
+  const { db, calls, run } = setup({ target });
+  useMuteRole(db);
+  insertWarning(db);
+  await run("timeout", "u", "WARN-1");
+  assert.equal(added.length, 0);
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /Je ne peux pas/);
+});
 
 test("timeout falls back to a native timeout when no warning is attached", async () => {
   const added = [];

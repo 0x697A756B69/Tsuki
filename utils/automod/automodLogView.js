@@ -70,7 +70,10 @@ function buildActionRow({ userId, channelId, warningId, messageId, observed }) {
               ]),
             ]
           : []),
-        actionButton("timeout", "Mettre en sourdine", [userId]),
+        actionButton("timeout", "Mettre en sourdine", [
+          userId,
+          ...(warningId ? [warningId] : []),
+        ]),
         actionButton("ban", "Bannir", [userId], ButtonStyle.Danger),
       ];
   buttons.push(actionButton("close", "Classer"));
