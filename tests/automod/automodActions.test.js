@@ -84,6 +84,7 @@ function setup({
   flags,
   message = logMessage(),
   room = false,
+  brokenArchive = false,
 } = {}) {
   const db = createDatabase();
   const calls = {
@@ -155,6 +156,19 @@ function setup({
       isTextBased: () => true,
       messages: { fetch: async () => log },
     });
+  }
+  if (brokenArchive) {
+    updateAutomodSettings(
+      db,
+      "g",
+      { keepTranscript: true, logChannel: "archive" },
+      "admin",
+    );
+    const fetchChannel = interaction.guild.channels.fetch;
+    interaction.guild.channels.fetch = async (id) => {
+      if (id === "archive") throw new Error("down");
+      return fetchChannel(id);
+    };
   }
   const run = (...params) => component.run(bot, interaction, params, db);
   return { db, calls, timeouts, run, message };
@@ -447,7 +461,11 @@ test("banning from a contest works like the other bans", async () => {
   assert.match(JSON.stringify(calls.replies[0]), /Bannir <@u>/);
 });
 
-function setupRoom({ timeoutUntil = null, memberUntil = null } = {}) {
+function setupRoom({
+  timeoutUntil = null,
+  memberUntil = null,
+  brokenArchive = false,
+} = {}) {
   const message = {
     id: "ROOM",
     components: buildContestMessage({
@@ -464,7 +482,7 @@ function setupRoom({ timeoutUntil = null, memberUntil = null } = {}) {
     communicationDisabledUntilTimestamp: memberUntil,
     timeout: async (...args) => timeouts.push(args),
   });
-  const context = setup({ message, target, room: true });
+  const context = setup({ message, target, room: true, brokenArchive });
   insertWarning(context.db);
   if (timeoutUntil !== null)
     context.db
@@ -529,6 +547,18 @@ test("closing the room after the verdict deletes it", async () => {
   assert.equal(getLog(db, REF).contestChannel, null);
   assert.equal(getLog(db, REF).judgedBy, "mod");
 });
+
+test(
+  "closing the room keeps it when the transcript cannot be archived",
+  { todo: true },
+  async () => {
+    const { db, calls, run } = setupRoom({ brokenArchive: true });
+    await run("refuse", "u");
+    await run("closeroom");
+    assert.equal(calls.roomDeleted.length, 0);
+    assert.equal(getLog(db, REF).contestChannel, "room");
+  },
+);
 
 test("closing needs the moderator permission and a known room", async () => {
   const denied = setupRoom();
