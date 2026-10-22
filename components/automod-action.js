@@ -66,10 +66,11 @@ async function fetchLogMessage(guild, ref) {
   return channel.messages.fetch(ref.messageId).catch(() => null);
 }
 
-async function perform(bot, interaction, db, action, args, member, ref) {
+async function retract(db, interaction, action, args, member) {
   const { guild, user } = interaction;
+  const none = { lifted: null };
   if (action === "remove")
-    await retractWarning({
+    return retractWarning({
       db,
       guild,
       userId: args[0],
@@ -77,7 +78,30 @@ async function perform(bot, interaction, db, action, args, member, ref) {
       member,
       reason: `AutoMod : avertissement retiré par ${user.tag}`,
     });
-  else if (action === "warn")
+  if (action === "accept" && args[1] !== NO_WARNING)
+    return retractWarning({
+      db,
+      guild,
+      userId: args[0],
+      warningId: args[1],
+      member,
+      reason: `AutoMod : contestation acceptée par ${user.tag}`,
+    });
+  return none;
+}
+
+async function perform(
+  bot,
+  interaction,
+  db,
+  action,
+  args,
+  member,
+  ref,
+  retracted = { lifted: null },
+) {
+  const { guild, user } = interaction;
+  if (action === "warn")
     await issueWarning({
       db,
       guild,
@@ -90,23 +114,6 @@ async function perform(bot, interaction, db, action, args, member, ref) {
     });
   else if (action === "accept" || action === "refuse") {
     const accepted = action === "accept";
-    const retracted =
-      accepted && args[1] !== NO_WARNING
-        ? await retractWarning({
-            db,
-            guild,
-            userId: args[0],
-            warningId: args[1],
-            member,
-            reason: `AutoMod : contestation acceptée par ${user.tag}`,
-          })
-        : { lifted: null };
-    if (retracted.failed)
-      await interaction.followUp({
-        content:
-          "La sanction n'a pas pu être levée : l'avertissement est conservé. Réessaie depuis la liste des avertissements.",
-        flags: MessageFlags.Ephemeral,
-      });
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);
@@ -274,6 +281,13 @@ module.exports = defineComponent({
       });
     }
 
+    const retracted = await retract(db, interaction, action, args, member);
+    if (retracted.failed)
+      return refuse(
+        interaction,
+        `La sanction n'a pas pu être levée (${describeFailure(retracted.error)}) : l'avertissement est conservé. Réessaie depuis la liste des avertissements.`,
+      );
+
     const settled = action === "accept" || action === "refuse";
     if (room && settled) {
       const logMessage = await fetchLogMessage(interaction.guild, ref);
@@ -292,12 +306,20 @@ module.exports = defineComponent({
       await interaction.update(
         resolvedPayload(interaction.message, interaction.user.id, action),
       );
-    await perform(bot, interaction, db, action, args, member, ref).catch(
-      (err) =>
-        interaction.followUp({
-          content: `L'action a échoué (${describeFailure(err)}), le message est classé quand même.`,
-          flags: MessageFlags.Ephemeral,
-        }),
+    await perform(
+      bot,
+      interaction,
+      db,
+      action,
+      args,
+      member,
+      ref,
+      retracted,
+    ).catch((err) =>
+      interaction.followUp({
+        content: `L'action a échoué (${describeFailure(err)}), le message est classé quand même.`,
+        flags: MessageFlags.Ephemeral,
+      }),
     );
   },
 });

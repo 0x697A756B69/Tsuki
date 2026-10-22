@@ -278,8 +278,8 @@ async function retractWarning({
       now,
       muteRoleId: getAutomodSettings(db, guild.id).muteRole,
     });
-  } catch {
-    return { removed: false, lifted: null, failed: true };
+  } catch (error) {
+    return { removed: false, lifted: null, failed: true, error };
   }
   removeWarning(db, guild.id, userId, warningId);
   return { removed: true, lifted };

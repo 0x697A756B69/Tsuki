@@ -409,40 +409,32 @@ test("accepting lifts the timeout Tsuki set", async () => {
   assert.match(calls.dms[0], /sourdine est levée/);
 });
 
-test(
-  "accepting leaves the contest pending when the sanction cannot be lifted",
-  { todo: true },
-  async () => {
-    const { db, calls, run } = setupContest({
-      timeoutUntil: FUTURE,
-      memberUntil: FUTURE,
-      liftFails: true,
-    });
-    await run("accept", "u", "WARN-1");
-    assert.equal(countWarns(db), 1);
-    assert.equal(getLog(db, REF).contestStatus, "pending");
-    assert.equal(getLog(db, REF).judgedAt, null);
-    assert.equal(calls.updates.length, 0);
-    assert.equal(calls.dms.length, 0);
-    assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
-  },
-);
+test("accepting leaves the contest pending when the sanction cannot be lifted", async () => {
+  const { db, calls, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+    liftFails: true,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "pending");
+  assert.equal(getLog(db, REF).judgedAt, null);
+  assert.equal(calls.updates.length, 0);
+  assert.equal(calls.dms.length, 0);
+  assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
+});
 
-test(
-  "removing a warning reports a sanction that could not be lifted",
-  { todo: true },
-  async () => {
-    const { db, calls, run } = setupContest({
-      timeoutUntil: FUTURE,
-      memberUntil: FUTURE,
-      liftFails: true,
-    });
-    await run("remove", "u", "WARN-1");
-    assert.equal(countWarns(db), 1);
-    assert.equal(calls.updates.length, 0);
-    assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
-  },
-);
+test("removing a warning reports a sanction that could not be lifted", async () => {
+  const { db, calls, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+    liftFails: true,
+  });
+  await run("remove", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
+});
 
 test("accepting keeps a timeout set by hand", async () => {
   const { calls, timeouts, run } = setupContest({
