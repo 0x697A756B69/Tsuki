@@ -168,12 +168,18 @@ module.exports = defineComponent({
       if (room.judgedAt === null)
         return refuse(interaction, "La contestation n'est pas encore jugée.");
       await interaction.deferUpdate();
-      clearContestChannel(db, room.ref);
-      await archiveTranscript(
+      const archived = await archiveTranscript(
         interaction.guild,
         getAutomodSettings(db, interaction.guildId),
         interaction.channel,
       );
+      if (!archived)
+        return interaction.followUp({
+          content:
+            "La transcription n'a pas pu être envoyée : le salon est conservé.",
+          flags: MessageFlags.Ephemeral,
+        });
+      clearContestChannel(db, room.ref);
       return interaction.channel
         .delete(`AutoMod : salon clos par ${interaction.user.tag}`)
         .catch(() => {});
@@ -247,15 +253,17 @@ module.exports = defineComponent({
         .then(() => true)
         .catch(() => false);
       if (banned && room) {
-        clearContestChannel(db, ref);
-        await archiveTranscript(
+        const archived = await archiveTranscript(
           interaction.guild,
           getAutomodSettings(db, interaction.guildId),
           interaction.channel,
         );
-        return interaction.channel
-          .delete(`AutoMod : membre banni par ${interaction.user.tag}`)
-          .catch(() => {});
+        if (archived) {
+          clearContestChannel(db, ref);
+          return interaction.channel
+            .delete(`AutoMod : membre banni par ${interaction.user.tag}`)
+            .catch(() => {});
+        }
       }
       return interaction.editReply({
         content: banned

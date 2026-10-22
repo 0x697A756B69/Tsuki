@@ -548,17 +548,13 @@ test("closing the room after the verdict deletes it", async () => {
   assert.equal(getLog(db, REF).judgedBy, "mod");
 });
 
-test(
-  "closing the room keeps it when the transcript cannot be archived",
-  { todo: true },
-  async () => {
-    const { db, calls, run } = setupRoom({ brokenArchive: true });
-    await run("refuse", "u");
-    await run("closeroom");
-    assert.equal(calls.roomDeleted.length, 0);
-    assert.equal(getLog(db, REF).contestChannel, "room");
-  },
-);
+test("closing the room keeps it when the transcript cannot be archived", async () => {
+  const { db, calls, run } = setupRoom({ brokenArchive: true });
+  await run("refuse", "u");
+  await run("closeroom");
+  assert.equal(calls.roomDeleted.length, 0);
+  assert.equal(getLog(db, REF).contestChannel, "room");
+});
 
 test("closing needs the moderator permission and a known room", async () => {
   const denied = setupRoom();

@@ -67,18 +67,34 @@ function getMemberRooms(db, guildId, userId) {
     .map(toRoom);
 }
 
+const UNKNOWN_CHANNEL = 10003;
+const UNKNOWN_GUILD = 10004;
+
+function isGone(err) {
+  return err?.code === UNKNOWN_CHANNEL || err?.code === UNKNOWN_GUILD;
+}
+
 async function closeRoom(bot, room, reason) {
-  clearContestChannel(bot.db, room.ref);
-  const guild = await bot.guilds.fetch(room.ref.guildId).catch(() => null);
-  const channel = await guild?.channels
-    .fetch(room.contestChannel)
-    .catch(() => null);
-  if (!channel) return false;
-  await archiveTranscript(
+  let guild;
+  let channel;
+  try {
+    guild = await bot.guilds.fetch(room.ref.guildId);
+    channel = await guild.channels.fetch(room.contestChannel);
+  } catch (err) {
+    if (isGone(err)) clearContestChannel(bot.db, room.ref);
+    return false;
+  }
+  if (!channel) {
+    clearContestChannel(bot.db, room.ref);
+    return false;
+  }
+  const archived = await archiveTranscript(
     guild,
     getAutomodSettings(bot.db, room.ref.guildId),
     channel,
-  ).catch(() => {});
+  ).catch(() => false);
+  if (!archived) return false;
+  clearContestChannel(bot.db, room.ref);
   await channel.delete(reason).catch(() => {});
   return true;
 }

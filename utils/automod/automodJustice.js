@@ -234,11 +234,11 @@ function formatTranscript(messages) {
 }
 
 async function archiveTranscript(guild, settings, channel) {
-  if (!settings.keepTranscript || settings.logChannel === null) return;
+  if (!settings.keepTranscript || settings.logChannel === null) return true;
   const target = await guild.channels
     .fetch(settings.logChannel)
     .catch(() => null);
-  if (!target?.isTextBased()) return;
+  if (!target?.isTextBased()) return false;
 
   const collected = [];
   let before;
@@ -260,7 +260,7 @@ async function archiveTranscript(guild, settings, channel) {
       content: message.content,
       files: [...message.attachments.values()].map((file) => file.url),
     }));
-  await target
+  return target
     .send({
       content: `Discussion de contestation conservée (${channel.name}).`,
       files: [
@@ -271,7 +271,8 @@ async function archiveTranscript(guild, settings, channel) {
       ],
       allowedMentions: { parse: [] },
     })
-    .catch(() => {});
+    .then(() => true)
+    .catch(() => false);
 }
 
 module.exports = {

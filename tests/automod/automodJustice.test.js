@@ -356,44 +356,32 @@ function archiveContext({ sendFails = false, logReachable = true } = {}) {
   return { guild, channel, sent };
 }
 
-test(
-  "archiveTranscript reports true once the transcript is sent",
-  { todo: true },
-  async () => {
-    const { guild, channel, sent } = archiveContext();
-    const settings = { keepTranscript: true, logChannel: "log" };
-    assert.equal(await archiveTranscript(guild, settings, channel), true);
-    assert.equal(sent.length, 1);
-  },
-);
+test("archiveTranscript reports true once the transcript is sent", async () => {
+  const { guild, channel, sent } = archiveContext();
+  const settings = { keepTranscript: true, logChannel: "log" };
+  assert.equal(await archiveTranscript(guild, settings, channel), true);
+  assert.equal(sent.length, 1);
+});
 
-test(
-  "archiveTranscript reports true when no transcript is wanted",
-  { todo: true },
-  async () => {
-    const { guild, channel, sent } = archiveContext();
-    const off = { keepTranscript: false, logChannel: "log" };
-    const unset = { keepTranscript: true, logChannel: null };
-    assert.equal(await archiveTranscript(guild, off, channel), true);
-    assert.equal(await archiveTranscript(guild, unset, channel), true);
-    assert.equal(sent.length, 0);
-  },
-);
+test("archiveTranscript reports true when no transcript is wanted", async () => {
+  const { guild, channel, sent } = archiveContext();
+  const off = { keepTranscript: false, logChannel: "log" };
+  const unset = { keepTranscript: true, logChannel: null };
+  assert.equal(await archiveTranscript(guild, off, channel), true);
+  assert.equal(await archiveTranscript(guild, unset, channel), true);
+  assert.equal(sent.length, 0);
+});
 
-test(
-  "archiveTranscript reports false when the transcript cannot be sent",
-  { todo: true },
-  async () => {
-    const settings = { keepTranscript: true, logChannel: "log" };
-    const failing = archiveContext({ sendFails: true });
-    const lost = archiveContext({ logReachable: false });
-    assert.equal(
-      await archiveTranscript(failing.guild, settings, failing.channel),
-      false,
-    );
-    assert.equal(
-      await archiveTranscript(lost.guild, settings, lost.channel),
-      false,
-    );
-  },
-);
+test("archiveTranscript reports false when the transcript cannot be sent", async () => {
+  const settings = { keepTranscript: true, logChannel: "log" };
+  const failing = archiveContext({ sendFails: true });
+  const lost = archiveContext({ logReachable: false });
+  assert.equal(
+    await archiveTranscript(failing.guild, settings, failing.channel),
+    false,
+  );
+  assert.equal(
+    await archiveTranscript(lost.guild, settings, lost.channel),
+    false,
+  );
+});
