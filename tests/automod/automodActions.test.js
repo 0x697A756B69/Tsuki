@@ -125,6 +125,7 @@ function setup({
     guild: {
       id: "g",
       name: "Serveur",
+      roles: { cache: new Map([["mute", {}]]) },
       members: {
         fetch: async () => member ?? Promise.reject(new Error("unknown")),
       },
@@ -278,6 +279,86 @@ test("timeout uses the escalation duration of the server", async () => {
   await run("timeout", "u");
   assert.equal(timeouts[0][0], 15 * 60 * 1000);
   assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+});
+
+function roleMember(added, extra = {}) {
+  return fakeMember("u", [], 1, {
+    manageable: true,
+    roles: {
+      highest: {
+        position: 1,
+        comparePositionTo(other) {
+          return this.position - other.position;
+        },
+      },
+      add: async (...args) => added.push(args),
+    },
+    ...extra,
+  });
+}
+
+function useMuteRole(db) {
+  updateAutomodSettings(
+    db,
+    "g",
+    { muteType: "role", muteRole: "mute", escalationMinutes: 15 },
+    "admin",
+  );
+}
+
+test(
+  "timeout gives the mute role and notes the end date when the server uses roles",
+  { todo: true },
+  async () => {
+    const added = [];
+    const timeouts = [];
+    const target = roleMember(added, {
+      timeout: async (...args) => timeouts.push(args),
+    });
+    const { db, calls, run } = setup({ target });
+    useMuteRole(db);
+    insertWarning(db);
+    const before = Date.now();
+    await run("timeout", "u", "WARN-1");
+    const row = db.prepare("SELECT * FROM warns").get();
+    assert.deepEqual(
+      added.map((entry) => entry[0]),
+      ["mute"],
+    );
+    assert.equal(timeouts.length, 0);
+    assert.equal(row.sanction, "timeout");
+    assert.ok(Number(row.timeout_until) >= before + 15 * 60 * 1000);
+    assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+  },
+);
+
+test(
+  "timeout in role mode refuses a member the bot cannot manage",
+  { todo: true },
+  async () => {
+    const added = [];
+    const target = roleMember(added, { manageable: false });
+    const { db, calls, run } = setup({ target });
+    useMuteRole(db);
+    insertWarning(db);
+    await run("timeout", "u", "WARN-1");
+    assert.equal(added.length, 0);
+    assert.equal(calls.updates.length, 0);
+    assert.match(calls.replies[0].content, /Je ne peux pas/);
+  },
+);
+
+test("timeout falls back to a native timeout when no warning is attached", async () => {
+  const added = [];
+  const timeouts = [];
+  const target = roleMember(added, {
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const { db, run } = setup({ target });
+  useMuteRole(db);
+  await run("timeout", "u");
+  assert.equal(added.length, 0);
+  assert.equal(timeouts[0][0], 15 * 60 * 1000);
 });
 
 test("timeout refuses a member who is gone or out of reach", async () => {
