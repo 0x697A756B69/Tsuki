@@ -6,6 +6,7 @@ const {
   warnLines,
   warnNotice,
   closedDmLine,
+  banFailureLine,
   banNotice,
   kickNotice,
   timeoutNotice,
@@ -290,6 +291,22 @@ test("closedDmLine only speaks when the member was not reached", () => {
   assert.equal(
     closedDmLine(false),
     "\n-# Messages privés fermés : le membre n'a pas été prévenu.",
+  );
+});
+
+test("banFailureLine names the cause and warns when the notice already left", () => {
+  const err = { code: 50013 };
+  assert.equal(
+    banFailureLine("<@1>", err, false),
+    "Le bannissement de <@1> a échoué : permissions ou hiérarchie.",
+  );
+  assert.equal(
+    banFailureLine("<@1>", err, true),
+    "Le bannissement de <@1> a échoué : permissions ou hiérarchie.\n-# Le membre avait déjà reçu la notice de bannissement.",
+  );
+  assert.match(
+    banFailureLine("<@1>", new Error("boom"), false),
+    /erreur inconnue/,
   );
 });
 

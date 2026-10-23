@@ -1,5 +1,6 @@
 const { EmbedBuilder } = require("discord.js");
 const { describeStep, formatDuration } = require("./warnLadder");
+const { describeFailure } = require("../core/failure");
 
 const NOTICE_COLOR = 0xf5a524;
 const COLORS = {
@@ -180,6 +181,15 @@ function closedDmLine(delivered) {
     : "\n-# Messages privés fermés : le membre n'a pas été prévenu.";
 }
 
+function banFailureLine(user, err, delivered) {
+  return (
+    `Le bannissement de ${user} a échoué : ${describeFailure(err)}.` +
+    (delivered
+      ? "\n-# Le membre avait déjà reçu la notice de bannissement."
+      : "")
+  );
+}
+
 async function sendNotice(user, payload) {
   if (!user) return false;
   return user
@@ -237,6 +247,7 @@ module.exports = {
   unwarnNotice,
   sendNotice,
   closedDmLine,
+  banFailureLine,
   closedNotice,
   announceClosedDm,
 };
