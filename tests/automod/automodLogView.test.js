@@ -101,7 +101,7 @@ test("a blocked log offers remove, timeout, ban and close", () => {
     row.map((button) => button.custom_id),
     [
       `${ACTION_ID}:remove:u:WARN-1`,
-      `${ACTION_ID}:timeout:u`,
+      `${ACTION_ID}:timeout:u:WARN-1`,
       `${ACTION_ID}:ban:u`,
       `${ACTION_ID}:close`,
     ],
@@ -111,6 +111,11 @@ test("a blocked log offers remove, timeout, ban and close", () => {
     ["Retirer l'avertissement", "Mettre en sourdine", "Bannir", "Classer"],
   );
   assert.equal(row[2].style, ButtonStyle.Danger);
+});
+
+test("a blocked log without a warning keeps a bare timeout button", () => {
+  const ids = buttons().map((button) => button.custom_id);
+  assert.ok(ids.includes(`${ACTION_ID}:timeout:u`));
 });
 
 test("a blocked log without a warning cannot remove one", () => {

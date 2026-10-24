@@ -23,9 +23,12 @@ const {
   banConfirmation,
 } = require("../utils/automod/automodActions");
 const {
+  applySanction,
   issueWarning,
+  noteSanction,
   retractWarning,
 } = require("../utils/moderation/warnSanctions");
+const { ensureMuteRole } = require("../utils/moderation/muteRole");
 const {
   verdictNotice,
   sendNotice,
@@ -66,10 +69,15 @@ async function fetchLogMessage(guild, ref) {
   return channel.messages.fetch(ref.messageId).catch(() => null);
 }
 
-async function perform(bot, interaction, db, action, args, member, ref) {
+function usesMuteRole(settings, args) {
+  return settings.muteType === "role" && args[1] !== undefined;
+}
+
+async function retract(db, interaction, action, args, member) {
   const { guild, user } = interaction;
+  const none = { lifted: null };
   if (action === "remove")
-    await retractWarning({
+    return retractWarning({
       db,
       guild,
       userId: args[0],
@@ -77,7 +85,30 @@ async function perform(bot, interaction, db, action, args, member, ref) {
       member,
       reason: `AutoMod : avertissement retiré par ${user.tag}`,
     });
-  else if (action === "warn")
+  if (action === "accept" && args[1] !== NO_WARNING)
+    return retractWarning({
+      db,
+      guild,
+      userId: args[0],
+      warningId: args[1],
+      member,
+      reason: `AutoMod : contestation acceptée par ${user.tag}`,
+    });
+  return none;
+}
+
+async function perform(
+  bot,
+  interaction,
+  db,
+  action,
+  args,
+  member,
+  ref,
+  retracted = { lifted: null },
+) {
+  const { guild, user } = interaction;
+  if (action === "warn")
     await issueWarning({
       db,
       guild,
@@ -90,23 +121,6 @@ async function perform(bot, interaction, db, action, args, member, ref) {
     });
   else if (action === "accept" || action === "refuse") {
     const accepted = action === "accept";
-    const retracted =
-      accepted && args[1] !== NO_WARNING
-        ? await retractWarning({
-            db,
-            guild,
-            userId: args[0],
-            warningId: args[1],
-            member,
-            reason: `AutoMod : contestation acceptée par ${user.tag}`,
-          })
-        : { lifted: null };
-    if (retracted.failed)
-      await interaction.followUp({
-        content:
-          "La sanction n'a pas pu être levée : l'avertissement est conservé. Réessaie depuis la liste des avertissements.",
-        flags: MessageFlags.Ephemeral,
-      });
     setContestStatus(db, ref, accepted ? "accepted" : "refused");
     setJudged(db, ref, user.id);
     const target = await bot.users.fetch(args[0]).catch(() => null);
@@ -122,11 +136,28 @@ async function perform(bot, interaction, db, action, args, member, ref) {
     const channel = await guild.channels.fetch(args[0]);
     await channel.messages.delete(args[1]);
   } else if (action === "timeout") {
-    const { escalationMinutes } = getAutomodSettings(db, guild.id);
-    await member.timeout(
-      escalationMinutes * 60 * 1000,
-      `AutoMod : sourdine par ${user.tag}`,
-    );
+    const settings = getAutomodSettings(db, guild.id);
+    const reason = `AutoMod : sourdine par ${user.tag}`;
+    if (usesMuteRole(settings, args)) {
+      const muteRoleId = await ensureMuteRole(db, guild, settings);
+      const applied =
+        muteRoleId === null
+          ? null
+          : await applySanction({
+              guild,
+              member,
+              userId: args[0],
+              step: {
+                sanction: "timeout",
+                minutes: settings.escalationMinutes,
+              },
+              reason,
+              now: Date.now(),
+              muteRoleId,
+            });
+      if (applied === null) throw new Error("Missing Permissions");
+      noteSanction(db, args[1], applied.sanction, applied.timeoutUntil);
+    } else await member.timeout(settings.escalationMinutes * 60 * 1000, reason);
   } else if (action === "banok")
     await guild.bans.create(args[0], {
       reason: `AutoMod : banni par ${user.tag}`,
@@ -168,12 +199,18 @@ module.exports = defineComponent({
       if (room.judgedAt === null)
         return refuse(interaction, "La contestation n'est pas encore jugée.");
       await interaction.deferUpdate();
-      clearContestChannel(db, room.ref);
-      await archiveTranscript(
+      const archived = await archiveTranscript(
         interaction.guild,
         getAutomodSettings(db, interaction.guildId),
         interaction.channel,
       );
+      if (!archived)
+        return interaction.followUp({
+          content:
+            "La transcription n'a pas pu être envoyée : le salon est conservé.",
+          flags: MessageFlags.Ephemeral,
+        });
+      clearContestChannel(db, room.ref);
       return interaction.channel
         .delete(`AutoMod : salon clos par ${interaction.user.tag}`)
         .catch(() => {});
@@ -198,7 +235,12 @@ module.exports = defineComponent({
       return refuse(interaction, "Tu ne peux pas modérer ce membre !");
     if (action === "timeout" && !member)
       return refuse(interaction, "Ce membre n'est pas sur le serveur !");
-    if (action === "timeout" && !member.moderatable)
+    if (
+      action === "timeout" &&
+      !(usesMuteRole(getAutomodSettings(db, interaction.guildId), args)
+        ? member.manageable
+        : member.moderatable)
+    )
       return refuse(
         interaction,
         "Je ne peux pas mettre ce membre en sourdine !",
@@ -247,15 +289,17 @@ module.exports = defineComponent({
         .then(() => true)
         .catch(() => false);
       if (banned && room) {
-        clearContestChannel(db, ref);
-        await archiveTranscript(
+        const archived = await archiveTranscript(
           interaction.guild,
           getAutomodSettings(db, interaction.guildId),
           interaction.channel,
         );
-        return interaction.channel
-          .delete(`AutoMod : membre banni par ${interaction.user.tag}`)
-          .catch(() => {});
+        if (archived) {
+          clearContestChannel(db, ref);
+          return interaction.channel
+            .delete(`AutoMod : membre banni par ${interaction.user.tag}`)
+            .catch(() => {});
+        }
       }
       return interaction.editReply({
         content: banned
@@ -265,6 +309,13 @@ module.exports = defineComponent({
         allowedMentions: { parse: [] },
       });
     }
+
+    const retracted = await retract(db, interaction, action, args, member);
+    if (retracted.failed)
+      return refuse(
+        interaction,
+        `La sanction n'a pas pu être levée (${describeFailure(retracted.error)}) : l'avertissement est conservé. Réessaie depuis la liste des avertissements.`,
+      );
 
     const settled = action === "accept" || action === "refuse";
     if (room && settled) {
@@ -284,12 +335,20 @@ module.exports = defineComponent({
       await interaction.update(
         resolvedPayload(interaction.message, interaction.user.id, action),
       );
-    await perform(bot, interaction, db, action, args, member, ref).catch(
-      (err) =>
-        interaction.followUp({
-          content: `L'action a échoué (${describeFailure(err)}), le message est classé quand même.`,
-          flags: MessageFlags.Ephemeral,
-        }),
+    await perform(
+      bot,
+      interaction,
+      db,
+      action,
+      args,
+      member,
+      ref,
+      retracted,
+    ).catch((err) =>
+      interaction.followUp({
+        content: `L'action a échoué (${describeFailure(err)}), le message est classé quand même.`,
+        flags: MessageFlags.Ephemeral,
+      }),
     );
   },
 });

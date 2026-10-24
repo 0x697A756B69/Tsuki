@@ -40,17 +40,24 @@ function room(
   return ref;
 }
 
-function fakeBot(db, { missing = [] } = {}) {
+function fakeBot(db, { missing = [], unreachable = [], failSend = [] } = {}) {
   const deleted = [];
   const sent = [];
   const channels = {
     fetch: async (id) => {
-      if (missing.includes(id)) throw new Error("gone");
+      if (missing.includes(id))
+        throw Object.assign(new Error("gone"), { code: 10003 });
+      if (unreachable.includes(id)) throw new Error("down");
       return {
         id,
         name: id,
+        isTextBased: () => true,
+        messages: { fetch: async () => ({ size: 0 }) },
         delete: async (reason) => deleted.push({ id, reason }),
-        send: async (message) => sent.push({ id, message }),
+        send: async (message) => {
+          if (failSend.includes(id)) throw new Error("down");
+          sent.push({ id, message });
+        },
       };
     },
   };
@@ -60,6 +67,15 @@ function fakeBot(db, { missing = [] } = {}) {
     sent,
     guilds: { fetch: async () => ({ id: "g", channels }) },
   };
+}
+
+function keepTranscripts(db) {
+  updateAutomodSettings(
+    db,
+    "g",
+    { keepTranscript: true, logChannel: "archive" },
+    "admin",
+  );
 }
 
 test("getExpiredRooms returns judged rooms older than 24 hours", () => {
@@ -127,6 +143,40 @@ test("closeRoom still forgets a channel that is already gone", async () => {
   assert.equal(closed, false);
   assert.equal(getLog(db, ref).contestChannel, null);
   assert.equal(bot.deleted.length, 0);
+});
+
+test("closeRoom deletes the channel once the transcript is sent", async () => {
+  const db = createDatabase();
+  const ref = room(db, "m");
+  keepTranscripts(db);
+  const bot = fakeBot(db);
+  const closed = await closeRoom(bot, { ref, contestChannel: "room-m" }, "r");
+  assert.equal(closed, true);
+  assert.deepEqual(
+    bot.sent.map((entry) => entry.id),
+    ["archive"],
+  );
+  assert.equal(bot.deleted.length, 1);
+});
+
+test("closeRoom keeps the channel and the room when the transcript cannot be sent", async () => {
+  const db = createDatabase();
+  const ref = room(db, "m");
+  keepTranscripts(db);
+  const bot = fakeBot(db, { failSend: ["archive"] });
+  const closed = await closeRoom(bot, { ref, contestChannel: "room-m" }, "r");
+  assert.equal(closed, false);
+  assert.equal(bot.deleted.length, 0);
+  assert.equal(getLog(db, ref).contestChannel, "room-m");
+});
+
+test("closeRoom keeps the room when Discord cannot be reached", async () => {
+  const db = createDatabase();
+  const ref = room(db, "m");
+  const bot = fakeBot(db, { unreachable: ["room-m"] });
+  const closed = await closeRoom(bot, { ref, contestChannel: "room-m" }, "r");
+  assert.equal(closed, false);
+  assert.equal(getLog(db, ref).contestChannel, "room-m");
 });
 
 test("sweepRooms closes only the expired rooms", async () => {

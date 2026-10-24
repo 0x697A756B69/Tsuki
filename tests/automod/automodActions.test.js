@@ -84,6 +84,7 @@ function setup({
   flags,
   message = logMessage(),
   room = false,
+  brokenArchive = false,
 } = {}) {
   const db = createDatabase();
   const calls = {
@@ -124,6 +125,7 @@ function setup({
     guild: {
       id: "g",
       name: "Serveur",
+      roles: { cache: new Map([["mute", {}]]) },
       members: {
         fetch: async () => member ?? Promise.reject(new Error("unknown")),
       },
@@ -155,6 +157,19 @@ function setup({
       isTextBased: () => true,
       messages: { fetch: async () => log },
     });
+  }
+  if (brokenArchive) {
+    updateAutomodSettings(
+      db,
+      "g",
+      { keepTranscript: true, logChannel: "archive" },
+      "admin",
+    );
+    const fetchChannel = interaction.guild.channels.fetch;
+    interaction.guild.channels.fetch = async (id) => {
+      if (id === "archive") throw new Error("down");
+      return fetchChannel(id);
+    };
   }
   const run = (...params) => component.run(bot, interaction, params, db);
   return { db, calls, timeouts, run, message };
@@ -266,6 +281,78 @@ test("timeout uses the escalation duration of the server", async () => {
   assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
 });
 
+function roleMember(added, extra = {}) {
+  return fakeMember("u", [], 1, {
+    manageable: true,
+    roles: {
+      highest: {
+        position: 1,
+        comparePositionTo(other) {
+          return this.position - other.position;
+        },
+      },
+      add: async (...args) => added.push(args),
+    },
+    ...extra,
+  });
+}
+
+function useMuteRole(db) {
+  updateAutomodSettings(
+    db,
+    "g",
+    { muteType: "role", muteRole: "mute", escalationMinutes: 15 },
+    "admin",
+  );
+}
+
+test("timeout gives the mute role and notes the end date when the server uses roles", async () => {
+  const added = [];
+  const timeouts = [];
+  const target = roleMember(added, {
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const { db, calls, run } = setup({ target });
+  useMuteRole(db);
+  insertWarning(db);
+  const before = Date.now();
+  await run("timeout", "u", "WARN-1");
+  const row = db.prepare("SELECT * FROM warns").get();
+  assert.deepEqual(
+    added.map((entry) => entry[0]),
+    ["mute"],
+  );
+  assert.equal(timeouts.length, 0);
+  assert.equal(row.sanction, "timeout");
+  assert.ok(Number(row.timeout_until) >= before + 15 * 60 * 1000);
+  assert.match(JSON.stringify(calls.updates[0]), /mis en sourdine/);
+});
+
+test("timeout in role mode refuses a member the bot cannot manage", async () => {
+  const added = [];
+  const target = roleMember(added, { manageable: false });
+  const { db, calls, run } = setup({ target });
+  useMuteRole(db);
+  insertWarning(db);
+  await run("timeout", "u", "WARN-1");
+  assert.equal(added.length, 0);
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /Je ne peux pas/);
+});
+
+test("timeout falls back to a native timeout when no warning is attached", async () => {
+  const added = [];
+  const timeouts = [];
+  const target = roleMember(added, {
+    timeout: async (...args) => timeouts.push(args),
+  });
+  const { db, run } = setup({ target });
+  useMuteRole(db);
+  await run("timeout", "u");
+  assert.equal(added.length, 0);
+  assert.equal(timeouts[0][0], 15 * 60 * 1000);
+});
+
 test("timeout refuses a member who is gone or out of reach", async () => {
   const gone = setup({ target: null });
   await gone.run("timeout", "u");
@@ -348,12 +435,19 @@ function contested({ timeoutUntil = null, contest = true } = {}) {
 
 const FUTURE = Date.now() + 3_600_000;
 
-function setupContest({ timeoutUntil = null, memberUntil = null } = {}) {
+function setupContest({
+  timeoutUntil = null,
+  memberUntil = null,
+  liftFails = false,
+} = {}) {
   const { message } = contested();
   const timeouts = [];
   const target = fakeMember("u", [], 1, {
     communicationDisabledUntilTimestamp: memberUntil,
-    timeout: async (...args) => timeouts.push(args),
+    timeout: async (...args) => {
+      if (liftFails) throw new Error("Missing Permissions");
+      timeouts.push(args);
+    },
   });
   const context = setup({ message, target });
   insertWarning(context.db);
@@ -386,6 +480,33 @@ test("accepting lifts the timeout Tsuki set", async () => {
   await run("accept", "u", "WARN-1");
   assert.equal(timeouts[0][0], null);
   assert.match(calls.dms[0], /sourdine est levée/);
+});
+
+test("accepting leaves the contest pending when the sanction cannot be lifted", async () => {
+  const { db, calls, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+    liftFails: true,
+  });
+  await run("accept", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(getLog(db, REF).contestStatus, "pending");
+  assert.equal(getLog(db, REF).judgedAt, null);
+  assert.equal(calls.updates.length, 0);
+  assert.equal(calls.dms.length, 0);
+  assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
+});
+
+test("removing a warning reports a sanction that could not be lifted", async () => {
+  const { db, calls, run } = setupContest({
+    timeoutUntil: FUTURE,
+    memberUntil: FUTURE,
+    liftFails: true,
+  });
+  await run("remove", "u", "WARN-1");
+  assert.equal(countWarns(db), 1);
+  assert.equal(calls.updates.length, 0);
+  assert.match(calls.replies[0].content, /permissions ou hiérarchie/);
 });
 
 test("accepting keeps a timeout set by hand", async () => {
@@ -447,7 +568,11 @@ test("banning from a contest works like the other bans", async () => {
   assert.match(JSON.stringify(calls.replies[0]), /Bannir <@u>/);
 });
 
-function setupRoom({ timeoutUntil = null, memberUntil = null } = {}) {
+function setupRoom({
+  timeoutUntil = null,
+  memberUntil = null,
+  brokenArchive = false,
+} = {}) {
   const message = {
     id: "ROOM",
     components: buildContestMessage({
@@ -464,7 +589,7 @@ function setupRoom({ timeoutUntil = null, memberUntil = null } = {}) {
     communicationDisabledUntilTimestamp: memberUntil,
     timeout: async (...args) => timeouts.push(args),
   });
-  const context = setup({ message, target, room: true });
+  const context = setup({ message, target, room: true, brokenArchive });
   insertWarning(context.db);
   if (timeoutUntil !== null)
     context.db
@@ -528,6 +653,14 @@ test("closing the room after the verdict deletes it", async () => {
   assert.equal(calls.roomDeleted.length, 1);
   assert.equal(getLog(db, REF).contestChannel, null);
   assert.equal(getLog(db, REF).judgedBy, "mod");
+});
+
+test("closing the room keeps it when the transcript cannot be archived", async () => {
+  const { db, calls, run } = setupRoom({ brokenArchive: true });
+  await run("refuse", "u");
+  await run("closeroom");
+  assert.equal(calls.roomDeleted.length, 0);
+  assert.equal(getLog(db, REF).contestChannel, "room");
 });
 
 test("closing needs the moderator permission and a known room", async () => {

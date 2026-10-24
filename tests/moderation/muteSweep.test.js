@@ -11,6 +11,7 @@ const {
 } = require("../../utils/moderation/warnSanctions");
 const {
   FIRST_WINDOW,
+  activeMute,
   expiredMutes,
   sweepMutes,
 } = require("../../utils/moderation/muteSweep");
@@ -18,10 +19,10 @@ const {
 const NOW = 1_700_000_000_000;
 const MINUTE = 60 * 1000;
 
-function createDatabase({ muteRole = "mute" } = {}) {
+function createDatabase({ muteRole = "mute", muteType = "role" } = {}) {
   const db = new DatabaseSync(":memory:");
   migrate(db);
-  updateAutomodSettings(db, "g", { muteRole }, "admin");
+  updateAutomodSettings(db, "g", { muteRole, muteType }, "admin");
   return db;
 }
 
@@ -195,3 +196,40 @@ test("sweepMutes moves on when Discord does not know the member", async () => {
   assert.equal(await sweepMutes(bot, NOW), 0);
   assert.equal(bot.muteSweptAt, NOW);
 });
+
+test(
+  "activeMute returns the mute role of a member whose mute is still running",
+  () => {
+    const db = createDatabase();
+    mute(db, "W1", "a", NOW + 5 * MINUTE);
+
+    assert.equal(activeMute(db, "g", "a", NOW), "mute");
+  },
+);
+
+test(
+  "activeMute returns null once the mute has ended or never existed",
+  () => {
+    const db = createDatabase();
+    mute(db, "W1", "a", NOW - 5 * MINUTE);
+    mute(db, "W2", "b", null, "kick");
+
+    assert.equal(activeMute(db, "g", "a", NOW), null);
+    assert.equal(activeMute(db, "g", "b", NOW), null);
+    assert.equal(activeMute(db, "g", "c", NOW), null);
+  },
+);
+
+test(
+  "activeMute follows the latest mute and ignores servers using native timeouts",
+  () => {
+    const db = createDatabase();
+    mute(db, "W1", "a", NOW - 5 * MINUTE);
+    mute(db, "W2", "a", NOW + 30 * MINUTE);
+    const native = createDatabase({ muteType: "timeout" });
+    mute(native, "W3", "a", NOW + 5 * MINUTE);
+
+    assert.equal(activeMute(db, "g", "a", NOW), "mute");
+    assert.equal(activeMute(native, "g", "a", NOW), null);
+  },
+);

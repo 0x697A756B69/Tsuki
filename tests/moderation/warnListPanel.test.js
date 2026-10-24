@@ -359,6 +359,7 @@ function setupRemoval({
   dmOpen = true,
   values = ["0"],
   logs = null,
+  liftError = null,
 } = {}) {
   const db = new DatabaseSync(":memory:");
   migrate(db);
@@ -379,11 +380,14 @@ function setupRemoval({
     reason: "Insultes",
     date: Date.now() - 2 * DAY,
   });
-  const calls = { replies: [], updates: [], dms: [], timeouts: [] };
+  const calls = { replies: [], updates: [], follow: [], dms: [], timeouts: [] };
   const member =
     target ??
     person("u", [], 1, {
-      timeout: async (...args) => calls.timeouts.push(args),
+      timeout: async (...args) => {
+        if (liftError) throw liftError;
+        calls.timeouts.push(args);
+      },
     });
   const bot = /** @type {any} */ ({
     users: {
@@ -411,6 +415,7 @@ function setupRemoval({
     reply: async (payload) => calls.replies.push(payload),
     deferUpdate: async () => {},
     editReply: async (payload) => calls.updates.push(JSON.stringify(payload)),
+    followUp: async (payload) => calls.follow.push(payload),
   });
   return {
     db,
@@ -447,6 +452,26 @@ test("confirming removes the warning, lifts the timeout and tells the member", a
   assert.match(calls.dms[0], /Ta sourdine est levée/);
   assert.match(calls.updates[0], /1 avertissement retiré/);
   assert.match(calls.updates[0], /Sourdine levée/);
+});
+
+test("confirming keeps the warning and names a refused permission", async () => {
+  const { db, calls, run } = setupRemoval({
+    liftError: new Error("Missing Permissions"),
+  });
+  await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.follow[0].content, /1 avertissement conservé/);
+  assert.match(calls.follow[0].content, /permissions ou hiérarchie/);
+});
+
+test("confirming names the real cause when a sanction cannot be lifted", async () => {
+  const { db, calls, run } = setupRemoval({
+    liftError: Object.assign(new Error("Too many requests"), { status: 429 }),
+  });
+  await run("ok", "u", "0", "mod", "1", "2");
+  assert.equal(countWarns(db), 2);
+  assert.match(calls.follow[0].content, /limite de débit atteinte/);
+  assert.doesNotMatch(calls.follow[0].content, /permissions ou hiérarchie/);
 });
 
 test("confirming two warnings removes both with one message", async () => {

@@ -4,6 +4,7 @@ const {
   banNotice,
   sendNotice,
   closedDmLine,
+  banFailureLine,
 } = require("../../utils/moderation/moderationNotice");
 
 const defineCommand = require("../../utils/core/defineCommand");
@@ -69,7 +70,11 @@ module.exports = defineCommand({
       }),
     );
 
-    await message.guild.bans.create(user.id, { reason });
+    try {
+      await message.guild.bans.create(user.id, { reason });
+    } catch (err) {
+      return message.editReply(banFailureLine(user, err, delivered));
+    }
 
     await message.editReply(
       `<:ban:1035246059695390800> ${user} a été banni(e).\n` +
